@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/fonts.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/colors.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/typography.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/spacing.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/elevation.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/motion.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/base.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/styles.css" />
+<script src="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/_ds_bundle.js"></script>
+<script src="./doc-page.js"></script>
+<style>
+  doc-page:not(:defined) { visibility: hidden }
+  [data-contract] { break-inside: avoid; orphans: 3; widows: 3 }
+  [data-inv-row], [data-motion] { break-inside: avoid }
+  h2, h3 { break-after: avoid }
+</style>
+</helmet>
+
+<doc-page margin="0.7in">
+
+  <header slot="header" style="display:flex;align-items:baseline;justify-content:space-between;gap:20px;font-family:var(--font-mono);font-size:8.5pt;line-height:1.2;white-space:nowrap;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint)">
+    <span>Hội Sinh viên Việt Nam · Portal V2</span>
+    <span>Production notes · 02.09.2026</span>
+  </header>
+  <footer slot="footer" style="display:flex;align-items:baseline;justify-content:space-between;gap:20px;font-family:var(--font-mono);font-size:8.5pt;line-height:1.2;white-space:nowrap;color:var(--text-faint)">
+    <span>Next.js · TS · Tailwind · GSAP</span>
+    <span>Nội bộ · chưa phải production</span>
+  </footer>
+
+  <!-- COVER -->
+  <div style="padding-bottom:28pt;border-bottom:2px solid var(--ink-1000);margin-bottom:24pt">
+    <span style="font-family:var(--font-mono);font-size:9pt;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-primary)">Tài liệu bàn giao thiết kế → phát triển</span>
+    <h1 style="font-family:var(--font-editorial);font-size:34pt;line-height:1.08;font-weight:var(--fw-medium);letter-spacing:-.01em;color:var(--text-strong);margin:10pt 0 12pt;max-width:22ch">HSV Portal V2 — Production Notes</h1>
+    <p style="font-family:var(--font-ui);font-size:11.5pt;line-height:1.6;color:var(--text-muted);max-width:64ch;margin:0">Hợp đồng triển khai cho 13 section của trang chủ V2, kèm component inventory, motion system, danh sách component dùng lại và các điểm còn phụ thuộc API/backend. Mọi mục trong tài liệu này ánh xạ trực tiếp sang bản thiết kế <em style="font-style:normal;font-family:var(--font-mono);font-size:10.5pt">HSV Homepage V2</em>.</p>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--border-subtle);border:1px solid var(--border-subtle);border-radius:var(--radius-md);overflow:hidden;margin-top:20pt">
+      <sc-for list="{{ headline }}" as="h" hint-placeholder-count="4">
+        <div style="display:flex;flex-direction:column;gap:4pt;padding:11pt 12pt;background:var(--surface-page)">
+          <span style="font-family:var(--font-editorial);font-size:19pt;line-height:1;color:var(--text-strong)">{{ h.value }}</span>
+          <span style="font-family:var(--font-mono);font-size:7.5pt;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)">{{ h.label }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- 0 · CÁCH ĐỌC -->
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:0 0 8pt">Cách đọc tài liệu</h2>
+  <p style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.65;color:var(--text-body);max-width:74ch;margin:0 0 8pt">Mỗi section có một khối hợp đồng theo đúng 13 mục quy định. Section nào không điền đủ 13 mục thì không được đưa vào production — trong V2 không còn section nào ở trạng thái đó. Ba quy ước xuyên suốt:</p>
+  <ul style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.7;color:var(--text-body);max-width:74ch;margin:0 0 20pt;padding-left:18pt">
+    <li><strong style="font-weight:var(--fw-semibold)">Không số liệu viết cứng.</strong> Mọi con số trong giao diện đến từ payload. Nếu API chưa trả, phần tử biến mất — không có giá trị mặc định giả.</li>
+    <li><strong style="font-weight:var(--fw-semibold)">Ảnh qua <em style="font-style:normal;font-family:var(--font-mono);font-size:10pt">MediaImage(mediaId)</em>, video qua <em style="font-style:normal;font-family:var(--font-mono);font-size:10pt">VideoPlayer(videoId)</em>.</strong> Frontend không bao giờ nhận URL Google Drive thô.</li>
+    <li><strong style="font-weight:var(--fw-semibold)">Motion là lớp tăng cường.</strong> Tắt toàn bộ motion, trang vẫn đọc và dùng được đầy đủ; <em style="font-style:normal;font-family:var(--font-mono);font-size:10pt">prefers-reduced-motion</em> là nhánh render thật, không phải hiệu ứng giảm nhẹ.</li>
+  </ul>
+
+  <!-- 1 · SECTION CONTRACTS -->
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:0 0 4pt;padding-top:10pt;border-top:1px solid var(--border-default)">1 · Hợp đồng triển khai từng section</h2>
+  <p style="font-family:var(--font-mono);font-size:8.5pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);margin:0 0 16pt">13 section · thứ tự đúng như trang chủ V2</p>
+
+  <sc-for list="{{ contracts }}" as="c" hint-placeholder-count="13">
+    <section data-contract="" style="margin-bottom:18pt;padding-bottom:14pt;border-bottom:1px solid var(--border-subtle)">
+      <div style="display:flex;align-items:baseline;gap:10pt;margin-bottom:9pt">
+        <span style="font-family:var(--font-mono);font-size:9pt;letter-spacing:.06em;color:var(--brand-primary);padding-top:1pt">{{ c.n }}</span>
+        <h3 style="font-family:var(--font-editorial);font-size:14pt;line-height:1.2;font-weight:var(--fw-medium);color:var(--text-strong);margin:0">{{ c.name }}</h3>
+      </div>
+      <dl style="display:grid;grid-template-columns:112pt minmax(0,1fr);gap:1px;background:var(--border-subtle);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);overflow:hidden;margin:0">
+        <sc-for list="{{ c.rows }}" as="r" hint-placeholder-count="13">
+          <dt style="padding:6pt 9pt;background:var(--surface-subtle);font-family:var(--font-mono);font-size:7.5pt;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);margin:0">{{ r.k }}</dt>
+          <dd style="padding:6pt 10pt;background:var(--surface-page);font-family:var(--font-ui);font-size:9.5pt;line-height:1.55;color:var(--text-body);margin:0">{{ r.v }}</dd>
+        </sc-for>
+      </dl>
+    </section>
+  </sc-for>
+
+  <!-- 2 · COMPONENT INVENTORY -->
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:24pt 0 4pt;padding-top:10pt;border-top:1px solid var(--border-default);break-before:page">2 · Component inventory</h2>
+  <p style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.65;color:var(--text-body);max-width:74ch;margin:0 0 14pt">Toàn trang chủ dựng từ 21 component. Cột <em style="font-style:normal;font-family:var(--font-mono);font-size:10pt">Dùng lại</em> cho biết component đó xuất hiện ở đâu ngoài trang chủ — đây là danh sách tái sử dụng của mục 9 trong yêu cầu đầu ra.</p>
+  <table style="width:100%;border-collapse:collapse;font-family:var(--font-ui);font-size:9pt">
+    <thead>
+      <tr>
+        <th style="text-align:left;padding:7pt 8pt;border-bottom:1.5px solid var(--ink-1000);font-family:var(--font-mono);font-size:7.5pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-strong);width:23%">Component</th>
+        <th style="text-align:left;padding:7pt 8pt;border-bottom:1.5px solid var(--ink-1000);font-family:var(--font-mono);font-size:7.5pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-strong);width:14%">Variants</th>
+        <th style="text-align:left;padding:7pt 8pt;border-bottom:1.5px solid var(--ink-1000);font-family:var(--font-mono);font-size:7.5pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-strong);width:22%">Props chính</th>
+        <th style="text-align:left;padding:7pt 8pt;border-bottom:1.5px solid var(--ink-1000);font-family:var(--font-mono);font-size:7.5pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-strong)">Dùng ở · dùng lại</th>
+      </tr>
+    </thead>
+    <tbody>
+      <sc-for list="{{ inventory }}" as="i" hint-placeholder-count="21">
+        <tr data-inv-row="">
+          <td style="padding:7pt 8pt;border-bottom:1px solid var(--border-subtle);vertical-align:top;font-family:var(--font-mono);font-size:8.5pt;color:var(--text-strong)">{{ i.name }}</td>
+          <td style="padding:7pt 8pt;border-bottom:1px solid var(--border-subtle);vertical-align:top;color:var(--text-muted);font-size:8.5pt">{{ i.variants }}</td>
+          <td style="padding:7pt 8pt;border-bottom:1px solid var(--border-subtle);vertical-align:top;color:var(--text-muted);font-family:var(--font-mono);font-size:8pt;line-height:1.5">{{ i.props }}</td>
+          <td style="padding:7pt 8pt;border-bottom:1px solid var(--border-subtle);vertical-align:top;color:var(--text-body);line-height:1.5">{{ i.usage }}</td>
+        </tr>
+      </sc-for>
+    </tbody>
+  </table>
+
+  <!-- 3 · MOTION -->
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:26pt 0 4pt;padding-top:10pt;border-top:1px solid var(--border-default)">3 · Motion notes</h2>
+  <p style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.65;color:var(--text-body);max-width:74ch;margin:0 0 12pt">Chỉ năm nhóm motion được phép có "sân khấu riêng". Ngoài năm nhóm này, toàn bộ chuyển động còn lại là micro-animation dưới 300ms trên <em style="font-style:normal;font-family:var(--font-mono);font-size:10pt">transform</em> và <em style="font-style:normal;font-family:var(--font-mono);font-size:10pt">opacity</em>.</p>
+  <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--border-subtle);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:14pt">
+    <sc-for list="{{ tokens }}" as="t" hint-placeholder-count="4">
+      <div style="display:flex;flex-direction:column;gap:3pt;padding:9pt 10pt;background:var(--surface-page)">
+        <span style="font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint)">{{ t.name }}</span>
+        <span style="font-family:var(--font-editorial);font-size:14pt;line-height:1;color:var(--text-strong)">{{ t.value }}</span>
+        <span style="font-family:var(--font-ui);font-size:8.5pt;line-height:1.45;color:var(--text-muted)">{{ t.use }}</span>
+      </div>
+    </sc-for>
+  </div>
+  <sc-for list="{{ motions }}" as="m" hint-placeholder-count="5">
+    <div data-motion="" style="display:grid;grid-template-columns:118pt minmax(0,1fr);gap:12pt;padding:9pt 0;border-top:1px solid var(--border-subtle)">
+      <div style="display:flex;flex-direction:column;gap:3pt">
+        <span style="font-family:var(--font-ui);font-size:10pt;font-weight:var(--fw-semibold);color:var(--text-strong)">{{ m.name }}</span>
+        <span style="font-family:var(--font-mono);font-size:7.5pt;letter-spacing:.06em;text-transform:uppercase;color:var(--brand-primary)">{{ m.tech }}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4pt">
+        <span style="font-family:var(--font-ui);font-size:9.5pt;line-height:1.55;color:var(--text-body)">{{ m.what }}</span>
+        <span style="font-family:var(--font-ui);font-size:9pt;line-height:1.5;color:var(--text-muted)"><em style="font-style:normal;font-family:var(--font-mono);font-size:8pt;letter-spacing:.06em;text-transform:uppercase">Reduced motion —</em> {{ m.reduced }}</span>
+      </div>
+    </div>
+  </sc-for>
+  <div style="margin-top:12pt;padding:11pt 13pt;background:var(--surface-subtle);border-left:2px solid var(--ink-1000);border-radius:0 var(--radius-sm) var(--radius-sm) 0">
+    <span style="font-family:var(--font-mono);font-size:7.5pt;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)">Danh sách cấm</span>
+    <p style="font-family:var(--font-ui);font-size:9.5pt;line-height:1.6;color:var(--text-body);margin:5pt 0 0">Bounce mạnh · neon glow · float liên tục · particle · 3D tilt/rotation · scroll hijacking toàn trang · autoplay video có âm thanh · nhiều blur/filter chồng nhau · WebGL cho mục đích trang trí.</p>
+  </div>
+
+  <!-- 4 · API DEPENDENCIES -->
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:26pt 0 4pt;padding-top:10pt;border-top:1px solid var(--border-default);break-before:page">4 · Điểm còn phụ thuộc API / backend</h2>
+  <p style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.65;color:var(--text-body);max-width:74ch;margin:0 0 14pt">Thiết kế đã hoàn chỉnh; những mục dưới đây quyết định phần nào lên production được ngay và phần nào phải chờ. Cột <em style="font-style:normal;font-family:var(--font-mono);font-size:10pt">Nếu chưa có</em> là hành vi bắt buộc của giao diện khi backend chưa sẵn sàng — không có phương án "để tạm số liệu mẫu".</p>
+  <table style="width:100%;border-collapse:collapse;font-family:var(--font-ui);font-size:9pt">
+    <thead>
+      <tr>
+        <th style="text-align:left;padding:7pt 8pt;border-bottom:1.5px solid var(--ink-1000);font-family:var(--font-mono);font-size:7.5pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-strong);width:26%">Phụ thuộc</th>
+        <th style="text-align:left;padding:7pt 8pt;border-bottom:1.5px solid var(--ink-1000);font-family:var(--font-mono);font-size:7.5pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-strong);width:13%">Chặn</th>
+        <th style="text-align:left;padding:7pt 8pt;border-bottom:1.5px solid var(--ink-1000);font-family:var(--font-mono);font-size:7.5pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-strong)">Nếu chưa có</th>
+      </tr>
+    </thead>
+    <tbody>
+      <sc-for list="{{ deps }}" as="d" hint-placeholder-count="9">
+        <tr data-inv-row="">
+          <td style="padding:7pt 8pt;border-bottom:1px solid var(--border-subtle);vertical-align:top">
+            <span style="display:block;font-family:var(--font-ui);font-size:9.5pt;font-weight:var(--fw-semibold);color:var(--text-strong)">{{ d.name }}</span>
+            <span style="display:block;margin-top:2pt;font-family:var(--font-mono);font-size:7.5pt;color:var(--text-faint)">{{ d.api }}</span>
+          </td>
+          <td style="padding:7pt 8pt;border-bottom:1px solid var(--border-subtle);vertical-align:top;font-family:var(--font-mono);font-size:8pt;color:var(--text-muted)">{{ d.blocks }}</td>
+          <td style="padding:7pt 8pt;border-bottom:1px solid var(--border-subtle);vertical-align:top;color:var(--text-body);line-height:1.5">{{ d.fallback }}</td>
+        </tr>
+      </sc-for>
+    </tbody>
+  </table>
+
+  <div style="margin-top:22pt;padding-top:12pt;border-top:2px solid var(--ink-1000);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18pt">
+    <div>
+      <span style="font-family:var(--font-mono);font-size:7.5pt;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)">Sẵn sàng triển khai ngay</span>
+      <p style="font-family:var(--font-ui);font-size:9.5pt;line-height:1.6;color:var(--text-body);margin:5pt 0 0">Header, Hero, Trending Topics, Featured News, Dòng chảy sinh viên, Tin mới nhất, Video &amp; phóng sự, Ảnh hoạt động, Tin từ cơ sở, Footer — chỉ cần CMS đã có bài, tag, media và kênh YouTube.</p>
+    </div>
+    <div>
+      <span style="font-family:var(--font-mono);font-size:7.5pt;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)">Chờ backend</span>
+      <p style="font-family:var(--font-ui);font-size:9.5pt;line-height:1.6;color:var(--text-body);margin:5pt 0 0">Activity Map (endpoint tổng hợp theo tỉnh), Đang diễn ra (Event collection + trạng thái), trạng thái live của nền tảng Hội nghị, ô Dữ liệu &amp; Báo cáo trong bento.</p>
+    </div>
+  </div>
+
+</doc-page>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const K = ["COMPONENT", "DATA REQUIRED", "DATA SOURCE", "DESKTOP BEHAVIOR", "MOBILE BEHAVIOR", "INTERACTION", "MOTION", "LOADING STATE", "EMPTY STATE", "ERROR / FALLBACK", "IMPLEMENTATION", "ACCESSIBILITY", "RESPONSIVE"];
+
+class Component extends DCLogic {
+  contract(name, vals) {
+    return { name, rows: K.map((k, i) => ({ k, v: vals[i] })) };
+  }
+
+  renderVals() {
+    const raw = [
+      this.contract("Header", [
+        "Header · NavList · SearchOverlay · UserMenu · MobileDrawer",
+        "navItems[] (label, href, children?), user (name, avatarMediaId, role) | null, searchSuggestions[]",
+        "Menu config trong CMS (không hard-code trong code); user từ SSO của hệ sinh thái Hội",
+        "Sticky. Top state cao 78px, nền trắng 90%. Vượt 96px chuyển scrolled: cao 62px, nền 94%, backdrop blur, border-bottom, shadow-sm",
+        "Logo trái, search + hamburger phải. Menu mở full-screen panel; mọi hàng cao tối thiểu 56px",
+        "Search mở overlay (⌘K/Esc). Hamburger mở drawer. User menu khi đã đăng nhập",
+        "Height + background + blur transition 280ms. Không bounce, không ẩn/hiện header theo hướng scroll",
+        "Nav render từ config nên có sẵn khi SSR; chỉ khối user là skeleton pill 38px trong lúc chờ SSO",
+        "Không có: menu luôn tối thiểu 6 mục theo IA",
+        "SSO lỗi → hiện nút Đăng nhập (trạng thái logged-out), không chặn phần còn lại của trang",
+        "Server component + client island cho scroll state; sticky bằng CSS, không JS đo vị trí",
+        "nav landmark, aria-expanded trên hamburger, focus trap trong drawer/search, Esc đóng, focus-visible ring trên toàn bộ nav",
+        "Nav ngang ≥1120px; dưới đó chuyển hamburger + drawer"
+      ]),
+      this.contract("Cinematic Hero", [
+        "HeroFeature · MediaImage · Button",
+        "category, headline, sapo, coverMedia (mediaId, orientation), publishedAt, author, readingTime, articleUrl, topicUrl",
+        "CMS — bài được gắn cờ hero (không dùng text marketing tự viết)",
+        "Bất đối xứng: cột chữ 43%, media 57% chạy tràn cạnh phải. Cao 74vh (giới hạn 520–780px), không ép 100vh",
+        "Media lên trên, cao 52vw (tối thiểu 300px), bo góc đủ; chữ xuống dưới, CTA full-width theo cột",
+        "Toàn khối media là link sang bài. Hai CTA: đọc bài, và chuyên đề liên quan",
+        "On load: headline reveal theo từng dòng (clip + translateY, lệch 90ms), media opacity + scale 1.06→1, CTA fade. On scroll: media parallax 0.12 và scale rất nhẹ",
+        "Headline + sapo là SSR nên có ngay; media hiện placeholder thương hiệu tỉ lệ đúng, không đẩy layout",
+        "Không có bài hero → lấy bài mới nhất của chuyên mục Tin tức; layout không đổi",
+        "Ảnh lỗi → branded placeholder. Không có video → dùng image cover (không có đường nào dẫn tới khung trống)",
+        "Server component; parallax trong client island dùng transform, không dùng background-position",
+        "h1 duy nhất của trang, alt text từ CMS, tương phản chữ trên nền sáng ≥ 7:1, CTA cao 50px",
+        "1440/1280 giữ 43/57; ≤1024 xếp dọc, media lên trước"
+      ]),
+      this.contract("Trending Topics", [
+        "TrendingTopicRail · TagPill",
+        "tags[] (name, slug, articleCount, href)",
+        "CMS Tag/Topic system, xếp theo lượt bài trong 30 ngày",
+        "Rail một dòng cao 76px: label bên trái, pill cuộn ngang. Marquee rất chậm chỉ khi số tag vượt bề rộng",
+        "Native horizontal scroll, không ép xuống nhiều dòng, không marquee",
+        "Hover pill đổi viền + nền nhạt. Click sang trang topic",
+        "Chỉ hover 150ms và chuyển động ngang chậm. Không hiệu ứng kiểu ticker tài chính",
+        "3 pill skeleton bề rộng khác nhau",
+        "Dưới 3 tag → ẩn cả section (một rail hai pill không có giá trị)",
+        "Tag API lỗi → ẩn section, không hiện khung rỗng",
+        "Server component; marquee dừng khi hover và khi tab ẩn",
+        "nav + aria-label, mỗi pill là link thật, scroll được bằng bàn phím",
+        "Không đổi cấu trúc theo breakpoint; chỉ khác ở marquee (tắt trên mobile)"
+      ]),
+      this.contract("Featured News / Tin tiêu điểm", [
+        "FeaturedNewsCard · NewsListItem · MediaImage",
+        "featured (cover, category, headline, sapo, publishedAt, url, mediaId, articleId), secondary[3] (thumb, category, title, publishedAt, url)",
+        "CMS — nhóm bài tiêu điểm do ban biên tập chọn",
+        "Grid 12 cột: featured 7–8 cột (cover 3:2), 3 bài phụ 4–5 cột dạng list editorial có divider, không dùng card nặng",
+        "Featured đầy đủ, sau đó 3 bài phụ dạng hàng thumbnail 96px",
+        "Hover featured: cover scale 1→1.025, tiêu đề đổi màu. Hover bài phụ: thumbnail nhích, xuất hiện gạch chỉ dẫn 56px",
+        "Hover 280ms. Click chuyển tiếp ảnh sang Article Hero (shared image transition, xem mục 3)",
+        "Skeleton đúng tỉ lệ: khối 3:2 + 3 hàng",
+        "Không có bài tiêu điểm → dùng 4 bài mới nhất, đổi eyebrow thành \"Tin mới\"",
+        "Ảnh lỗi → placeholder; thiếu bài phụ → list co lại, không chèn ô giả",
+        "Server component, ảnh responsive srcset qua MediaImage",
+        "article + h2/h3 theo thứ bậc, ảnh trang trí aria-hidden, vùng bấm phủ toàn thẻ",
+        "≤1024 xếp một cột; ≤680 thumbnail bài phụ còn 96px"
+      ]),
+      this.contract("Dòng chảy sinh viên", [
+        "HorizontalStoryRail · StoryCard",
+        "stories[5–7] (place, category, headline, coverMedia, publishedAt, url)",
+        "CMS — collection \"Dòng chảy sinh viên\", chọn thủ công theo tuần",
+        "Nền dark editorial. Section được pin (sticky viewport), scroll dọc tiếp tục và rail dịch ngang bằng transform; hết rail thì release sang Tin mới nhất. Card 28–36vw, tỉ lệ ngang",
+        "Không pin, không đổi trục scroll. Native horizontal scroll + scroll-snap, card ~86vw",
+        "Card active scale 1 / opacity 1, card khác scale .95 / opacity .62. Hai nút prev–next điều khiển tiến độ. Progress bar + đếm 01/06",
+        "Nhóm motion 2 (GSAP ScrollTrigger). Chỉ transform và opacity, không hijack scroll",
+        "Rail hiện 3 card skeleton, không pin cho tới khi đủ dữ liệu",
+        "Dưới 3 câu chuyện → ẩn section",
+        "Ảnh lỗi → placeholder tối cùng tông nền, chữ vẫn đọc được",
+        "GSAP ScrollTrigger cho desktop; CSS scroll-snap cho mobile — hai nhánh render riêng, không phải một nhánh bị thu nhỏ",
+        "Rail là danh sách link thật, tab đi qua từng card; nút prev–next có aria-label; đếm số cập nhật qua aria-live polite",
+        "Pin chỉ bật ≥1024px; dưới đó và khi reduced-motion là carousel tĩnh"
+      ]),
+      this.contract("Tin mới nhất", [
+        "NewsCard (featured · standard · horizontal · compact) · CategoryFilter",
+        "articles[] (mediaId, category, headline, sapo?, publishedAt, url), categories[]",
+        "CMS — truy vấn mới nhất, phân trang theo cursor",
+        "Grid editorial bất đối xứng 12 cột: A featured 7 cột, B cột đọc nhanh 5 cột có border trái, C–D standard 4 cột, E ô text-heavy nền nhạt. Xen kẽ image-heavy và text-heavy",
+        "Một cột, giữ một bài featured lớn ở đầu, phần còn lại là compact",
+        "Filter chuyên mục đổi truy vấn (không lọc phía client). Nút Xem thêm nạp trang tiếp theo",
+        "Reveal khi vào viewport, lệch 70ms theo thứ tự trong nhóm, tối đa 5 bậc",
+        "6 card skeleton shimmer đúng tỉ lệ ảnh — đã dựng trong bản thiết kế (tweak trạng thái dữ liệu)",
+        "Empty state có nội dung thật: nói rõ mục này chưa có tin + nút xem tất cả",
+        "Truy vấn lỗi → giữ kết quả cũ, hiện toast lỗi; không xoá nội dung đang đọc",
+        "Server component + Suspense theo từng nhóm card; filter dùng searchParams để chia sẻ link được",
+        "Tất cả filter là button có aria-pressed, thứ bậc heading liên tục, vùng bấm ≥44px trên mobile",
+        "12 cột ≥1024; 2 cột ở tablet; 1 cột ≤680"
+      ]),
+      this.contract("Video & Phóng sự", [
+        "FeaturedVideoStory · VideoStoryCard · YouTubePlayer",
+        "featured (videoId, thumbnail, category, headline, sapo, duration, publishedAt), playlist[3] (videoId, thumbnail, category, title, duration)",
+        "YouTube Data API cho metadata + CMS cho phần biên tập. Không lưu file video trên VPS",
+        "Nền dark cinematic. Video lớn 2/3, playlist 3 video 1/3 dạng hàng thumbnail 132px",
+        "Video lớn full width, playlist cuộn dọc bên dưới",
+        "Click mở inline player (modal); iframe chỉ nạp sau click. Hover: thumbnail nhích, nút play phóng nhẹ",
+        "Chỉ hover 280ms và modal fade-scale. Không autoplay bất kỳ thumbnail nào",
+        "Poster skeleton 16:9 + ba hàng playlist",
+        "Playlist rỗng → chỉ hiện video featured, cột phải biến mất",
+        "Video bị xoá / tắt nhúng → thay bằng link mở trên YouTube kèm lý do; poster lỗi → placeholder có nhãn thời lượng",
+        "lite-embed: chỉ nạp iframe khi tương tác, giữ LCP nhẹ",
+        "Nút play là button có aria-label kèm tên video, modal có focus trap + Esc, thời lượng đọc được bằng screen reader",
+        "2/3–1/3 ≥1024; xếp dọc dưới đó"
+      ]),
+      this.contract("Hoạt động sinh viên toàn quốc", [
+        "ActivityMap · MapTooltip · ProvincePanel · ProvinceBottomSheet · ActivityFilter",
+        "provinces[] (province_id, province_name, slug, lat, lon, activity_count, article_count, unit_count, latest_article, category_distribution), summary, categories[], updated_at",
+        "GET /api/v1/activity-map — endpoint tổng hợp mới, xem mục 4",
+        "Grid 12 cột: bản đồ 7 cột, panel số liệu 5 cột. Bản đồ dựng từ geometry thật (Natural Earth qua d3-geo), mỗi tỉnh là phần tử SVG có ID riêng; mức hoạt động thể hiện bằng kích thước và độ đậm điểm, một màu duy nhất",
+        "Bản đồ full width, tap tỉnh mở bottom sheet (tên, số hoạt động, số tin, tin mới nhất, CTA); dưới bản đồ luôn có Local Activity List",
+        "Hover hiện tooltip. Click chọn tỉnh, cập nhật panel phải, CTA sang /dia-phuong/[slug]. Filter chuyên mục đổi dữ liệu và vẽ lại bản đồ",
+        "Nhóm motion 5: chỉ đổi bán kính, độ đậm và viền tỉnh trong 280ms. Không animation vào/ra toàn bản đồ",
+        "Skeleton hình khối bản đồ + 4 ô số liệu — đã dựng",
+        "provinces rỗng → thông báo rõ chưa có dữ liệu và chuyển sang danh sách hoạt động địa phương, không để khung trống",
+        "Geometry hoặc payload lỗi → khối thông báo + nút thử lại, danh sách địa phương vẫn hiển thị đầy đủ",
+        "SVG + d3-geo cho phép chiếu; state trong client component; số tỉnh và mọi chỉ số đều từ payload. Không Google Maps, không ảnh chụp bản đồ, không WebGL",
+        "role=group cho bản đồ, mỗi tỉnh là button có tabindex và aria-label \"tên tỉnh: N hoạt động, M tin bài\", Enter/Space để chọn, aria-pressed cho tỉnh đang chọn, panel cập nhật qua aria-live; danh sách địa phương là đường đọc tương đương cho screen reader",
+        "Hai cột ≥1180px; một cột + bottom sheet dưới đó"
+      ]),
+      this.contract("Hệ sinh thái số", [
+        "PlatformBentoGrid · PlatformCard",
+        "platforms[] (platformName, description, icon, url, status, currentActivity, ctaLabel, metric?)",
+        "Platform registry của hệ sinh thái Hội (nội bộ), trạng thái live lấy realtime từ nền tảng Hội nghị",
+        "Bento 4 cột: Hội nghị chiếm 2×2 nền tối, Đào tạo 2 cột, SV 5 tốt và Tình nguyện 1 cột, Dữ liệu & Báo cáo 2 cột. Các ô không bằng nhau",
+        "Một cột, giữ đúng thứ tự ưu tiên; ô Hội nghị vẫn nổi bật nhất",
+        "Hover: elevation nhẹ, CTA dịch 2–4px, ambient background shift rất nhẹ. Ô trạng thái upcoming/maintenance không có CTA",
+        "Nhóm motion 4: transform + shadow 280ms. Không 3D tilt",
+        "Ô giữ khung đúng kích thước, chữ skeleton — grid không nhảy",
+        "Nền tảng chưa mở → ô ở trạng thái upcoming, viền nét đứt, nêu rõ tình trạng (đang dựng trong thiết kế)",
+        "Registry lỗi → mọi ô về trạng thái default với mô tả tĩnh và CTA truy cập; không hiện chỉ báo live sai",
+        "Server component cho grid + client island cho chỉ báo live (poll, không websocket)",
+        "Mỗi ô là một link (hoặc div khi unavailable), chỉ báo live có text kèm màu, pulse tắt khi reduced-motion",
+        "4 cột ≥1024; 2 cột ở tablet; 1 cột ≤680"
+      ]),
+      this.contract("Đang diễn ra", [
+        "LiveEventRail · EventCard",
+        "events[] (title, status, startAt, endAt, location, cover, participantCount?, url)",
+        "Event collection trong CMS + trạng thái live tính từ startAt/endAt phía server",
+        "Rail ngang 3–4 card, mỗi card 280–360px, snap theo card",
+        "Swipe ngang, một card gần full width",
+        "Hover nâng card. CTA theo trạng thái: xem trực tuyến / đăng ký / xem lại",
+        "Chỉ pulse rất nhẹ trên chỉ báo LIVE và hover 280ms",
+        "3 card skeleton",
+        "Không có sự kiện live hoặc upcoming → ẩn cả section khỏi trang chủ (đã dựng qua tweak)",
+        "Cover lỗi → placeholder; thiếu participantCount → bỏ hẳn dòng đó, không đoán số",
+        "Server component; trạng thái tính ở server để tránh lệch múi giờ client",
+        "Trạng thái có text (LIVE / Sắp diễn ra / Đã kết thúc) chứ không chỉ dựa vào màu; pulse tắt khi reduced-motion",
+        "Rail giữ nguyên mọi breakpoint, chỉ đổi bề rộng card"
+      ]),
+      this.contract("Ảnh hoạt động", [
+        "MediaGallery · MediaImage · Lightbox",
+        "media[] (mediaId, caption, altText, articleUrl, orientation)",
+        "Google Drive Media Service qua MediaImage(mediaId) — frontend không nhận URL Drive thô",
+        "Masonry editorial 4 cột, ô có span khác nhau (2×2, 1×2, 2×1, 1×1); không đồng tỉ lệ",
+        "2 cột ở tablet, 1 cột ≤680 với ô 4:3",
+        "Hover: zoom 1–2%, overlay tối, caption fade lên. Click mở lightbox (hoặc sang photo story)",
+        "Chỉ hover 280ms và lightbox fade-scale",
+        "Ô giữ đúng span với nền shimmer — masonry không nhảy",
+        "Dưới 4 ảnh → ẩn section",
+        "Ảnh lỗi → placeholder giữ đúng ô; hỗ trợ đủ landscape / portrait / missing / loading / error",
+        "next/image qua media service (resize, cache, định dạng tối ưu), lazy-load ngoài viewport đầu",
+        "Mỗi ô là button mở lightbox, altText bắt buộc từ CMS, lightbox có focus trap + Esc + điều hướng bằng mũi tên",
+        "4 cột ≥1024; 2 cột tablet; 1 cột ≤680"
+      ]),
+      this.contract("Tin từ cơ sở", [
+        "LocalNewsStream · LocalNewsItem · LevelFilter",
+        "items[] (organization, orgLogoMediaId, province_or_country, title, cover, publishedAt, url)",
+        "CMS — bài từ đơn vị cơ sở, taxonomy cấp đơn vị (tỉnh/thành · trường · hội ở nước ngoài)",
+        "Hai cột: cột trái sticky chứa tiêu đề + filter cấp đơn vị, cột phải là list editorial có divider, mỗi hàng gồm logo 44px, đơn vị, địa bàn, tiêu đề, ngày, thumbnail 116px",
+        "Một cột, bỏ thumbnail, giữ logo đơn vị và tiêu đề",
+        "Filter đổi cấp đơn vị. Cả hàng là vùng bấm",
+        "Hover đổi nền hàng 150ms. Không hiệu ứng riêng",
+        "5 hàng skeleton",
+        "Cấp đơn vị đang chọn không có bài → nêu rõ và gợi ý cấp khác",
+        "Logo đơn vị thiếu → viết tắt tên đơn vị trên nền brand nhạt (đang dùng trong thiết kế)",
+        "Server component; filter qua searchParams",
+        "Filter là button có aria-pressed, tên đơn vị và địa bàn nằm trong cùng link để screen reader đọc đủ ngữ cảnh",
+        "Hai cột ≥1024; một cột dưới đó, bỏ thumbnail ≤680"
+      ]),
+      this.contract("Footer", [
+        "Footer · FooterColumn · SocialLinks · NewsletterForm",
+        "columns[] (title, links[]), socials[], address, newsletter endpoint",
+        "Config CMS; newsletter qua service email của Hội",
+        "Nền deep navy. 5 cột: giới thiệu, về chúng tôi, nội dung, nền tảng số, kết nối + newsletter",
+        "2 cột ở tablet, 1 cột ≤680",
+        "Newsletter validate email phía client rồi submit; social mở tab mới",
+        "Không có motion ngoài hover link 150ms",
+        "Không áp dụng (nội dung tĩnh, SSR)",
+        "Không áp dụng",
+        "Newsletter lỗi → thông báo lỗi ngay dưới input, giữ nguyên giá trị đã nhập",
+        "Server component; form là server action",
+        "footer landmark, input có label, thông báo lỗi liên kết bằng aria-describedby, tương phản chữ trên nền tối ≥ 4.5:1",
+        "5 cột ≥1024; 2 cột tablet; 1 cột ≤680"
+      ])
+    ];
+
+    const inventory = [
+      { name: "Header", variants: "top · scrolled", props: "navItems, user", usage: "Mọi trang của portal" },
+      { name: "MobileDrawer", variants: "—", props: "open, navItems", usage: "Mọi trang (≤1120px)" },
+      { name: "SearchOverlay", variants: "—", props: "suggestions", usage: "Mọi trang" },
+      { name: "HeroFeature", variants: "image · video", props: "article, coverMedia", usage: "Trang chủ; biến thể gọn cho trang chuyên đề" },
+      { name: "TrendingTopicRail", variants: "static · marquee", props: "tags", usage: "Trang chủ, trang tin tức" },
+      { name: "TagPill", variants: "default · active", props: "name, count, href", usage: "Rail, article page, topic page" },
+      { name: "FeaturedNewsCard", variants: "large · medium", props: "article", usage: "Trang chủ, trang chuyên mục" },
+      { name: "NewsListItem", variants: "with-thumb · text-only", props: "article", usage: "Tiêu điểm, sidebar bài viết, trang tìm kiếm" },
+      { name: "NewsCard", variants: "featured · standard · horizontal · compact", props: "article, variant", usage: "Tin mới nhất, chuyên mục, topic, kết quả tìm kiếm — component dùng lại nhiều nhất" },
+      { name: "HorizontalStoryRail", variants: "pinned · native-scroll", props: "stories", usage: "Trang chủ; dùng lại cho trang chuyên đề dài" },
+      { name: "StoryCard", variants: "active · inactive", props: "story", usage: "Story rail" },
+      { name: "FeaturedVideoStory", variants: "—", props: "video", usage: "Trang chủ, trang video" },
+      { name: "VideoStoryCard", variants: "list · grid", props: "video", usage: "Playlist trang chủ, trang video" },
+      { name: "YouTubePlayer", variants: "lite · full", props: "videoId, poster", usage: "Mọi nơi có video" },
+      { name: "ActivityMap", variants: "desktop · mobile", props: "provinces, filter", usage: "Trang chủ; dùng lại ở trang địa phương (một tỉnh)" },
+      { name: "PlatformBentoGrid", variants: "—", props: "platforms", usage: "Trang chủ, trang giới thiệu hệ sinh thái" },
+      { name: "PlatformCard", variants: "default · live · upcoming · maintenance · unavailable", props: "platform", usage: "Bento, trang nền tảng" },
+      { name: "LiveEventRail", variants: "—", props: "events", usage: "Trang chủ, trang sự kiện" },
+      { name: "EventCard", variants: "live · upcoming · completed", props: "event", usage: "Rail, lịch sự kiện, trang địa phương" },
+      { name: "MediaGallery", variants: "masonry · grid", props: "media", usage: "Trang chủ, photo story, article page" },
+      { name: "MediaImage", variants: "cover · thumb · gallery", props: "mediaId, sizes, alt", usage: "Mọi ảnh trong toàn portal — lớp trừu tượng bắt buộc" },
+      { name: "LocalNewsStream", variants: "—", props: "items, level", usage: "Trang chủ, trang mạng lưới cơ sở" },
+      { name: "Lightbox", variants: "—", props: "media, index", usage: "Gallery, article page" },
+      { name: "Footer", variants: "—", props: "columns, socials", usage: "Mọi trang" }
+    ];
+
+    return {
+      headline: [
+        { value: "13", label: "Section production-ready" },
+        { value: "24", label: "Component" },
+        { value: "5", label: "Nhóm motion" },
+        { value: "4", label: "Điểm chờ backend" }
+      ],
+      contracts: raw.map((c, i) => ({ ...c, n: String(i + 1).padStart(2, "0") })),
+      inventory,
+      tokens: [
+        { name: "fast", value: "150ms", use: "Hover, focus, đổi màu" },
+        { name: "normal", value: "280ms", use: "Card, panel, filter, map" },
+        { name: "slow", value: "500ms", use: "Reveal khi scroll" },
+        { name: "cinematic", value: "700–900ms", use: "Hero reveal, chuyển ảnh" }
+      ],
+      motions: [
+        {
+          name: "Cinematic Hero", tech: "CSS keyframes + scroll-driven",
+          what: "Headline reveal theo dòng (clip + translateY, lệch 90ms), media scale 1.06→1, CTA fade. Khi scroll: media parallax 0.12 và scale rất nhẹ, chữ giảm opacity nhẹ.",
+          reduced: "Bỏ toàn bộ reveal và parallax, hero hiện ở trạng thái cuối."
+        },
+        {
+          name: "Horizontal Story Rail", tech: "GSAP ScrollTrigger",
+          what: "Section pin bằng sticky viewport, rail dịch ngang bằng transform theo tiến độ scroll. Scroll dọc vẫn native — không hijack. Card active scale 1, card khác scale .95 / opacity .62.",
+          reduced: "Không pin, render carousel ngang tĩnh với scroll-snap (giống nhánh mobile)."
+        },
+        {
+          name: "Shared Image Transition", tech: "View Transition API",
+          what: "Cover của card (transitionName = mediaId) chuyển tiếp liên tục sang Article Hero khi điều hướng. Áp dụng cho mọi news card lớn có mediaId + articleId.",
+          reduced: "Chuyển thẳng, không animation. Browser không hỗ trợ → fallback opacity + scale."
+        },
+        {
+          name: "Bento Ecosystem", tech: "Framer Motion",
+          what: "Hover: elevation nhẹ, CTA dịch 2–4px, ambient background shift rất nhẹ. Chỉ báo live pulse 1.8s. Không 3D tilt.",
+          reduced: "Chỉ đổi viền và nền, tắt pulse và dịch chuyển."
+        },
+        {
+          name: "Activity Map", tech: "CSS transition trên SVG",
+          what: "Hover/selected đổi bán kính, độ đậm và viền điểm tỉnh trong 280ms. Tooltip fade 140ms. Đổi filter vẽ lại điểm với transition bán kính.",
+          reduced: "Đổi trạng thái tức thì, không transition."
+        }
+      ],
+      deps: [
+        { name: "Activity Map — dữ liệu tổng hợp theo tỉnh", api: "GET /api/v1/activity-map", blocks: "Section 8", fallback: "Section hiện khối thông báo + nút thử lại, kèm danh sách hoạt động địa phương. Không dùng số liệu mẫu trên production." },
+        { name: "Taxonomy tỉnh/thành chuẩn hoá", api: "province_id ↔ slug ↔ tên", blocks: "Section 8, 12", fallback: "Chưa có mapping thì bản đồ không lên; danh sách cơ sở vẫn chạy theo tên đơn vị." },
+        { name: "Category mapping cho filter bản đồ", api: "category_distribution", blocks: "Filter section 8", fallback: "Không tạo filter khi backend chưa có mapping — yêu cầu XI nói rõ điều này." },
+        { name: "Event collection + trạng thái", api: "Event API (startAt, endAt, status)", blocks: "Section 10", fallback: "Không có sự kiện live/upcoming thì ẩn cả section." },
+        { name: "participantCount của sự kiện", api: "Event API (tuỳ chọn)", blocks: "Một dòng trong EventCard", fallback: "Thiếu thì bỏ dòng đó. Không suy đoán, không đếm giả." },
+        { name: "Trạng thái live nền tảng Hội nghị", api: "Conference platform status", blocks: "Ô lớn trong bento", fallback: "Không có thì ô về trạng thái default với CTA truy cập." },
+        { name: "Nền tảng Dữ liệu & Báo cáo", api: "Platform registry", blocks: "Một ô bento", fallback: "Giữ trạng thái upcoming, không có CTA cho tới khi registry báo sẵn sàng." },
+        { name: "Google Drive Media Service", api: "MediaImage(mediaId)", blocks: "Toàn bộ ảnh", fallback: "Chưa có service thì không dùng URL Drive thô — dùng placeholder thương hiệu đúng tỉ lệ." },
+        { name: "YouTube metadata", api: "YouTube Data API", blocks: "Section 7", fallback: "Thiếu duration/thumbnail thì bỏ nhãn tương ứng; video bị xoá hoặc tắt nhúng thì chuyển thành link ngoài." },
+        { name: "SSO hệ sinh thái Hội", api: "Auth service", blocks: "Header logged-in, CTA nền tảng", fallback: "Header về trạng thái logged-out, CTA nền tảng dẫn tới trang đăng nhập." }
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>

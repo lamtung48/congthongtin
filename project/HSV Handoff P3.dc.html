@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/fonts.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/colors.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/typography.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/spacing.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/elevation.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/motion.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/base.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/styles.css" />
+<script src="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/_ds_bundle.js"></script>
+<script src="./doc-page.js"></script>
+<style>
+  doc-page:not(:defined) { visibility: hidden }
+  h2, h3 { break-after: avoid }
+  tr, [data-blk] { break-inside: avoid }
+  a { color: var(--brand-primary) }
+  a:hover { color: var(--ink-1000) }
+</style>
+</helmet>
+
+<doc-page margin="0.7in">
+
+  <header slot="header" style="display:flex;align-items:baseline;justify-content:space-between;gap:20px;font-family:var(--font-mono);font-size:8.5pt;line-height:1.2;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint)">
+    <span style="white-space:nowrap">Hội Sinh viên Việt Nam · Portal V2</span>
+    <span style="white-space:nowrap">Phần việc 3</span>
+  </header>
+  <footer slot="footer" style="display:flex;align-items:baseline;justify-content:space-between;gap:20px;font-family:var(--font-mono);font-size:8.5pt;line-height:1.2;color:var(--text-faint)">
+    <span style="white-space:nowrap">HSV Homepage V2.dc.html · vietnam-activity-map.js · data/activity-map.sample.json</span>
+    <span style="white-space:nowrap">Bản thiết kế · chưa phải production</span>
+  </footer>
+
+  <div style="padding-bottom:24pt;border-bottom:2px solid var(--ink-1000);margin-bottom:22pt">
+    <span style="font-family:var(--font-mono);font-size:9pt;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-primary)">Bàn giao · 03.09.2026</span>
+    <h1 style="font-family:var(--font-editorial);font-size:32pt;line-height:1.08;font-weight:var(--fw-medium);letter-spacing:-.01em;color:var(--text-strong);margin:10pt 0 12pt;max-width:26ch">Bản đồ hoạt động và bento hệ sinh thái số trên PC</h1>
+    <p style="font-family:var(--font-ui);font-size:11pt;line-height:1.62;color:var(--text-muted);max-width:66ch;margin:0">Phạm vi phần việc 3: hai section “Hoạt động sinh viên trên toàn quốc” và “Hệ sinh thái số Hội Sinh viên Việt Nam”. Thiết kế trên PC 1440×900, đối chiếu 1280 và 1920. Các breakpoint tablet/mobile của phần việc trước được giữ nguyên. Dữ liệu trong bản thiết kế là fixture; API thật chưa được kết nối.</p>
+  </div>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:0 0 6pt">1 · Thay đổi chính</h2>
+  <ul style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.62;color:var(--text-body);max-width:76ch;margin:0 0 18pt;padding-left:16pt;display:flex;flex-direction:column;gap:5pt">
+    <li>Bố cục PC 7/5: bản đồ chiếm cột trái đủ lớn để tương tác, cột phải là số liệu và tin.</li>
+    <li>Mỗi loại dữ liệu chỉ còn một nguồn hiển thị: bản đồ + legend (không gian), panel phải (số liệu và tin của đơn vị đang chọn), danh sách tỉnh, thành trong vùng mở rộng (tra cứu). Bảng xếp hạng top 5 trong khung bản đồ đã bỏ để không lặp dữ liệu.</li>
+    <li>Danh sách đầy đủ 34 đơn vị nằm sau nút “Xem danh sách tỉnh, thành”, có ô tìm theo tên, và vẫn dùng được khi bản đồ lỗi.</li>
+    <li>Chọn đơn vị giữ selected state trên bản đồ; bản đồ là nơi giữ lựa chọn duy nhất, danh sách và nút “Xem toàn quốc” gửi yêu cầu vào bản đồ nên không có hai trạng thái song song.</li>
+    <li>Phân biệt rõ “0” và “chưa có dữ liệu”: giá trị thiếu là <code style="font-family:var(--font-mono);font-size:9.5pt">null</code>, hiển thị bằng điểm viền nét đứt và nhãn chữ, không cộng vào tổng.</li>
+    <li>Section header, tooltip và thông báo lỗi chỉ dùng ngôn ngữ độc giả: không tên API, không giải thích geometry, không thuật ngữ fallback.</li>
+    <li>Bento: bỏ chữ viết tắt HN/ĐT/TN/DL, thay bằng bộ icon nét thống nhất; giữ đúng năm nền tảng; một ô nổi bật và bốn ô phụ cân đối; mỗi ô có trạng thái bằng nhãn chữ, một CTA chính và dòng quyền truy cập.</li>
+    <li>Bỏ khẳng định “năm nền tảng dùng chung một tài khoản” khỏi UI — SSO chưa được xác nhận kỹ thuật (xem mục 6).</li>
+  </ul>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:22pt 0 6pt;padding-top:10pt;border-top:1px solid var(--border-default)">2 · Bảng trạng thái bản đồ</h2>
+  <p style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.65;color:var(--text-body);max-width:76ch;margin:0 0 12pt">Sáu trạng thái đầu bật bằng tweak <code style="font-family:var(--font-mono);font-size:9.5pt">mapDataState</code> của Homepage V2. Trạng thái “đơn vị chưa báo cáo” nằm trong fixture nên luôn thấy được ở chế độ bình thường.</p>
+  <table style="width:100%;border-collapse:collapse;font-family:var(--font-ui);font-size:9.5pt;margin:0 0 18pt">
+    <thead>
+      <tr style="background:var(--surface-subtle)">
+        <th style="text-align:left;padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);width:20%">Trạng thái</th>
+        <th style="text-align:left;padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)">Biểu hiện trên UI</th>
+        <th style="text-align:left;padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);width:22%">Cách tái hiện</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Đang tải</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Khung skeleton đúng kích thước bản đồ + một dòng skeleton cho legend. Không nhảy layout khi có dữ liệu.</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)"><code style="font-family:var(--font-mono);font-size:9pt">mapDataState = loading</code></td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Đã tải</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Bản đồ + legend mức hoạt động; panel phải hiện 4 ô số liệu, kỳ thống kê, thời gian cập nhật và 3 tin mới nhất theo địa phương.</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)"><code style="font-family:var(--font-mono);font-size:9pt">mapDataState = api</code> (mặc định)</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Không có dữ liệu</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Khối thông báo “Chưa có dữ liệu hoạt động” trong khung bản đồ (không để trống), ô số liệu ẩn, vùng danh sách hiện thông báo tương ứng. Không có nút thử lại vì không phải lỗi.</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)"><code style="font-family:var(--font-mono);font-size:9pt">mapDataState = empty</code></td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Lỗi số liệu</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Thông báo “Chưa tải được số liệu bản đồ” + nút “Thử lại” (nạp lại dữ liệu thật). Ô số liệu ẩn; vùng danh sách hướng người đọc thử lại ở khung bản đồ.</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)"><code style="font-family:var(--font-mono);font-size:9pt">mapDataState = error</code></td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Lỗi nền bản đồ</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Thông báo “Chưa hiển thị được nền bản đồ” + nút “Thử lại”. Số liệu đã nạp vẫn giữ: ô số liệu, tin mới nhất và danh sách 34 đơn vị hoạt động bình thường.</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)"><code style="font-family:var(--font-mono);font-size:9pt">mapDataState = geometry</code></td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Dữ liệu cũ</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Dải nhắc màu cảnh báo phía trên bản đồ với nhãn chữ “Dữ liệu cũ” và giải thích một câu; số liệu vẫn hiển thị kèm kỳ thống kê và thời gian cập nhật.</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)"><code style="font-family:var(--font-mono);font-size:9pt">mapDataState = stale</code></td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Đơn vị chưa báo cáo</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Điểm nền trắng viền nét đứt (khác biệt không chỉ bằng màu), legend có mục “Chưa có dữ liệu”, tooltip và panel ghi “Đơn vị chưa gửi báo cáo trong kỳ thống kê này”, danh sách ghi “Chưa báo cáo”. Không tính vào tổng, ô số liệu ghi tỉ lệ 32/34.</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Fixture: Cao Bằng, Cà Mau có <code style="font-family:var(--font-mono);font-size:9pt">reported: false</code></td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Chuyên mục không có dữ liệu</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Đổi chuyên mục cập nhật bản đồ, legend, tổng số liệu và tin mới. Đơn vị đang chọn được giữ nguyên; nếu chuyên mục đó không có dữ liệu, panel hiện “Chưa có dữ liệu” kèm tên chuyên mục thay vì số 0.</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Chọn “Hội nhập” rồi chọn Sơn La (fixture thiếu khoá <code style="font-family:var(--font-mono);font-size:9pt">hoinhap</code>)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:22pt 0 6pt;padding-top:10pt;border-top:1px solid var(--border-default)">3 · Bảng trạng thái nền tảng số</h2>
+  <p style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.65;color:var(--text-body);max-width:76ch;margin:0 0 12pt">Mỗi trạng thái luôn có nhãn chữ; chấm màu chỉ là phần bổ trợ. Chỉ ô nổi bật được phép nhấp nháy khi đang diễn ra — không có hai ô pulse cùng lúc.</p>
+  <table style="width:100%;border-collapse:collapse;font-family:var(--font-ui);font-size:9.5pt;margin:0 0 18pt">
+    <thead>
+      <tr style="background:var(--surface-subtle)">
+        <th style="text-align:left;padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);width:20%">Trạng thái</th>
+        <th style="text-align:left;padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)">Quy tắc CTA và hiển thị</th>
+        <th style="text-align:left;padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);width:26%">Nền tảng · tweak</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Đang hoạt động</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Nhãn “Đang hoạt động” (có thể kèm một chỉ số như số khoá đang mở). CTA “Truy cập nền tảng” hoặc “Mở hồ sơ”.</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Đào tạo, Sinh viên 5 tốt (mặc định); Hội nghị: <code style="font-family:var(--font-mono);font-size:9pt">conferenceStatus = active</code></td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Đang diễn ra</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Nhãn “Đang diễn ra” + chấm nhấp nháy (chỉ ô nổi bật). Nhấn mạnh tên phiên đang mở; CTA “Tham gia phiên đang diễn ra”.</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Hội nghị: <code style="font-family:var(--font-mono);font-size:9pt">conferenceStatus = live</code> (mặc định)</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Đang mở đăng ký</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Nhãn “Đang mở đăng ký”, CTA “Đăng ký chiến dịch”.</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Tình nguyện: <code style="font-family:var(--font-mono);font-size:9pt">volunteerStatus = open</code> (mặc định)</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Sắp ra mắt</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Nhãn “Sắp ra mắt”, viền nét đứt, không có link. Thay CTA bằng một câu cho biết mốc dự kiến và việc chưa có đường dẫn.</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Dữ liệu &amp; Báo cáo: <code style="font-family:var(--font-mono);font-size:9pt">dataPlatformStatus = soon</code> (mặc định)</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Bảo trì</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Nhãn “Đang bảo trì”, bỏ CTA truy cập, thay bằng câu hướng dẫn chờ hoặc cách làm thay thế.</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)"><code style="font-family:var(--font-mono);font-size:9pt">conferenceStatus = maintenance</code> · <code style="font-family:var(--font-mono);font-size:9pt">volunteerStatus = maintenance</code></td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Không khả dụng</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Nhãn “Tạm không truy cập”, không có CTA gây hiểu nhầm; chỉ dẫn kênh thay thế (liên hệ Hội Sinh viên trường).</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Tình nguyện: <code style="font-family:var(--font-mono);font-size:9pt">volunteerStatus = unavailable</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:22pt 0 6pt;padding-top:10pt;border-top:1px solid var(--border-default)">4 · Mẫu dữ liệu đang sử dụng</h2>
+  <p style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.65;color:var(--text-body);max-width:76ch;margin:0 0 10pt">Fixture: <code style="font-family:var(--font-mono);font-size:9.5pt">data/activity-map.sample.json</code>. Không có số liệu nào viết cứng trong giao diện — bản đồ, ô số liệu, tin và danh sách đều đọc từ payload này.</p>
+  <pre style="font-family:var(--font-mono);font-size:8.5pt;line-height:1.5;color:var(--text-body);background:var(--surface-subtle);border:1px solid var(--border-subtle);border-radius:6pt;padding:10pt 12pt;margin:0 0 12pt;white-space:pre-wrap">{
+  "source": "Dữ liệu mẫu (fixture). API thật chưa được kết nối.",
+  "planned_endpoint": "GET /api/v1/activity-map?category=&lt;slug&gt;",
+  "updated_at": "2026-09-02T07:40:00+07:00",
+  "reporting_period": { "label": "Tháng 8/2026", "from": "2026-08-01", "to": "2026-08-31" },
+  "summary": { "total_activities", "total_articles", "participating_students",
+               "provinces_total": 34, "provinces_reported": 32, "period" },
+  "categories": [ { "slug", "label" } ],
+  "provinces": [ {
+      "province_id", "province_name", "slug", "lat", "lon",
+      "reported": true,                  // false = đơn vị chưa báo cáo kỳ này
+      "activity_count", "article_count", "student_count", "unit_count",
+      "category_distribution": { "sv5tot", "tinhnguyen", "nckh", "hoinhap" },
+      "latest_article": { "title", "published_at" },
+      "period": "Tháng 8/2026",
+      "unit_url": "/don-vi/&lt;slug&gt;"
+  } ],
+  "archipelagos": [ { "id", "name", "administered_by", "lat", "lon", "islet_offsets", "illustrative": true } ],
+  "overseas": { "label", "note", "countries": [ { "name", "activity_count" } ] }
+}</pre>
+  <ul style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.62;color:var(--text-body);max-width:76ch;margin:0 0 14pt;padding-left:16pt;display:flex;flex-direction:column;gap:4pt">
+    <li>Thiếu khoá trong <code style="font-family:var(--font-mono);font-size:9.5pt">category_distribution</code> nghĩa là chưa có dữ liệu cho chuyên mục đó — khác giá trị 0.</li>
+    <li><code style="font-family:var(--font-mono);font-size:9.5pt">reported: false</code> làm mọi chỉ số của đơn vị thành <code style="font-family:var(--font-mono);font-size:9.5pt">null</code> và loại đơn vị khỏi tổng.</li>
+    <li>Hai quần đảo và khối ngoài nước nằm ở nhánh riêng, không nằm trong <code style="font-family:var(--font-mono);font-size:9.5pt">provinces</code>.</li>
+  </ul>
+
+  <p style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.65;color:var(--text-body);max-width:76ch;margin:0 0 10pt">Registry nền tảng (hiện khai báo trong logic của Homepage V2, chờ chuyển sang CMS):</p>
+  <pre style="font-family:var(--font-mono);font-size:8.5pt;line-height:1.5;color:var(--text-body);background:var(--surface-subtle);border:1px solid var(--border-subtle);border-radius:6pt;padding:10pt 12pt;margin:0 0 18pt;white-space:pre-wrap">platform = {
+  id, name, description, icon,
+  status: "active" | "live" | "registration_open" | "coming_soon" | "maintenance" | "unavailable",
+  url, cta_label, requires_login: true | false,
+  current_activity: { label, session_name, ends_at } | null,
+  metric: { label, value } | null
+}
+// id đang dùng: hoi-nghi · dao-tao · sv5tot · tinh-nguyen · du-lieu</pre>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:22pt 0 6pt;padding-top:10pt;border-top:1px solid var(--border-default)">5 · Nguồn hình học và hạng mục cần kiểm chứng</h2>
+  <ul style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.62;color:var(--text-body);max-width:76ch;margin:0 0 18pt;padding-left:16pt;display:flex;flex-direction:column;gap:5pt">
+    <li><strong style="color:var(--text-strong)">Nền địa lý:</strong> polygon đất liền Natural Earth 110m (world-atlas 2.0.2, TopoJSON) chiếu Mercator bằng d3-geo. Đây là nền quốc gia, <em style="font-style:normal;text-decoration:underline">chưa</em> phải ranh giới 34 đơn vị cấp tỉnh.</li>
+    <li><strong style="color:var(--text-strong)">Vị trí đơn vị:</strong> mỗi đơn vị hiện là một điểm theo toạ độ trong payload, không phải vùng ranh giới. Nếu cần bản đồ vùng (choropleth), phải bổ sung bộ geometry cấp tỉnh sau sáp nhập 2025 từ nguồn chính thức — hạng mục còn thiếu.</li>
+    <li><strong style="color:var(--text-strong)">Mã đơn vị:</strong> <code style="font-family:var(--font-mono);font-size:9.5pt">province_id</code> trong fixture cần đối chiếu với danh mục hành chính chính thức. Chưa xác minh — không dùng làm mã thật khi tích hợp.</li>
+    <li><strong style="color:var(--text-strong)">Hoàng Sa, Trường Sa:</strong> giữ thể hiện và chú thích chủ quyền; vẽ theo toạ độ trong payload, có ghi rõ “mang tính chất minh hoạ, không theo tỷ lệ, không phải đơn vị hành chính cấp tỉnh”, không tính vào 34 đơn vị.</li>
+    <li><strong style="color:var(--text-strong)">Khối ngoài nước:</strong> thể hiện bằng biểu tượng địa cầu riêng, có chú thích “tính riêng ngoài 34 tỉnh, thành”, dữ liệu ở nhánh <code style="font-family:var(--font-mono);font-size:9.5pt">overseas</code>.</li>
+  </ul>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:22pt 0 6pt;padding-top:10pt;border-top:1px solid var(--border-default)">6 · URL, API và SSO còn thiếu</h2>
+  <table style="width:100%;border-collapse:collapse;font-family:var(--font-ui);font-size:9.5pt;margin:0 0 18pt">
+    <thead>
+      <tr style="background:var(--surface-subtle)">
+        <th style="text-align:left;padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);width:30%">Hạng mục</th>
+        <th style="text-align:left;padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)">Trạng thái · việc cần chốt</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">API bản đồ hoạt động</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Chưa kết nối. Cần chốt endpoint, tham số chuyên mục, kỳ thống kê, quy ước “chưa báo cáo” và tần suất cập nhật. Giao diện đang đọc fixture cùng schema ở mục 4.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Trang đơn vị</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">CTA “Xem hoạt động của đơn vị” đang trỏ tới <code style="font-family:var(--font-mono);font-size:9pt">unit_url</code> trong fixture (<code style="font-family:var(--font-mono);font-size:9pt">/don-vi/&lt;slug&gt;</code>). Cần chốt đường dẫn thật và trang đích.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">URL 4 nền tảng</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Hội nghị, Đào tạo, Tình nguyện: chưa có domain chính thức, CTA đang để placeholder. Sinh viên 5 tốt tạm trỏ trang chuyên đề trong bản thiết kế. Dữ liệu &amp; Báo cáo: cố tình không có link (sắp ra mắt).</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Đăng nhập dùng chung (SSO)</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Chưa có xác nhận kỹ thuật. UI chỉ nói từng nền tảng “cần đăng nhập” loại tài khoản nào, không khẳng định dùng chung một tài khoản. Nếu SSO là định hướng, cần chốt nhà cung cấp danh tính, phạm vi tài khoản (đại biểu / cán bộ Hội / sinh viên) và luồng chuyển tiếp.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Trạng thái nền tảng</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Chưa có nguồn cấp trạng thái tự động. Hiện đặt bằng tweak; cần chốt nơi biên tập (CMS) hoặc health-check để bento không hiển thị trạng thái sai.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Geometry cấp tỉnh</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Chưa có bộ ranh giới 34 đơn vị từ nguồn chính thức (xem mục 5).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:22pt 0 6pt;padding-top:10pt;border-top:1px solid var(--border-default)">7 · Cách kiểm tra bốn trạng thái then chốt</h2>
+  <ol style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.62;color:var(--text-body);max-width:76ch;margin:0 0 18pt;padding-left:16pt;display:flex;flex-direction:column;gap:5pt">
+    <li><strong style="color:var(--text-strong)">Toàn quốc:</strong> mở Homepage V2, cuộn tới section bản đồ. Panel phải hiện 4 ô số liệu, dòng “Kỳ thống kê: Tháng 8/2026 · Cập nhật 07:40 02/09/2026” và 3 tin mới nhất theo địa phương.</li>
+    <li><strong style="color:var(--text-strong)">Chọn đơn vị:</strong> bấm (hoặc Tab tới rồi Enter) một điểm trên bản đồ, ví dụ Hà Nội. Điểm giữ vòng chọn, panel đổi đúng tên đơn vị với 412 hoạt động · 188 tin bài · 49.160 sinh viên, tin mới nhất, CTA “Xem hoạt động của đơn vị” và nút “Xem toàn quốc”. Trang không nhảy sang vùng khác.</li>
+    <li><strong style="color:var(--text-strong)">Chưa có dữ liệu:</strong> giữ đơn vị đang chọn là Sơn La, đổi chuyên mục sang “Hội nhập”. Tổng số liệu, legend và danh sách cập nhật; panel hiện nhãn “Chưa có dữ liệu” kèm tên chuyên mục, không hiện số 0. Cao Bằng và Cà Mau luôn ở trạng thái “Chưa báo cáo”.</li>
+    <li><strong style="color:var(--text-strong)">Lỗi:</strong> đặt tweak <code style="font-family:var(--font-mono);font-size:9pt">mapDataState = error</code> (hoặc <code style="font-family:var(--font-mono);font-size:9pt">geometry</code>). Khung bản đồ hiện thông báo + nút “Thử lại”, không để khoảng trống; với <code style="font-family:var(--font-mono);font-size:9pt">geometry</code>, danh sách 34 đơn vị và số liệu vẫn dùng được.</li>
+  </ol>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:22pt 0 6pt;padding-top:10pt;border-top:1px solid var(--border-default)">8 · Đối chiếu tiêu chí nghiệm thu</h2>
+  <p style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.65;color:var(--text-body);max-width:76ch;margin:0">Chọn đơn vị luôn có phản hồi trực quan trên bản đồ và panel · panel đúng đơn vị và đúng chuyên mục · có kỳ thống kê và thời gian cập nhật (không hiển thị giây) · “0” và “chưa có dữ liệu” tách biệt trong dữ liệu và trên UI · danh sách tỉnh, thành thay thế được bản đồ khi nền bản đồ lỗi · khung bản đồ tính theo bề rộng cột nên không tràn container ở 1280 – 1920px · bento có một ô nổi bật và bốn ô phụ, mọi trạng thái đều có quy tắc CTA và nhãn chữ · UI không còn tuyên bố tích hợp API hay SSO chưa thực hiện.</p>
+
+</doc-page>
+
+</x-dc>
+</body>
+</html>

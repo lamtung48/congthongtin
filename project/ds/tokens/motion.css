@@ -1,0 +1,11 @@
+:root{
+--ease-standard:cubic-bezier(.22,.61,.36,1);
+--ease-entrance:cubic-bezier(.16,1,.3,1);
+--ease-exit:cubic-bezier(.4,0,1,1);
+--ease-cinematic:cubic-bezier(.65,.05,.36,1);
+--dur-instant:90ms;--dur-fast:160ms;--dur-base:240ms;--dur-slow:420ms;--dur-cinematic:900ms;--dur-scroll-scene:1400ms;
+--stagger:70ms;
+--hover-lift:-2px;--press-scale:.985;
+--parallax-depth:0.18;
+}
+@media (prefers-reduced-motion:reduce){:root{--dur-fast:1ms;--dur-base:1ms;--dur-slow:1ms;--dur-cinematic:1ms;--dur-scroll-scene:1ms;--stagger:0ms;--hover-lift:0px;--press-scale:1}}

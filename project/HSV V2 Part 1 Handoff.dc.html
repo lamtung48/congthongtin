@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/colors.css">
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/typography.css">
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/elevation.css">
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/motion.css">
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/base.css">
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/styles.css">
+<script src="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/_ds_bundle.js"></script>
+<style>
+  a { color: var(--text-brand); }
+  a:hover { color: var(--brand-primary-hover); }
+</style>
+</helmet>
+
+<div style="background:var(--surface-page);min-height:100vh;padding:var(--sp-16) var(--gutter) var(--sp-24)">
+  <div style="max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:var(--sp-12)">
+
+    <header style="display:flex;flex-direction:column;gap:var(--sp-4);padding-bottom:var(--sp-8);border-bottom:2px solid var(--border-strong)">
+      <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--brand-primary)">Bàn giao · phần việc 1/5</span>
+      <h1 style="font-family:var(--font-editorial);font-size:clamp(34px,3.4vw,46px);line-height:1.08;font-weight:var(--fw-medium);color:var(--text-strong);margin:0">Chuẩn hóa Design System · Header · Hero · Chủ đề nổi bật · Tin tiêu điểm</h1>
+      <p style="font-family:var(--font-ui);font-size:var(--fs-body);line-height:var(--lh-body);color:var(--text-muted);margin:0;max-width:70ch">Nâng cấp trực tiếp trên <a href="HSV Homepage V2.dc.html">HSV Homepage V2</a>. Không tạo concept mới, không thay đổi thứ tự hay kiến trúc nội dung của các section khác.</p>
+    </header>
+
+    <section style="display:flex;flex-direction:column;gap:var(--sp-5)">
+      <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h3);font-weight:var(--fw-medium);color:var(--text-strong);margin:0">1 · Token đã khóa</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:1px;background:var(--border-subtle);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);overflow:hidden">
+        <sc-for list="{{ tokens }}" as="t" hint-placeholder-count="8">
+          <div style="display:flex;flex-direction:column;gap:6px;padding:var(--sp-5);background:var(--surface-card)">
+            <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint)">{{ t.group }}</span>
+            <span style="font-family:var(--font-ui);font-size:14.5px;font-weight:var(--fw-semibold);color:var(--text-strong)">{{ t.name }}</span>
+            <span style="font-family:var(--font-mono);font-size:12.5px;color:var(--brand-primary)">{{ t.value }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="font-family:var(--font-ui);font-size:var(--fs-body-sm);line-height:1.65;color:var(--text-muted);margin:0;max-width:76ch">Font thương hiệu giữ nguyên. Phân vai: editorial cho tiêu đề, UI sans cho điều hướng và nội dung tiện ích, mono cho ngày giờ và nhãn phụ.</p>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:var(--sp-5)">
+      <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h3);font-weight:var(--fw-medium);color:var(--text-strong);margin:0">2 · Component và trạng thái</h2>
+      <div style="display:flex;flex-direction:column">
+        <sc-for list="{{ comps }}" as="c" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr);gap:var(--sp-6);padding:var(--sp-5) 0;border-top:1px solid var(--border-subtle)">
+            <span style="font-family:var(--font-ui);font-size:14.5px;font-weight:var(--fw-semibold);color:var(--text-strong)">{{ c.name }}</span>
+            <span style="font-family:var(--font-ui);font-size:14.5px;line-height:1.62;color:var(--text-muted)">{{ c.note }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:var(--sp-5)">
+      <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h3);font-weight:var(--fw-medium);color:var(--text-strong);margin:0">3 · Đã hoạt động thật · đang mô phỏng</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:var(--sp-5)">
+        <div style="display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-6);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);background:var(--surface-card)">
+          <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--green-600)">Hoạt động thật trong prototype</span>
+          <sc-for list="{{ real }}" as="r" hint-placeholder-count="5">
+            <span style="font-family:var(--font-ui);font-size:14px;line-height:1.6;color:var(--text-body)">{{ r }}</span>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-6);border:1px dashed var(--border-default);border-radius:var(--radius-lg);background:var(--surface-subtle)">
+          <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber-600)">Mô phỏng bằng nội dung mẫu</span>
+          <sc-for list="{{ mock }}" as="m" hint-placeholder-count="5">
+            <span style="font-family:var(--font-ui);font-size:14px;line-height:1.6;color:var(--text-body)">{{ m }}</span>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:var(--sp-5)">
+      <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h3);font-weight:var(--fw-medium);color:var(--text-strong);margin:0">4 · Nội dung và dữ liệu còn thiếu</h2>
+      <div style="display:flex;flex-direction:column">
+        <sc-for list="{{ missing }}" as="m" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:32px minmax(0,1fr);gap:var(--sp-4);padding:var(--sp-4) 0;border-top:1px solid var(--border-subtle)">
+            <span style="font-family:var(--font-mono);font-size:12px;color:var(--brand-primary)">{{ m.n }}</span>
+            <span style="font-family:var(--font-ui);font-size:14.5px;line-height:1.62;color:var(--text-body)">{{ m.text }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6);border-radius:var(--radius-lg);background:var(--blue-950);color:#fff">
+      <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--blue-300)">Kiểm tra kích thước</span>
+      <p style="font-family:var(--font-ui);font-size:14.5px;line-height:1.7;color:var(--ink-300);margin:0;max-width:74ch">Trang <a href="screenshots/check-widths.html" style="color:#fff">screenshots/check-widths.html</a> dựng đồng thời homepage ở 1440×900 và 1280×800 để đối chiếu trực tiếp. Số đo thực tế: header 78px ở cả hai mức, không có cuộn ngang, H1 66px/4 dòng tại 1440 và 59px/4 dòng tại 1280, hero cao 662px, nội dung 1312px với gutter 64px tại 1440. Tại 1280 điều hướng chuyển sang phương án thu gọn: 4 mục chính và nhóm “Thêm”.</p>
+    </section>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1100}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      tokens: [
+        { group: "Layout", name: "Nội dung tối đa", value: "1312px" },
+        { group: "Layout", name: "Gutter", value: "clamp(24px, 4.45vw, 64px) — 64px @1440" },
+        { group: "Layout", name: "Grid", value: "12 cột · gap 24–32px" },
+        { group: "Layout", name: "Khoảng cách section", value: "80px thường · 128px chuyển chương" },
+        { group: "Layout", name: "Tiêu đề → nội dung", value: "32px" },
+        { group: "Radius", name: "Ba bậc", value: "8 · 16 · 24 (+ pill, hairline 4px)" },
+        { group: "Header", name: "Chiều cao", value: "78px · compact 64px" },
+        { group: "Header", name: "Vùng chạm icon", value: "44 × 44px" },
+        { group: "Type", name: "Hero H1", value: "clamp(42px, 4.6vw, 68px) — 66px @1440" },
+        { group: "Type", name: "Section H2", value: "var(--fs-h2) 40–48px" },
+        { group: "Type", name: "Featured headline", value: "clamp(28px, 2.6vw, 40px)" },
+        { group: "Type", name: "Body · metadata", value: "16–18px · 11–13px mono" }
+      ],
+      comps: [
+        { name: "Button", note: "Primary (nền brand, pill, cao 44–50px), Secondary (viền 1px + nền brand-soft khi hover), Text link (mũi tên phải). Đủ default / hover / focus-visible / active / disabled / loading." },
+        { name: "Badge", note: "Chuyên mục (mono, chữ hoa, brand), chủ đề (chip pill có viền), trạng thái (live đỏ có nhịp, sắp diễn ra, đã kết thúc, sắp ra mắt)." },
+        { name: "Card", note: "Featured (ảnh 3:2 + tiêu đề 28–40px + dẫn nhập), Standard (ảnh 4:3 + tiêu đề 20–24px), Compact (thumbnail 132px + metadata + tiêu đề)." },
+        { name: "Section header", note: "Eyebrow tùy chọn · H2 · mô tả tùy chọn · CTA phải, khoảng cách xuống nội dung 32px." },
+        { name: "Icon", note: "Một bộ, nét 2px, 14–19px. Mũi tên phải cho điều hướng, mũi tên chéo cho nền tảng ngoài, chevron cho mở rộng." },
+        { name: "Focus-visible", note: "Viền 2px màu brand, offset 3px, áp dụng chung cho link, nút và ô nhập." }
+      ],
+      real: [
+        "Header sticky: nền đặc hơn, shadow nhẹ, thu gọn 78 → 64px không gây layout shift.",
+        "Điều hướng: active state (aria-current), thu gọn 4 mục + “Thêm” ở 1280, drawer dưới 1120px.",
+        "Overlay tìm kiếm: focus vào ô nhập khi mở, giữ focus trong overlay, Escape đóng và trả focus về nút mở.",
+        "Tìm kiếm lọc trên nội dung mẫu, có debounce, không gửi dữ liệu ra ngoài.",
+        "Dải chủ đề cuộn trong chính nó, không gây cuộn ngang toàn trang.",
+        "Ảnh hero và tin tiêu điểm nhận ảnh thật kéo — thả trong tài liệu thiết kế."
+      ],
+      mock: [
+        "Toàn bộ tin bài, chủ đề, sự kiện và số lượt là nội dung mẫu.",
+        "Kết quả tìm kiếm chạy trên danh sách mẫu 6 bài, chưa nối API.",
+        "Trạng thái loading / không kết quả / lỗi của tìm kiếm và ảnh hero xem được qua bảng Tweaks.",
+        "Đăng nhập, đăng ký sự kiện, nhận bản tin chưa nối hệ thống.",
+        "Bản đồ hoạt động đọc file dữ liệu mẫu trong dự án."
+      ],
+      missing: [
+        { n: "01", text: "Ảnh phiên khai mạc Đại hội XII cho hero — ảnh ngang, tối thiểu 2400px, kèm nguồn và caption chính thức." },
+        { n: "02", text: "Ảnh cho bài tiêu điểm chính (3:2) và ba bài phụ (4:3)." },
+        { n: "03", text: "Alt text tiếng Việt do biên tập viết cho từng ảnh." },
+        { n: "04", text: "Danh sách chuyên đề thật kèm đường dẫn, để thay các liên kết chủ đề tạm." },
+        { n: "05", text: "Cấu trúc submenu (nếu có) của các mục điều hướng — hiện chưa thiết kế vì chưa có cấu trúc nội dung." },
+        { n: "06", text: "Từ khoá tìm kiếm phổ biến thật và quy tắc gợi ý từ hệ thống tìm kiếm." }
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>

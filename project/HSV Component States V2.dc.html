@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/fonts.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/colors.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/typography.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/spacing.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/elevation.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/motion.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/base.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/styles.css" />
+<script src="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/_ds_bundle.js"></script>
+<script src="./image-slot.js"></script>
+<style>
+  a { color: var(--text-brand) }
+  a:hover { color: var(--brand-primary-hover) }
+  @keyframes shim { 0% { background-position: -180% 0 } 100% { background-position: 180% 0 } }
+  @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1) } 50% { opacity: .4; transform: scale(.82) } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important } }
+</style>
+</helmet>
+
+<div style="background:var(--surface-sunken);padding:var(--sp-10) var(--sp-8) var(--sp-20);min-height:100vh">
+<div style="max-width:1500px;margin:0 auto;display:flex;flex-direction:column;gap:var(--sp-10)">
+
+  <header style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--sp-8);flex-wrap:wrap;padding-bottom:var(--sp-6);border-bottom:2px solid var(--ink-1000)">
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:680px">
+      <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--brand-primary)">Lô 2 · States board</span>
+      <h1 style="font-family:var(--font-editorial);font-size:clamp(30px,3vw,44px);line-height:1.06;letter-spacing:var(--ls-display);font-weight:var(--fw-medium);color:var(--text-strong);margin:0">HSV Portal V2 — Component states</h1>
+      <p style="font-family:var(--font-ui);font-size:var(--fs-body);line-height:var(--lh-body);color:var(--text-muted);margin:0">Trạng thái loading, empty và error của các component V2, cộng trạng thái vòng đời của Header, PlatformCard và EventCard. Mọi ô dưới đây là markup thật lấy từ trang chủ V2 — không phải mô tả.</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a href="HSV Homepage V2.dc.html" style="display:inline-flex;align-items:center;height:42px;padding:0 20px;border-radius:var(--radius-pill);background:var(--brand-primary);color:#fff;font-family:var(--font-ui);font-size:14px;font-weight:var(--fw-semibold);text-decoration:none" style-hover="background:var(--brand-primary-hover);color:#fff;text-decoration:none">Trang chủ V2</a>
+      <a href="HSV Portal V2 Production Notes.dc.html" style="display:inline-flex;align-items:center;height:42px;padding:0 20px;border-radius:var(--radius-pill);border:1px solid var(--border-default);background:var(--surface-page);color:var(--text-body);font-family:var(--font-ui);font-size:14px;font-weight:var(--fw-medium);text-decoration:none" style-hover="border-color:var(--border-brand);color:var(--text-brand);text-decoration:none">Production notes</a>
+    </div>
+  </header>
+
+  <!-- 1 · NEWSCARD -->
+  <section style="display:flex;flex-direction:column;gap:var(--sp-6)">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--brand-primary)">01</span>
+      <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h3);font-weight:var(--fw-medium);color:var(--text-strong);margin:0">NewsCard</h2>
+      <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--text-muted)">featured · standard · horizontal · compact</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:var(--sp-6)">
+
+      <div style="display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6);background:var(--surface-page);border:1px solid var(--border-subtle);border-radius:var(--radius-lg)">
+        <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)">Loaded · standard</span>
+        <div style="aspect-ratio:4/3;border-radius:var(--radius-md);overflow:hidden;background:var(--surface-sunken)">
+          <image-slot id="st2-news-ok" shape="rect" radius="10" placeholder="4:3"></image-slot>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--brand-primary)">Nghiên cứu</span>
+          <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint)">01.09.2026</span>
+        </div>
+        <span style="font-family:var(--font-editorial);font-size:var(--fs-h4);line-height:1.28;font-weight:var(--fw-medium);color:var(--text-strong)">Trạm quan trắc không khí do sinh viên chế tạo đặt tại 12 trường</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6);background:var(--surface-page);border:1px solid var(--border-subtle);border-radius:var(--radius-lg)">
+        <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)">Loading · skeleton</span>
+        <div style="aspect-ratio:4/3;border-radius:var(--radius-md);background:linear-gradient(90deg,var(--ink-100) 25%,var(--ink-150) 37%,var(--ink-100) 63%);background-size:280% 100%;animation:shim 1.4s linear infinite"></div>
+        <div style="height:11px;width:34%;border-radius:var(--radius-xs);background:var(--ink-150)"></div>
+        <div style="height:15px;width:94%;border-radius:var(--radius-xs);background:var(--ink-150)"></div>
+        <div style="height:15px;width:62%;border-radius:var(--radius-xs);background:var(--ink-150)"></div>
+        <span style="font-family:var(--font-ui);font-size:12px;line-height:1.55;color:var(--text-muted);margin-top:auto">Skeleton giữ đúng tỉ lệ ảnh nên grid không nhảy khi dữ liệu về.</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6);background:var(--surface-page);border:1px solid var(--border-subtle);border-radius:var(--radius-lg)">
+        <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)">Ảnh lỗi · MediaImage fallback</span>
+        <div style="aspect-ratio:4/3;border-radius:var(--radius-md);background:var(--surface-brand-soft);display:grid;place-items:center;border:1px solid var(--border-subtle)">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:var(--sp-5);text-align:center">
+            <img src="assets/hsv-logo.png" alt="" aria-hidden="true" style="width:34px;height:34px;opacity:.35;display:block;object-fit:contain" />
+            <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)">Không tải được ảnh</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--brand-primary)">Đào tạo</span>
+          <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint)">30.08.2026</span>
+        </div>
+        <span style="font-family:var(--font-editorial);font-size:var(--fs-h4);line-height:1.28;font-weight:var(--fw-medium);color:var(--text-strong)">Bộ học liệu mới cho cán bộ Hội cấp chi hội mở truy cập tự do</span>
+        <span style="font-family:var(--font-ui);font-size:12px;line-height:1.55;color:var(--text-muted)">Chữ luôn đọc được kể cả khi ảnh chết — không bao giờ để ô trống.</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6);background:var(--surface-page);border:1px solid var(--border-subtle);border-radius:var(--radius-lg)">
+        <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)">Empty · cả nhóm</span>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-3);padding:var(--sp-8) var(--sp-4);border:1px dashed var(--border-default);border-radius:var(--radius-md);background:var(--surface-subtle);text-align:center">
+          <span style="font-family:var(--font-editorial);font-size:var(--fs-h5);color:var(--text-strong)">Chưa có tin trong mục này</span>
+          <span style="font-family:var(--font-ui);font-size:12.5px;line-height:1.55;color:var(--text-muted);max-width:34ch">Hãy chọn một chuyên mục khác, hoặc xem toàn bộ tin mới nhất.</span>
+          <button style="margin-top:6px;height:40px;padding:0 18px;border-radius:var(--radius-pill);border:1px solid var(--border-brand);background:var(--surface-page);color:var(--text-brand);font-family:var(--font-ui);font-size:13.5px;font-weight:var(--fw-semibold);cursor:pointer">Xem tất cả</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · ACTIVITYMAP -->
+  <section style="display:flex;flex-direction:column;gap:var(--sp-6)">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--brand-primary)">02</span>
+      <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h3);font-weight:var(--fw-medium);color:var(--text-strong);margin:0">ActivityMap</h2>
+      <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--text-muted)">GET /api/v1/activity-map</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:var(--sp-6)">
+
+      <div style="display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6);background:var(--surface-page);border:1px solid var(--border-subtle);border-radius:var(--radius-lg)">
+        <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)">Loading · geometry + payload</span>
+        <div style="display:flex;gap:var(--sp-5)">
+          <div style="flex:0 0 40%;aspect-ratio:1/2;border-radius:var(--radius-lg);background:linear-gradient(90deg,var(--ink-100) 25%,var(--ink-150) 37%,var(--ink-100) 63%);background-size:280% 100%;animation:shim 1.4s linear infinite"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+            <div style="height:14px;width:52%;border-radius:var(--radius-xs);background:var(--ink-150)"></div>
+            <div style="height:42px;border-radius:var(--radius-sm);background:var(--ink-100)"></div>
+            <div style="height:42px;border-radius:var(--radius-sm);background:var(--ink-100)"></div>
+            <div style="height:42px;border-radius:var(--radius-sm);background:var(--ink-100)"></div>
+          </div>
+        </div>
+        <span style="font-family:var(--font-ui);font-size:12px;line-height:1.55;color:var(--text-muted)">Khung bản đồ giữ đúng tỉ lệ Việt Nam (0.46 × chiều cao) nên section không co giãn khi geometry về.</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6);background:var(--surface-page);border:1px solid var(--border-subtle);border-radius:var(--radius-lg)">
+        <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)">Error · endpoint chết</span>
+        <div style="display:flex;flex-direction:column;gap:12px;align-items:flex-start;padding:var(--sp-7);border:1px dashed var(--border-default);border-radius:var(--radius-lg);background:var(--surface-subtle)">
+          <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber-600)">Không tải được dữ liệu bản đồ</span>
+          <span style="font-family:var(--font-ui);font-size:13.5px;line-height:1.6;color:var(--text-muted);max-width:44ch">Bản đồ tương tác cần geometry và payload hoạt động. Trong khi chờ, danh sách hoạt động địa phương phía dưới vẫn hiển thị đầy đủ.</span>
+          <button style="height:40px;padding:0 18px;border-radius:var(--radius-pill);border:1px solid var(--border-brand);background:transparent;color:var(--text-brand);font-family:var(--font-ui);font-size:13.5px;font-weight:var(--fw-semibold);cursor:pointer">Thử lại</button>
+        </div>
+        <span style="font-family:var(--font-ui);font-size:12px;line-height:1.55;color:var(--text-muted)">Không bao giờ rơi về số liệu mẫu trên production — thà thiếu bản đồ còn hơn sai số liệu.</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6);background:var(--surface-page);border:1px solid var(--border-subtle);border-radius:var(--radius-lg)">
+        <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)">Empty · provinces = []</span>
+        <div style="display:flex;flex-direction:column;gap:12px;align-items:flex-start;padding:var(--sp-7);border:1px dashed var(--border-default);border-radius:var(--radius-lg);background:var(--surface-subtle)">
+          <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)">Chưa có dữ liệu hoạt động</span>
+          <span style="font-family:var(--font-ui);font-size:13.5px;line-height:1.6;color:var(--text-muted);max-width:44ch">API trả về danh sách rỗng — bản đồ được thay bằng danh sách hoạt động địa phương, không để khung trống.</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--border-subtle);border:1px solid var(--border-subtle);border-radius:var(--radius-md);overflow:hidden">
+          <sc-for list="{{ fallbackList }}" as="p" hint-placeholder-count="4">
+            <span style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:11px var(--sp-4);background:var(--surface-page)">
+              <span style="font-family:var(--font-ui);font-size:13px;font-weight:var(--fw-medium);color:var(--text-strong)">{{ p.name }}</span>
+              <span style="font-family:var(--font-mono);font-size:11px;color:var(--brand-primary);white-space:nowrap">{{ p.v }}</span>
+            </span>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · VIDEO + MEDIA -->
+  <section style="display:flex;flex-direction:column;gap:var(--sp-6)">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--brand-primary)">03</span>
+      <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h3);font-weight:var(--fw-medium);color:var(--text-strong);margin:0">VideoPlayer &amp; MediaImage</h2>
+      <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--text-muted)">YouTube · Drive Media Service</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:var(--sp-6)">
+      <sc-for list="{{ mediaStates }}" as="m" hint-placeholder-count="6">
+        <div style="display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-5);background:var(--surface-page);border:1px solid var(--border-subtle);border-radius:var(--radius-lg)">
+          <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)">{{ m.label }}</span>
+          <div style="position:relative;aspect-ratio:16/9;border-radius:var(--radius-md);overflow:hidden;background:{{ m.bg }};display:grid;place-items:center;border:1px solid var(--border-subtle)">
+            <sc-if value="{{ m.isShimmer }}" hint-placeholder-val="{{ false }}">
+              <span style="position:absolute;inset:0;background:linear-gradient(90deg,var(--ink-100) 25%,var(--ink-150) 37%,var(--ink-100) 63%);background-size:280% 100%;animation:shim 1.4s linear infinite"></span>
+            </sc-if>
+            <sc-if value="{{ m.isPlay }}" hint-placeholder-val="{{ false }}">
+              <span style="width:54px;height:54px;border-radius:var(--radius-pill);background:rgba(255,255,255,.95);display:grid;place-items:center;box-shadow:var(--shadow-md)">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="var(--ink-1000)"><path d="M8 5v14l11-7z"></path></svg>
+              </span>
+            </sc-if>
+            <sc-if value="{{ m.isMsg }}" hint-placeholder-val="{{ true }}">
+              <span style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:var(--sp-4);text-align:center">
+                <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:{{ m.msgColor }}">{{ m.msg }}</span>
+                <sc-if value="{{ m.hasCta }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-family:var(--font-ui);font-size:12.5px;font-weight:var(--fw-semibold);color:var(--text-brand)">{{ m.cta }}</span>
+                </sc-if>
+              </span>
+            </sc-if>
+          </div>
+          <span style="font-family:var(--font-ui);font-size:12.5px;line-height:1.55;color:var(--text-muted)">{{ m.note }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- 4 · PLATFORMCARD -->
+  <section style="display:flex;flex-direction:column;gap:var(--sp-6)">
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--brand-primary)">04</span>
+      <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h3);font-weight:var(--fw-medium);color:var(--text-strong);margin:0">PlatformCard</h2>
+      <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--text-muted)">default · live · upcoming · maintenance · unavailable</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:var(--sp-5)">
+      <sc-for list="{{ platforms }}" as="p" hint-placeholder-count="5">
+        <div style="display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6);border-radius:var(--radius-lg);background:{{ p.bg }};border:{{ p.border }};min-height:210px">
+          <span style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <span style="width:40px;height:40px;border-radius:var(--radius-md);display:grid;place-items:center;background:{{ p.iconBg }};font-family:var(--font-mono);font-size:13px;font-weight:var(--fw-bold);color:{{ p.iconFg }}">{{ p.mark }}</span>
+            <span style="display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:var(--radius-pill);background:{{ p.badgeBg }};color:{{ p.badgeFg }}">
+              <sc-if value="{{ p.pulse }}" hint-placeholder-val="{{ false }}">
+                <span style="width:6px;height:6px;border-radius:999px;background:{{ p.badgeFg }};animation:pulse 1.8s var(--ease-standard) infinite"></span>
+              </sc-if>
+              {{ p.status }}
+            </span>
+          </span>
+          <span style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
+            <span style="font-family:var(--font-ui);font-size:var(--fs-h5);font-weight:var(--fw-semibold);color:{{ p.titleFg }}">{{ p.name }}</span>
+            <span style="font-family:var(--font-ui);font-size:13px;line-height:1.6;color:{{ p.bodyFg }}">{{ p.body }}</span>
+            <sc-if value="{{ p.hasCta }}" hint-placeholder-val="{{ true }}">
+              <span style="display:inline-flex;align-items:center;gap:8px;margin-top:4px;font-family:var(--font-ui);font-size:13.5px;font-weight:var(--fw-semibold);color:{{ p.ctaFg }}">{{ p.cta }} →</span>
+            </sc-if>
+            <sc-if value="{{ p.noCta }}" hint-placeholder-val="{{ false }}">
+              <span style="margin-top:4px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint)">Không có CTA ở trạng thái này</span>
+            </sc-if>
+          </span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- 5 · EVENTCARD + HEADER -->
+  <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:var(--sp-8)">
+
+    <div style="display:flex;flex-direction:column;gap:var(--sp-6)">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--brand-primary)">05</span>
+        <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h3);font-weight:var(--fw-medium);color:var(--text-strong);margin:0">EventCard</h2>
+        <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--text-muted)">live · upcoming · completed</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--sp-4)">
+        <sc-for list="{{ events }}" as="e" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:132px minmax(0,1fr);gap:var(--sp-5);align-items:center;padding:var(--sp-5);background:var(--surface-page);border:1px solid var(--border-subtle);border-radius:var(--radius-lg)">
+            <span style="position:relative;display:block;aspect-ratio:16/9;border-radius:var(--radius-sm);overflow:hidden;background:var(--surface-sunken)">
+              <image-slot id="{{ e.slotId }}" shape="rect" radius="8" placeholder="16:9"></image-slot>
+              <span style="position:absolute;top:7px;left:7px;display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:var(--radius-pill);background:{{ e.badgeBg }};color:{{ e.badgeFg }}">
+                <sc-if value="{{ e.pulse }}" hint-placeholder-val="{{ false }}">
+                  <span style="width:5px;height:5px;border-radius:999px;background:{{ e.badgeFg }};animation:pulse 1.6s var(--ease-standard) infinite"></span>
+                </sc-if>
+                {{ e.status }}
+              </span>
+            </span>
+            <span style="display:flex;flex-direction:column;gap:7px;min-width:0">
+              <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--text-muted)">{{ e.when }}</span>
+              <span style="font-family:var(--font-editorial);font-size:var(--fs-h5);line-height:1.3;font-weight:var(--fw-medium);color:var(--text-strong)">{{ e.title }}</span>
+              <span style="font-family:var(--font-ui);font-size:12px;line-height:1.5;color:var(--text-muted)">{{ e.note }}</span>
+            </span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:var(--sp-6)">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--brand-primary)">06</span>
+        <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h3);font-weight:var(--fw-medium);color:var(--text-strong);margin:0">Header</h2>
+        <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--text-muted)">top · scrolled · logged-in · logged-out</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--sp-4)">
+        <sc-for list="{{ headers }}" as="h" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)">{{ h.label }}</span>
+            <div style="display:flex;align-items:center;gap:14px;padding:0 var(--sp-5);height:{{ h.h }};background:{{ h.bg }};border:1px solid {{ h.border }};border-radius:var(--radius-md);box-shadow:{{ h.shadow }}">
+              <img src="assets/hsv-logo.png" alt="" aria-hidden="true" style="width:{{ h.logo }};height:{{ h.logo }};flex:0 0 auto;display:block;object-fit:contain" />
+              <span style="font-family:var(--font-ui);font-size:13px;font-weight:var(--fw-semibold);color:var(--text-strong);white-space:nowrap">Hội Sinh viên Việt Nam</span>
+              <span style="display:flex;gap:2px;margin-left:auto;min-width:0;overflow:hidden">
+                <sc-for list="{{ h.nav }}" as="n" hint-placeholder-count="3">
+                  <span style="padding:7px 10px;border-radius:var(--radius-sm);font-family:var(--font-ui);font-size:12.5px;color:var(--text-body);white-space:nowrap">{{ n }}</span>
+                </sc-for>
+              </span>
+              <span style="display:flex;align-items:center;gap:8px;flex-shrink:0">{{ h.right }}</span>
+            </div>
+            <span style="font-family:var(--font-ui);font-size:12px;line-height:1.55;color:var(--text-muted)">{{ h.note }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · RULES -->
+  <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:var(--sp-5);padding-top:var(--sp-6);border-top:1px solid var(--border-default)">
+    <sc-for list="{{ rules }}" as="r" hint-placeholder-count="4">
+      <div style="display:flex;flex-direction:column;gap:10px;padding:var(--sp-6);background:var(--surface-page);border:1px solid var(--border-subtle);border-radius:var(--radius-lg)">
+        <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--brand-primary)">{{ r.tag }}</span>
+        <span style="font-family:var(--font-editorial);font-size:var(--fs-h5);line-height:1.28;font-weight:var(--fw-medium);color:var(--text-strong)">{{ r.title }}</span>
+        <span style="font-family:var(--font-ui);font-size:13px;line-height:1.62;color:var(--text-muted)">{{ r.body }}</span>
+      </div>
+    </sc-for>
+  </section>
+
+</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+class Component extends DCLogic {
+  renderVals() {
+    const media = (o) => ({
+      isShimmer: o.kind === "shimmer", isPlay: o.kind === "play", isMsg: o.kind === "msg",
+      hasCta: !!o.cta, msgColor: o.msgColor || "var(--text-faint)", bg: o.bg || "var(--surface-sunken)", ...o
+    });
+
+    return {
+      fallbackList: [
+        { name: "Hà Nội", v: "412" }, { name: "TP. Hồ Chí Minh", v: "486" },
+        { name: "Đà Nẵng", v: "268" }, { name: "Cần Thơ", v: "174" }
+      ],
+
+      mediaStates: [
+        media({ label: "VideoPlayer · poster loaded", kind: "play", bg: "#0a1626", note: "iframe chỉ nạp sau click — LCP không tính vào video." }),
+        media({ label: "VideoPlayer · poster loading", kind: "shimmer", note: "Khung 16:9 giữ chỗ, nhãn thời lượng chờ metadata YouTube." }),
+        media({ label: "VideoPlayer · embed-disabled", kind: "msg", msg: "Chủ kênh tắt nhúng", cta: "Mở trên YouTube", bg: "var(--surface-subtle)", note: "Chuyển thành link ngoài, nêu rõ lý do thay vì khung đen." }),
+        media({ label: "VideoPlayer · removed", kind: "msg", msg: "Video không còn khả dụng", msgColor: "var(--amber-600)", bg: "var(--surface-subtle)", note: "Thẻ vẫn giữ tiêu đề bài để người đọc biết đã bỏ mất gì." }),
+        media({ label: "MediaImage · loading", kind: "shimmer", note: "Shimmer đúng tỉ lệ orientation từ payload, không đoán 16:9." }),
+        media({ label: "MediaImage · missing mediaId", kind: "msg", msg: "Thiếu mediaId", bg: "var(--surface-brand-soft)", note: "Placeholder thương hiệu; không bao giờ dùng URL Drive thô để chữa cháy." })
+      ],
+
+      platforms: [
+        {
+          mark: "HN", name: "Nền tảng Hội nghị", status: "Đang diễn ra", pulse: true, hasCta: true, noCta: false,
+          body: "Hội nghị Ban Chấp hành Trung ương lần thứ 3 — phiên biểu quyết đang mở.", cta: "Tham gia phiên",
+          bg: "var(--ink-1000)", border: "0", iconBg: "rgba(255,255,255,.12)", iconFg: "#fff",
+          badgeBg: "rgba(218,37,29,.18)", badgeFg: "var(--red-300)",
+          titleFg: "#fff", bodyFg: "var(--ink-300)", ctaFg: "#fff"
+        },
+        {
+          mark: "ĐT", name: "Nền tảng Đào tạo", status: "14 khoá mở", pulse: false, hasCta: true, noCta: false,
+          body: "Bồi dưỡng cán bộ Hội, học liệu và chứng nhận điện tử.", cta: "Truy cập",
+          bg: "var(--surface-page)", border: "1px solid var(--border-subtle)", iconBg: "var(--surface-brand-soft)", iconFg: "var(--brand-primary)",
+          badgeBg: "var(--surface-subtle)", badgeFg: "var(--text-muted)",
+          titleFg: "var(--text-strong)", bodyFg: "var(--text-muted)", ctaFg: "var(--brand-primary)"
+        },
+        {
+          mark: "DL", name: "Dữ liệu & Báo cáo", status: "Sắp ra mắt", pulse: false, hasCta: false, noCta: true,
+          body: "Số liệu phong trào theo tỉnh, thành và trường. Giữ trạng thái upcoming đến khi registry báo sẵn sàng.", cta: "",
+          bg: "var(--surface-subtle)", border: "1px dashed var(--border-default)", iconBg: "var(--ink-150)", iconFg: "var(--text-muted)",
+          badgeBg: "var(--status-warning-soft)", badgeFg: "var(--amber-600)",
+          titleFg: "var(--text-body)", bodyFg: "var(--text-muted)", ctaFg: "var(--brand-primary)"
+        },
+        {
+          mark: "TN", name: "Tình nguyện", status: "Đang bảo trì", pulse: false, hasCta: false, noCta: true,
+          body: "Dự kiến hoạt động lại trước 18:00 hôm nay. Ô vẫn hiện để người dùng không nghĩ nền tảng đã bị bỏ.", cta: "",
+          bg: "var(--surface-subtle)", border: "1px solid var(--border-default)", iconBg: "var(--ink-150)", iconFg: "var(--text-muted)",
+          badgeBg: "var(--status-warning-soft)", badgeFg: "var(--amber-600)",
+          titleFg: "var(--text-body)", bodyFg: "var(--text-muted)", ctaFg: "var(--brand-primary)"
+        },
+        {
+          mark: "5T", name: "Sinh viên 5 tốt", status: "Không kết nối", pulse: false, hasCta: false, noCta: true,
+          body: "Registry không phản hồi. Ô về trạng thái tĩnh, không hiện chỉ báo live có thể sai.", cta: "",
+          bg: "var(--surface-page)", border: "1px solid var(--border-subtle)", iconBg: "var(--ink-150)", iconFg: "var(--text-faint)",
+          badgeBg: "var(--ink-150)", badgeFg: "var(--text-faint)",
+          titleFg: "var(--text-muted)", bodyFg: "var(--text-faint)", ctaFg: "var(--brand-primary)"
+        }
+      ],
+
+      events: [
+        {
+          slotId: "st2-ev-live", status: "Live", pulse: true, badgeBg: "var(--red-500)", badgeFg: "#fff",
+          when: "09:00 – 17:30 hôm nay · 702 đại biểu", title: "Đại hội đại biểu toàn quốc lần thứ XII — phiên thảo luận tổ",
+          note: "Chỉ báo có chữ LIVE kèm màu; pulse tắt khi reduced-motion."
+        },
+        {
+          slotId: "st2-ev-up", status: "Sắp diễn ra", pulse: false, badgeBg: "rgba(255,255,255,.92)", badgeFg: "var(--brand-primary)",
+          when: "Còn 3 ngày · 05.09.2026", title: "Tập huấn cán bộ Hội cấp trường khu vực miền Trung",
+          note: "Không có participantCount trong payload → bỏ hẳn dòng đó, không đoán số."
+        },
+        {
+          slotId: "st2-ev-done", status: "Đã kết thúc", pulse: false, badgeBg: "rgba(255,255,255,.92)", badgeFg: "var(--text-muted)",
+          when: "28.08.2026 · 112 sinh viên", title: "Lễ tuyên dương “Sinh viên 5 tốt” cấp Trung ương",
+          note: "CTA đổi thành “Xem lại”; card về tông neutral."
+        }
+      ],
+
+      headers: [
+        {
+          label: "Top · logged-out", h: "62px", logo: "32px", bg: "rgba(255,255,255,.9)", border: "var(--border-subtle)", shadow: "none",
+          nav: ["Tin tức", "Phong trào", "Hội nghị"], right: "Tìm kiếm · Đăng nhập",
+          note: "Cao 78px trên trang thật, nền trắng 90%, không shadow."
+        },
+        {
+          label: "Scrolled · logged-out", h: "52px", logo: "28px", bg: "rgba(255,255,255,.94)", border: "var(--border-subtle)", shadow: "var(--shadow-sm)",
+          nav: ["Tin tức", "Phong trào", "Hội nghị"], right: "Tìm kiếm · Đăng nhập",
+          note: "Vượt 96px: cao 62px, nền 94%, backdrop blur, shadow-sm. Chỉ transition height và background."
+        },
+        {
+          label: "Logged-in", h: "62px", logo: "32px", bg: "rgba(255,255,255,.9)", border: "var(--border-subtle)", shadow: "none",
+          nav: ["Tin tức", "Phong trào", "Hội nghị"], right: "Nguyễn Minh A. · MA",
+          note: "Nút đăng nhập đổi thành user menu; danh tính từ SSO của hệ sinh thái Hội."
+        },
+        {
+          label: "SSO không phản hồi", h: "62px", logo: "32px", bg: "rgba(255,255,255,.9)", border: "var(--border-default)", shadow: "none",
+          nav: ["Tin tức", "Phong trào", "Hội nghị"], right: "Tìm kiếm · Đăng nhập",
+          note: "Về trạng thái logged-out, không chặn phần còn lại của trang; không hiện skeleton user vô hạn."
+        }
+      ],
+
+      rules: [
+        { tag: "Nguyên tắc", title: "Empty state phải có nội dung", body: "Mỗi trạng thái rỗng nói rõ điều gì đang thiếu và cho một đường đi tiếp. Không có khung xám trống, không có dòng “Không có dữ liệu” đơn độc." },
+        { tag: "Nguyên tắc", title: "Skeleton giữ đúng hình dạng", body: "Skeleton lấy tỉ lệ từ payload (orientation của ảnh, chiều cao bản đồ) nên layout không nhảy khi dữ liệu về — tránh dịch chuyển nội dung." },
+        { tag: "Nguyên tắc", title: "Lỗi không rơi về số liệu giả", body: "Backend lỗi thì phần tử biến mất hoặc hiện thông báo + nút thử lại. Không bao giờ hiện số liệu mẫu, không bao giờ đoán số liệu thiếu." },
+        { tag: "Nguyên tắc", title: "Trạng thái không chỉ dựa vào màu", body: "LIVE, Sắp diễn ra, Bảo trì, Không kết nối đều có chữ đi kèm màu. Mọi pulse và chuyển động chỉ báo tắt khi bật reduced-motion." }
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>

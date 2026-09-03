@@ -1,0 +1,31 @@
+:root{
+/* Base — HSV Việt Nam identity blue */
+--blue-950:#04162b;--blue-900:#062a4d;--blue-800:#083a6a;--blue-700:#0a4c8a;--blue-600:#0b5fa5;--blue-500:#1272c2;--blue-400:#3f92db;--blue-300:#79b4e9;--blue-200:#b6d6f4;--blue-100:#dceafa;--blue-50:#f0f6fd;
+/* Base — flag red (dùng cho nhấn nghi lễ, cảnh báo thương hiệu) */
+--red-700:#a01711;--red-600:#c11d16;--red-500:#da251d;--red-300:#f08b86;--red-100:#fbdedc;
+/* Base — sao vàng */
+--gold-600:#c99a00;--gold-500:#f0b400;--gold-400:#ffcd00;--gold-200:#ffe9a3;--gold-50:#fff8e1;
+/* Base — neutrals (warm-cool ink) */
+--ink-1000:#0a0d12;--ink-900:#12161d;--ink-800:#1d232c;--ink-700:#2c343f;--ink-600:#454e5b;--ink-500:#647081;--ink-400:#8d97a5;--ink-300:#b9c1cc;--ink-200:#d9dee5;--ink-150:#e6eaef;--ink-100:#f0f2f6;--ink-50:#f7f8fa;--white:#ffffff;
+/* Semantic — success / warn / danger / info */
+--green-600:#0f7a4d;--green-500:#159c62;--green-100:#dcf3e8;
+--amber-600:#b3720a;--amber-500:#e0910f;--amber-100:#fdf0d8;
+--info-500:var(--blue-500);
+
+/* Semantic aliases */
+--brand-primary:var(--blue-600);--brand-primary-hover:var(--blue-700);--brand-primary-press:var(--blue-800);--brand-primary-soft:var(--blue-50);--brand-accent:var(--red-500);--brand-gold:var(--gold-400);
+--text-strong:var(--ink-1000);--text-body:var(--ink-800);--text-muted:var(--ink-500);--text-faint:var(--ink-400);--text-invert:var(--white);--text-brand:var(--blue-600);--text-link:var(--blue-600);--text-link-hover:var(--blue-800);
+--surface-page:var(--white);--surface-subtle:var(--ink-50);--surface-card:var(--white);--surface-sunken:var(--ink-100);--surface-invert:var(--ink-1000);--surface-brand:var(--blue-600);--surface-brand-soft:var(--blue-50);--surface-gold-soft:var(--gold-50);
+--border-subtle:var(--ink-150);--border-default:var(--ink-200);--border-strong:var(--ink-300);--border-brand:var(--blue-600);--border-invert:rgba(255,255,255,.18);
+--focus-ring:var(--blue-400);
+--status-success:var(--green-500);--status-success-soft:var(--green-100);--status-warning:var(--amber-500);--status-warning-soft:var(--amber-100);--status-danger:var(--red-600);--status-danger-soft:var(--red-100);--status-info:var(--blue-500);--status-info-soft:var(--blue-100);
+/* Scrims for cinematic media */
+--scrim-bottom:linear-gradient(180deg,rgba(4,22,43,0) 0%,rgba(4,22,43,.15) 40%,rgba(4,22,43,.82) 100%);
+--scrim-left:linear-gradient(90deg,rgba(4,22,43,.88) 0%,rgba(4,22,43,.45) 45%,rgba(4,22,43,0) 100%);
+--scrim-flat:rgba(4,22,43,.55);
+}
+[data-theme="dark"],.hsv-dark{
+--text-strong:var(--white);--text-body:var(--ink-150);--text-muted:var(--ink-400);--text-faint:var(--ink-500);--text-link:var(--blue-300);--text-link-hover:var(--blue-200);
+--surface-page:var(--blue-950);--surface-subtle:#071d36;--surface-card:#08233f;--surface-sunken:#061a31;--surface-invert:var(--white);--surface-brand-soft:rgba(18,114,194,.16);
+--border-subtle:rgba(255,255,255,.10);--border-default:rgba(255,255,255,.16);--border-strong:rgba(255,255,255,.28);
+}

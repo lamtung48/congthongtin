@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/fonts.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/colors.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/typography.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/spacing.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/elevation.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/motion.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/base.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/styles.css" />
+<script src="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/_ds_bundle.js"></script>
+<script src="./doc-page.js"></script>
+<style>
+  doc-page:not(:defined) { visibility: hidden }
+  h2, h3 { break-after: avoid }
+  tr, [data-blk] { break-inside: avoid }
+  a { color: var(--brand-primary) }
+  a:hover { color: var(--ink-1000) }
+</style>
+</helmet>
+
+<doc-page margin="0.7in">
+
+  <header slot="header" style="display:flex;align-items:baseline;justify-content:space-between;gap:20px;font-family:var(--font-mono);font-size:8.5pt;line-height:1.2;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint)">
+    <span style="white-space:nowrap">Hội Sinh viên Việt Nam · Portal V2</span>
+    <span style="white-space:nowrap">Phần việc 1 + 2</span>
+  </header>
+  <footer slot="footer" style="display:flex;align-items:baseline;justify-content:space-between;gap:20px;font-family:var(--font-mono);font-size:8.5pt;line-height:1.2;color:var(--text-faint)">
+    <span style="white-space:nowrap">HSV Homepage V2.dc.html</span>
+    <span style="white-space:nowrap">Bản thiết kế · chưa phải production</span>
+  </footer>
+
+  <div style="padding-bottom:24pt;border-bottom:2px solid var(--ink-1000);margin-bottom:22pt">
+    <span style="font-family:var(--font-mono);font-size:9pt;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-primary)">Bàn giao · 03.09.2026</span>
+    <h1 style="font-family:var(--font-editorial);font-size:32pt;line-height:1.08;font-weight:var(--fw-medium);letter-spacing:-.01em;color:var(--text-strong);margin:10pt 0 12pt;max-width:24ch">Homepage V2 — chuẩn hóa Design System, motion và các section tương tác</h1>
+    <p style="font-family:var(--font-ui);font-size:11pt;line-height:1.62;color:var(--text-muted);max-width:66ch;margin:0">Phạm vi: phần việc 1 (design system, header, hero, chủ đề nổi bật, tin tiêu điểm) và phần việc 2 (motion toàn trang, dòng chảy sinh viên, tin mới nhất, video &amp; phóng sự, chuyển sang trang bài viết). Thiết kế và kiểm thử trên PC 1440×900, đối chiếu 1280 / 1366 / 1920. Chưa redesign tablet/mobile — các breakpoint cũ được giữ nguyên và không hỏng.</p>
+  </div>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:0 0 6pt">1 · Token và component đã chuẩn hóa</h2>
+  <p style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.65;color:var(--text-body);max-width:74ch;margin:0 0 12pt">Các token dưới đây được khai báo một lần trong <code style="font-family:var(--font-mono);font-size:9.5pt">:root</code> của Homepage V2 và là nguồn duy nhất cho mọi section. Không có giá trị rời rạc nào ngoài danh sách này.</p>
+
+  <table style="width:100%;border-collapse:collapse;font-family:var(--font-ui);font-size:9.5pt;margin:0 0 18pt">
+    <thead>
+      <tr style="background:var(--surface-subtle)">
+        <th style="text-align:left;padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);width:26%">Nhóm</th>
+        <th style="text-align:left;padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)">Giá trị chốt</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Layout</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Nội dung tối đa 1312px. Gutter <code style="font-family:var(--font-mono);font-size:9pt">clamp(24px, 4.45vw, 64px)</code> → 64px tại 1440px, ~57px tại 1280px. Grid 12 cột, gap 24–32px. Khoảng cách section 80–112px, chuyển chương 112–144px, tiêu đề → nội dung 32–48px. Section full-bleed vẫn bám cùng đường căn cho chữ và CTA.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Typography</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Giữ nguyên font thương hiệu. Editorial: hero / H2 / headline bài. UI sans: nav, mô tả, nút. Mono: ngày, số liệu, eyebrow — dùng thưa. Hero H1 64–76px @1440. H2 40–48px. Featured headline 28–34px. Standard 20–24px. Body 16–18px. Metadata 12–14px. Không ngắt dòng cứng.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Radius</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Ba bậc: 8px (nút, badge, thumbnail nhỏ) · 16px (card, ảnh bài) · 24px (khối lớn, overlay) + pill cho chip/nút tròn. Không phát sinh bậc thứ tư.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Button</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Primary (nền brand), Secondary (viền), Text link (mũi tên phải). Cao 44/48px, vùng chạm ≥ 44×44px. Đủ default / hover / focus-visible / active / disabled / loading.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Badge</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Chuyên mục (mono, uppercase, không nền) · chủ đề (chip pill) · trạng thái (nền mờ: “Đang chọn”, “Chưa có nguồn”, “Trực tiếp”).</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Card</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Featured (ảnh 3:2, headline 28–34px, mô tả) · Standard (ảnh 16:10, headline 20–24px) · Compact (thumbnail 96–120px, metadata + headline, không mô tả). Ảnh và tiêu đề là hai link tới cùng bài; không lồng nút trong link.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Section header</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Eyebrow (mono, tùy chọn) → H2 → mô tả (tùy chọn) → CTA phải. Cùng một khối trên mọi section.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Icon</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Một bộ, nét 1.8px: mũi tên phải = điều hướng/CTA · mũi tên chéo = rời sang nền tảng ngoài · chevron = mở rộng / chuyển nội dung.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);vertical-align:top;font-weight:var(--fw-semibold);color:var(--text-strong)">Focus</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);line-height:1.55;color:var(--text-body)">Một quy tắc <code style="font-family:var(--font-mono);font-size:9pt">:focus-visible</code> toàn trang: viền 2px brand, offset 3px — áp cho a / button / input / [tabindex].</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:22pt 0 6pt;padding-top:10pt;border-top:1px solid var(--border-default)">2 · Logic motion và fallback</h2>
+  <p style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.65;color:var(--text-body);max-width:74ch;margin:0 0 12pt">Thông số: hover/UI 160–240ms · reveal 350–550ms · stagger 50–70ms (tổng ≤ 300ms) · dịch chuyển reveal 16px. Không animation nào lặp lại khi cuộn qua lại.</p>
+  <ul style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.72;color:var(--text-body);max-width:74ch;margin:0 0 12pt;padding-left:16pt">
+    <li><strong>Reveal:</strong> nội dung hiển thị mặc định. Class <code style="font-family:var(--font-mono);font-size:9pt">is-armed</code> chỉ được gắn sau khi JS khởi tạo IntersectionObserver thành công; phần tử đã reveal thì <code style="font-family:var(--font-mono);font-size:9pt">unobserve</code> ngay. Script lỗi → nội dung vẫn đọc được, không có section trắng. Không quét DOM theo scroll.</li>
+    <li><strong>Hero:</strong> parallax rất nhẹ, tổng dịch chuyển ~28px, cập nhật trong một vòng <code style="font-family:var(--font-mono);font-size:9pt">requestAnimationFrame</code> duy nhất; ảnh scale sẵn nên không lộ mép, caption neo trong vùng ảnh.</li>
+    <li><strong>Dòng chảy sinh viên:</strong> pin dọc → dịch ngang, hành trình tính từ chiều rộng track thực (không phải con số cứng) và tính lại khi resize. Card đầu và card cuối đều xem được đủ; sau card cuối cuộn rời section, không còn dải nền tối trống.</li>
+    <li><strong>Reduced motion / in trang:</strong> bỏ toàn bộ reveal và parallax, bỏ pin — dòng chảy chuyển sang rail ngang native có scroll-snap và nút trước/sau. Không có tự động chạy ở bất kỳ chế độ nào.</li>
+    <li><strong>Chuyển sang bài viết:</strong> mỗi ảnh có <code style="font-family:var(--font-mono);font-size:9pt">mediaId</code> ổn định, nhưng chỉ ảnh được chọn nhận transition-name nên không bao giờ có hai tên trùng cùng hiển thị. Trong bản blueprint đây là <strong>mô phỏng</strong> (fade + scale nhẹ rồi điều hướng); View Transition thật sẽ bật ở app Next.js. Điều hướng không bị trì hoãn để chờ animation.</li>
+  </ul>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:22pt 0 6pt;padding-top:10pt;border-top:1px solid var(--border-default)">3 · Chạy thật trong prototype vs. mô phỏng</h2>
+  <table style="width:100%;border-collapse:collapse;font-family:var(--font-ui);font-size:9.5pt;margin:0 0 18pt">
+    <thead>
+      <tr style="background:var(--surface-subtle)">
+        <th style="text-align:left;padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);width:44%">Tương tác</th>
+        <th style="text-align:left;padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);width:18%">Trạng thái</th>
+        <th style="text-align:left;padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8pt;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)">Ghi chú tích hợp</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-body)">Header sticky + compact 78→64px, active state</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8.5pt;color:var(--brand-primary)">CHẠY THẬT</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-muted);line-height:1.5">Chiều cao dự trữ cố định nên không có layout shift.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-body)">Search overlay: idle / gợi ý / loading / kết quả / rỗng / lỗi, Escape, focus trap</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8.5pt;color:var(--brand-primary)">CHẠY THẬT</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-muted);line-height:1.5">Lọc trên tập dữ liệu mẫu trong trang, không gửi dữ liệu ra ngoài. Cần endpoint tìm kiếm + gợi ý.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-body)">Bộ lọc “Tin mới nhất” — đổi tập nội dung, loading / empty / error, aria-live</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8.5pt;color:var(--brand-primary)">CHẠY THẬT</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-muted);line-height:1.5">Cần API danh sách tin theo chuyên mục.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-body)">“Xem thêm tin” — nạp thêm một nhóm tin mẫu, một lần mỗi nhóm, có trạng thái hết tin</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8.5pt;color:var(--text-muted)">MÔ PHỎNG</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-muted);line-height:1.5">Cần pagination thật (cursor hoặc page + pageSize) và tổng số bài để biết khi nào ẩn nút.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-body)">Rail dòng chảy: pin, wheel/trackpad, nút trước–sau theo card đích, bàn phím, progress + bộ đếm</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8.5pt;color:var(--brand-primary)">CHẠY THẬT</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-muted);line-height:1.5">Phím mũi tên chỉ hoạt động khi focus nằm trong rail.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-body)">Playlist video: chọn video phụ → cập nhật video chính + metadata, trạng thái không khả dụng</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8.5pt;color:var(--brand-primary)">CHẠY THẬT</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-muted);line-height:1.5">Player chỉ nạp khi bấm phát; không tự phát, không có âm thanh.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-body)">Phát video</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8.5pt;color:var(--text-muted)">MÔ PHỎNG</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-muted);line-height:1.5">Chưa có nguồn video được xác nhận — dùng poster mẫu và nhãn “Chưa kết nối nguồn video”. Cần ID YouTube hoặc nguồn nội bộ.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-body)">Card → trang bài viết</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8.5pt;color:var(--text-muted)">GIỚI HẠN</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-muted);line-height:1.5">Link HTML thật, nhưng blueprint chỉ có một trang bài viết mẫu nên nhiều card cùng dẫn về đó. Cần route <code style="font-family:var(--font-mono);font-size:9pt">/tin/[slug]</code>.</td>
+      </tr>
+      <tr data-blk="">
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-body)">Shared image transition</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:8.5pt;color:var(--text-muted)">MÔ PHỎNG</td>
+        <td style="padding:6pt 8pt;border:1px solid var(--border-subtle);color:var(--text-muted);line-height:1.5">Cấu trúc <code style="font-family:var(--font-mono);font-size:9pt">mediaId</code> đã sẵn; View Transition API bật ở app thật, fallback fade khi không hỗ trợ.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:22pt 0 6pt;padding-top:10pt;border-top:1px solid var(--border-default)">4 · Nội dung, ảnh và dữ liệu còn thiếu</h2>
+  <ul style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.72;color:var(--text-body);max-width:74ch;margin:0 0 12pt;padding-left:16pt">
+    <li><strong>Ảnh hero:</strong> ảnh phiên khai mạc Đại hội, ngang, tối thiểu 2400px, có quyền sử dụng rõ ràng. Hiện là placeholder trung tính — không dùng ảnh AI hay stock thay tư liệu sự kiện thật.</li>
+    <li><strong>Ảnh tin tiêu điểm:</strong> 1 ảnh 3:2 cho bài chính + 3 thumbnail vuông cho bài phụ.</li>
+    <li><strong>Ảnh dòng chảy sinh viên:</strong> 6 ảnh 16:10 kèm địa phương, ngày và nguồn ảnh.</li>
+    <li><strong>Poster video:</strong> 4 poster 16:9 + ID nguồn video.</li>
+    <li><strong>Dữ liệu:</strong> danh sách chuyên mục chính thức, số bài theo chủ đề, số liệu hoạt động theo tỉnh/thành, và alt text tiếng Việt cho mọi ảnh.</li>
+    <li>Toàn bộ nội dung chữ hiện tại là nội dung mẫu có cấu trúc đúng — cần bản duyệt của ban biên tập trước khi lên production.</li>
+  </ul>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:22pt 0 6pt;padding-top:10pt;border-top:1px solid var(--border-default)">5 · Giới hạn cần xử lý khi lên production</h2>
+  <ul style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.72;color:var(--text-body);max-width:74ch;margin:0 0 10pt;padding-left:16pt">
+    <li>Pin ngang nên chuyển sang một thư viện scroll ổn định (GSAP ScrollTrigger hoặc tương đương) và test lại trên Safari/iOS, nơi <code style="font-family:var(--font-mono);font-size:9pt">position: sticky</code> kèm scroll ảo dễ lệch.</li>
+    <li>Reveal, filter và “xem thêm” hiện chạy trên state trong trang; ở Next.js cần tách server component cho danh sách tin và giữ trạng thái filter trong URL để Back hoạt động đúng.</li>
+    <li>Bản đồ hoạt động đang tải d3 + topojson từ CDN — production cần bundle nội bộ và dữ liệu tỉnh/thành chính thức.</li>
+    <li>Ảnh cần pipeline responsive (srcset, AVIF/WebP, LQIP) — blueprint chỉ mô tả focal point, crop, loading và fallback.</li>
+    <li>Chưa redesign tablet/mobile: breakpoint 1024 và 680 hiện là bản thích ứng an toàn, sẽ xử lý ở phần việc sau.</li>
+  </ul>
+
+  <h2 style="font-family:var(--font-editorial);font-size:17pt;font-weight:var(--fw-medium);color:var(--text-strong);margin:22pt 0 6pt;padding-top:10pt;border-top:1px solid var(--border-default)">6 · Ảnh kiểm tra</h2>
+  <p style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.65;color:var(--text-body);max-width:74ch;margin:0 0 8pt">Ảnh chụp kiểm tra ở <code style="font-family:var(--font-mono);font-size:9pt">screenshots/</code>: bố cục 1440px (đầu trang, tin tiêu điểm) và 1280px (đầu trang, video &amp; bản đồ). Khung xem trước hẹp hơn viewport thật nên ảnh bị cắt bên phải — kiểm tra chính xác nhất là mở trực tiếp <code style="font-family:var(--font-mono);font-size:9pt">HSV Homepage V2.dc.html</code> ở cửa sổ 1440 và 1280.</p>
+  <p style="font-family:var(--font-ui);font-size:10.5pt;line-height:1.65;color:var(--text-body);max-width:74ch;margin:0">Đã đối chiếu tiêu chí nghiệm thu: không còn nhãn kỹ thuật trong UI độc giả, header không cắt chữ ở 1280–1920, không có cuộn ngang toàn trang, H1 không tràn và không cắt dấu, sticky không gây layout shift, không có section trống do reveal, dòng chảy không còn khoảng nền tối vô nghĩa.</p>
+
+</doc-page>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/fonts.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/colors.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/typography.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/spacing.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/elevation.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/motion.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/base.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/styles.css" />
+<script src="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/_ds_bundle.js"></script>
+<script src="./doc-page.js"></script>
+<style>
+  a { color: var(--text-brand); }
+  a:hover { color: var(--brand-primary-hover); }
+  doc-page:not(:defined) { visibility: hidden }
+  [data-note] { break-inside: avoid }
+</style>
+</helmet>
+
+<div style="background:var(--surface-sunken);padding:var(--sp-10) var(--sp-8) var(--sp-16);min-height:100vh">
+
+  <div style="max-width:1560px;margin:0 auto;display:flex;flex-direction:column;gap:var(--sp-8)">
+
+    <header style="display:flex;align-items:flex-end;justify-content:space-between;gap:var(--sp-8);flex-wrap:wrap;padding-bottom:var(--sp-6);border-bottom:2px solid var(--ink-1000)">
+      <div style="display:flex;flex-direction:column;gap:10px;max-width:660px">
+        <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--brand-primary)">Lô 1 · Responsive board</span>
+        <h1 style="font-family:var(--font-editorial);font-size:clamp(30px,3vw,44px);line-height:1.06;letter-spacing:var(--ls-display);font-weight:var(--fw-medium);color:var(--text-strong);margin:0">HSV Homepage V2 — ba breakpoint</h1>
+        <p style="font-family:var(--font-ui);font-size:var(--fs-body);line-height:var(--lh-body);color:var(--text-muted);margin:0">Ba khung dưới đây là bản V2 thật đang chạy ở đúng bề rộng thiết bị — cuộn được, bấm được, không phải ảnh chụp. Mỗi khung ứng với một nhánh layout riêng, không phải bản desktop thu nhỏ.</p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="HSV Homepage V2.dc.html" style="display:inline-flex;align-items:center;height:42px;padding:0 20px;border-radius:var(--radius-pill);background:var(--brand-primary);color:#fff;font-family:var(--font-ui);font-size:14px;font-weight:var(--fw-semibold);text-decoration:none" style-hover="background:var(--brand-primary-hover);color:#fff;text-decoration:none">Mở bản 1440 đầy đủ</a>
+        <a href="HSV Portal V2 Production Notes.dc.html" style="display:inline-flex;align-items:center;height:42px;padding:0 20px;border-radius:var(--radius-pill);border:1px solid var(--border-default);background:var(--surface-page);color:var(--text-body);font-family:var(--font-ui);font-size:14px;font-weight:var(--fw-medium);text-decoration:none" style-hover="border-color:var(--border-brand);color:var(--text-brand);text-decoration:none">Production notes</a>
+      </div>
+    </header>
+
+    <div style="display:flex;gap:var(--sp-8);align-items:flex-start;flex-wrap:wrap">
+      <sc-for list="{{ frames }}" as="f" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:var(--sp-4);flex:0 0 auto">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:14px">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span style="font-family:var(--font-editorial);font-size:var(--fs-h4);font-weight:var(--fw-medium);color:var(--text-strong)">{{ f.label }}</span>
+              <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)">{{ f.meta }}</span>
+            </div>
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);white-space:nowrap">{{ f.zoom }}</span>
+          </div>
+          <div style="position:relative;background:var(--surface-page);border:1px solid var(--border-default);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);overflow:hidden;width:{{ f.boxW }};height:{{ f.boxH }}">
+            <iframe src="HSV Homepage V2.dc.html" title="{{ f.label }}" loading="lazy" style="position:absolute;top:0;left:0;border:0;width:{{ f.devW }};height:{{ f.devH }};transform:scale({{ f.scale }});transform-origin:top left;background:#fff"></iframe>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:7px;width:{{ f.boxW }}">
+            <sc-for list="{{ f.notes }}" as="n" hint-placeholder-count="4">
+              <span style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;font-family:var(--font-ui);font-size:12.5px;line-height:1.5;color:var(--text-muted)">
+                <span style="color:var(--brand-primary);font-family:var(--font-mono);font-size:11px;padding-top:2px">—</span>{{ n }}
+              </span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- RESPONSIVE NOTES -->
+    <section style="margin-top:var(--sp-8)">
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:var(--sp-6);max-width:720px">
+        <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--brand-primary)">Responsive notes</span>
+        <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h2);font-weight:var(--fw-medium);color:var(--text-strong);margin:0">Năm section có nhánh layout riêng</h2>
+        <p style="font-family:var(--font-ui);font-size:var(--fs-body);line-height:var(--lh-body);color:var(--text-muted);margin:0">Yêu cầu XXI buộc thiết kế riêng cho Hero, HorizontalStoryRail, ActivityMap, PlatformBentoGrid và MediaGallery. Bảng dưới đây là hành vi bắt buộc ở từng breakpoint — cũng là những gì đang chạy trong ba khung trên.</p>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:var(--sp-5)">
+        <sc-for list="{{ adaptations }}" as="a" hint-placeholder-count="5">
+          <div data-note="" style="background:var(--surface-page);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:var(--sp-5) var(--sp-6);background:var(--surface-subtle);border-bottom:1px solid var(--border-subtle);flex-wrap:wrap">
+              <span style="display:flex;align-items:baseline;gap:12px">
+                <span style="font-family:var(--font-mono);font-size:11px;color:var(--brand-primary)">{{ a.n }}</span>
+                <span style="font-family:var(--font-editorial);font-size:var(--fs-h4);font-weight:var(--fw-medium);color:var(--text-strong)">{{ a.name }}</span>
+              </span>
+              <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--text-muted)">{{ a.component }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--border-subtle)">
+              <sc-for list="{{ a.cols }}" as="c" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:9px;padding:var(--sp-5);background:var(--surface-page)">
+                  <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)">{{ c.bp }}</span>
+                  <span style="font-family:var(--font-ui);font-size:13px;line-height:1.6;color:var(--text-body)">{{ c.v }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:10px;padding:var(--sp-4) var(--sp-6);border-top:1px solid var(--border-subtle)">
+              <span style="font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);white-space:nowrap;padding-top:2px">Ngưỡng</span>
+              <span style="font-family:var(--font-ui);font-size:12.5px;line-height:1.55;color:var(--text-muted)">{{ a.breakpoint }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- GLOBAL RULES -->
+    <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:var(--sp-5);margin-top:var(--sp-6)">
+      <sc-for list="{{ rules }}" as="r" hint-placeholder-count="4">
+        <div style="display:flex;flex-direction:column;gap:10px;padding:var(--sp-6);background:var(--surface-page);border:1px solid var(--border-subtle);border-radius:var(--radius-lg)">
+          <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--brand-primary)">{{ r.tag }}</span>
+          <span style="font-family:var(--font-editorial);font-size:var(--fs-h5);line-height:1.28;font-weight:var(--fw-medium);color:var(--text-strong)">{{ r.title }}</span>
+          <span style="font-family:var(--font-ui);font-size:13px;line-height:1.62;color:var(--text-muted)">{{ r.body }}</span>
+        </div>
+      </sc-for>
+    </section>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+class Component extends DCLogic {
+  renderVals() {
+    const frames = [
+      {
+        label: "Desktop 1280", meta: "1280 × 1600 · nhánh authored",
+        zoom: "52%", devW: 1280, devH: 1600, scale: 0.52,
+        notes: [
+          "Nav ngang đầy đủ 6 mục, không hamburger (ngưỡng 1120px).",
+          "Hero giữ bất đối xứng 43/57, media tràn cạnh phải.",
+          "Dòng chảy sinh viên được pin, rail dịch ngang theo scroll.",
+          "ActivityMap hai cột (bản đồ + panel số liệu) vì ≥1180px."
+        ]
+      },
+      {
+        label: "Tablet 768", meta: "768 × 1400 · nhánh tablet",
+        zoom: "60%", devW: 768, devH: 1400, scale: 0.6,
+        notes: [
+          "Header chuyển hamburger + drawer full-screen.",
+          "Hero xếp dọc, media lên trước, cao 52vw.",
+          "Bento và gallery về 2 cột, mọi ô span 1 — không còn ô 2×2.",
+          "Story rail bỏ pin, chuyển native scroll + scroll-snap."
+        ]
+      },
+      {
+        label: "Mobile 390", meta: "390 × 1180 · nhánh mobile",
+        zoom: "78%", devW: 390, devH: 1180, scale: 0.78,
+        notes: [
+          "Một cột toàn trang; mọi vùng bấm ≥44px.",
+          "Tin tiêu điểm: thumbnail bài phụ còn 96px.",
+          "ActivityMap full width, tap tỉnh mở bottom sheet.",
+          "Tin từ cơ sở bỏ thumbnail, giữ logo đơn vị + tiêu đề."
+        ]
+      }
+    ].map((f) => ({
+      ...f,
+      devW: f.devW + "px", devH: f.devH + "px",
+      boxW: Math.round(f.devW * f.scale) + "px",
+      boxH: Math.round(f.devH * f.scale) + "px"
+    }));
+
+    const adaptations = [
+      {
+        name: "Cinematic Hero", component: "HeroFeature",
+        breakpoint: "Chuyển nhánh ở 1024px. Chiều cao dùng clamp(520px, 74vh, 780px) nên không phụ thuộc bề rộng.",
+        cols: [
+          { bp: "1440", v: "Cột chữ 43% + media 57% tràn cạnh phải, bo góc chỉ bên trái. Headline tới 72px, reveal 4 dòng." },
+          { bp: "1280", v: "Giữ nguyên tỉ lệ; headline co theo 4.4vw, sapo giới hạn 46ch." },
+          { bp: "768", v: "Xếp dọc, media lên trước cao 52vw (tối thiểu 300px), bo góc đủ bốn cạnh. Hai CTA nằm cùng hàng." },
+          { bp: "390", v: "Headline 40px, sapo 3 dòng, CTA xếp thành hai hàng full-width. Parallax vẫn bật (chỉ transform)." }
+        ]
+      },
+      {
+        name: "Horizontal Story Rail", component: "HorizontalStoryRail",
+        breakpoint: "Pin chỉ bật khi ≥1024px VÀ rail dài hơn viewport ít nhất 80px VÀ không bật reduced-motion. Ba điều kiện, thiếu một là chuyển nhánh tĩnh.",
+        cols: [
+          { bp: "1440", v: "Section pin, card 28–36vw, scroll dọc điều khiển vị trí ngang. Card active scale 1, còn lại .95." },
+          { bp: "1280", v: "Như 1440, card về ~32vw; quãng pin ngắn hơn vì rail ngắn hơn." },
+          { bp: "768", v: "Bỏ pin hoàn toàn. Native horizontal scroll + scroll-snap, card ~62vw, nút prev–next cuộn rail." },
+          { bp: "390", v: "Card ~86vw, snap giữa, vuốt bằng ngón. Nhãn đổi thành “Vuốt ngang để xem”." }
+        ]
+      },
+      {
+        name: "Activity Map", component: "ActivityMap",
+        breakpoint: "Layout đổi ở 1180px; hành vi chọn tỉnh (panel ↔ bottom sheet) đổi ở 768px.",
+        cols: [
+          { bp: "1440", v: "Bản đồ 7 cột + panel 5 cột. Hover hiện tooltip, click cập nhật panel bên phải." },
+          { bp: "1280", v: "Như 1440, bản đồ tự tính lại chiều cao theo bề rộng (0.86 × width, giới hạn 460–700px)." },
+          { bp: "768", v: "Một cột: bản đồ trên, xếp hạng địa phương và số liệu bên dưới. Không thu nhỏ bản đồ desktop." },
+          { bp: "390", v: "Bản đồ full width, tap tỉnh mở bottom sheet (tên, hoạt động, tin bài, tin mới nhất, CTA). Local Activity List luôn nằm dưới bản đồ." }
+        ]
+      },
+      {
+        name: "Platform Bento Grid", component: "PlatformBentoGrid",
+        breakpoint: "Grid 4 cột → 2 cột ở 1024px → 1 cột ở 680px. Khi rã cột, mọi ô về span 1 và giữ thứ tự ưu tiên.",
+        cols: [
+          { bp: "1440", v: "4 cột: Hội nghị 2×2 nền tối, Đào tạo 2×1, SV 5 tốt và Tình nguyện 1×1, Dữ liệu & Báo cáo 2×1." },
+          { bp: "1280", v: "Cùng cấu trúc, hàng cao tối thiểu 184px giữ nhịp bento." },
+          { bp: "768", v: "2 cột, ô Hội nghị mất span 2×2 nhưng vẫn là ô đầu tiên và duy nhất có nền tối." },
+          { bp: "390", v: "1 cột theo thứ tự ưu tiên: Hội nghị → Đào tạo → SV 5 tốt → Tình nguyện → Dữ liệu. Ô upcoming vẫn không có CTA." }
+        ]
+      },
+      {
+        name: "Media Gallery", component: "MediaGallery",
+        breakpoint: "4 cột → 2 cột ở 1024px → 1 cột ở 680px. Ở 1 cột, mọi ô ép về tỉ lệ 4:3 để hàng không cao bất thường.",
+        cols: [
+          { bp: "1440", v: "Masonry 4 cột, hàng cao 130–190px, ô span khác nhau (2×2, 1×2, 2×1, 1×1)." },
+          { bp: "1280", v: "Như 1440; hàng co theo 13vw nên tỉ lệ khối giữ nguyên." },
+          { bp: "768", v: "2 cột, mọi ô span 1, giữ thứ tự biên tập — ảnh dọc và ngang xen kẽ." },
+          { bp: "390", v: "1 cột, ô 4:3, caption hiện thường trực thay vì chờ hover (mobile không có hover)." }
+        ]
+      }
+    ].map((a, i) => ({ ...a, n: String(i + 1).padStart(2, "0") }));
+
+    return {
+      frames, adaptations,
+      rules: [
+        {
+          tag: "Ngưỡng", title: "Bốn breakpoint, ba nhánh layout",
+          body: "1440 và 1280 dùng chung nhánh authored. 1024 là nhánh tablet. 680 là nhánh mobile. Riêng header đổi ở 1120px và ActivityMap đổi ở 1180px vì hai thành phần này hết chỗ sớm hơn phần còn lại."
+        },
+        {
+          tag: "Nguyên tắc", title: "Không thu nhỏ desktop",
+          body: "Mỗi nhánh là một cách bố cục khác, không phải cùng một bố cục ở tỉ lệ nhỏ hơn. Ba trường hợp rõ nhất: story rail bỏ pin, ActivityMap chuyển bottom sheet, bento rã span."
+        },
+        {
+          tag: "Cảm ứng", title: "Hover có đường thay thế",
+          body: "Mọi thông tin chỉ hiện khi hover đều có đường khác trên cảm ứng: caption gallery hiện thường trực, tooltip bản đồ thay bằng bottom sheet, gạch chỉ dẫn trên tin phụ chỉ là trang trí."
+        },
+        {
+          tag: "Kiểm tra", title: "Vùng bấm và cỡ chữ",
+          body: "Mobile: mọi vùng bấm ≥44px (hàng drawer 56px, CTA 50px). Cỡ chữ nhỏ nhất trong giao diện là 10.5px cho nhãn mono kiểu eyebrow; chữ nội dung không dưới 13px."
+        }
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>

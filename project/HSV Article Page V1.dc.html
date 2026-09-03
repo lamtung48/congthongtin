@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/fonts.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/colors.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/typography.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/spacing.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/elevation.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/motion.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/tokens/base.css" />
+<link rel="stylesheet" href="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/styles.css" />
+<script src="_ds/hsv-digital-design-system-76d24d86-e8a3-4a72-adfe-c277f3d449aa/_ds_bundle.js"></script>
+<script src="./image-slot.js"></script>
+<style>
+  @view-transition { navigation: auto }
+  @keyframes hsvRise { from { opacity: 0; transform: translateY(18px) } to { opacity: 1; transform: none } }
+  @keyframes hsvCoverIn { from { opacity: 0; transform: scale(1.04) } to { opacity: 1; transform: scale(1) } }
+  [data-vt-cover] { view-transition-name: hsv-article-cover; }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important } }
+</style>
+</helmet>
+
+<div style="background:var(--surface-page);min-height:100vh">
+
+  <header style="position:sticky;top:0;z-index:60;background:rgba(255,255,255,.9);backdrop-filter:var(--blur-glass);-webkit-backdrop-filter:var(--blur-glass);border-bottom:1px solid var(--border-subtle)">
+    <div style="max-width:var(--container-wide);margin:0 auto;padding:0 var(--gutter);height:64px;display:flex;align-items:center;gap:var(--sp-5)">
+      <a href="HSV Homepage V1.dc.html" style="display:inline-flex;align-items:center;gap:10px;font-family:var(--font-ui);font-size:14px;font-weight:var(--fw-medium);color:var(--text-body);text-decoration:none;white-space:nowrap" style-hover="color:var(--text-brand);text-decoration:none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H6M11 6l-6 6 6 6"></path></svg>Trang chủ
+      </a>
+      <span style="width:1px;height:22px;background:var(--border-default)"></span>
+      <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--brand-primary);white-space:nowrap">Sinh viên 5 tốt</span>
+      <span style="font-family:var(--font-ui);font-size:14px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">Tuyên dương 112 “Sinh viên 5 tốt” cấp Trung ương</span>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <sc-for list="{{ shareTop }}" as="s" hint-placeholder-count="3">
+          <button aria-label="{{ s.label }}" style="width:36px;height:36px;border-radius:var(--radius-pill);border:1px solid var(--border-default);background:var(--surface-page);color:var(--text-body);font-family:var(--font-mono);font-size:11px;cursor:pointer;transition:all var(--dur-fast) var(--ease-standard)" style-hover="border-color:var(--border-brand);color:var(--text-brand);background:var(--surface-brand-soft)">{{ s.mark }}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="height:2px;background:transparent">
+      <div ref="{{ progressRef }}" style="height:2px;width:0%;background:var(--brand-primary)"></div>
+    </div>
+  </header>
+
+  <article style="max-width:var(--container-wide);margin:0 auto;padding:0 var(--gutter)">
+
+    <div style="max-width:var(--container-text);margin:0 auto;padding:var(--sp-16) 0 var(--sp-10);display:flex;flex-direction:column;gap:var(--sp-5)">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;padding:6px 12px;border-radius:var(--radius-pill);background:var(--surface-brand-soft);color:var(--text-brand)">Sinh viên 5 tốt</span>
+        <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-faint)">31.08.2026 · 08:15</span>
+        <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-faint)">7 phút đọc</span>
+      </div>
+      <h1 style="font-family:var(--font-editorial);font-size:clamp(34px,4vw,56px);line-height:1.08;letter-spacing:var(--ls-display);font-weight:var(--fw-medium);color:var(--text-strong);margin:0;text-wrap:balance">Tuyên dương 112 “Sinh viên 5 tốt” cấp Trung ương: những chân dung học tập và cống hiến</h1>
+      <p style="font-family:var(--font-ui);font-size:var(--fs-lead);line-height:var(--lh-lead);color:var(--text-muted);margin:0">Danh hiệu năm nay ghi nhận nhiều sinh viên vừa đạt thành tích nghiên cứu quốc tế, vừa duy trì hoạt động tình nguyện tại địa phương trong suốt bốn năm học.</p>
+      <div style="display:flex;align-items:center;gap:14px;padding-top:var(--sp-5);border-top:1px solid var(--border-subtle)">
+        <span style="width:40px;height:40px;border-radius:var(--radius-pill);background:var(--surface-sunken);color:var(--text-muted);display:grid;place-items:center;font-family:var(--font-mono);font-size:12px;font-weight:var(--fw-bold)">NT</span>
+        <span style="display:flex;flex-direction:column;line-height:1.35">
+          <span style="font-family:var(--font-ui);font-size:14.5px;font-weight:var(--fw-semibold);color:var(--text-strong)">Nhóm phóng viên Cổng thông tin số</span>
+          <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint)">Ảnh: Ban Tuyên giáo Trung ương Hội</span>
+        </span>
+      </div>
+    </div>
+
+    <figure data-vt-cover="" style="margin:0 0 var(--sp-12);animation:hsvCoverIn var(--dur-cinematic) var(--ease-cinematic) both">
+      <div style="position:relative;width:100%;aspect-ratio:21/9;border-radius:var(--radius-lg);overflow:hidden;background:var(--surface-sunken)">
+        <image-slot id="hsv-art-cover" shape="rect" placeholder="MediaImage(mediaId) — cover 21:9, đích của shared image transition"></image-slot>
+      </div>
+      <figcaption style="margin-top:var(--sp-3);font-family:var(--font-ui);font-size:13px;line-height:1.6;color:var(--text-muted);max-width:var(--container-text)">Lễ tuyên dương “Sinh viên 5 tốt” cấp Trung ương năm học 2025 – 2026 tổ chức tại Hà Nội.</figcaption>
+    </figure>
+
+    <div style="max-width:var(--container-text);margin:0 auto;display:flex;flex-direction:column;gap:var(--sp-8)">
+
+      <p style="font-family:var(--font-ui);font-size:17.5px;line-height:1.78;color:var(--text-body)">Sáng 31.8, Trung ương Hội Sinh viên Việt Nam tổ chức lễ tuyên dương “Sinh viên 5 tốt” cấp Trung ương năm học 2025 – 2026. 112 sinh viên được tuyên dương đến từ 68 trường đại học, học viện và cao đẳng trên cả nước, trong đó có 14 du học sinh đang học tập tại nước ngoài.</p>
+
+      <p style="font-family:var(--font-ui);font-size:17.5px;line-height:1.78;color:var(--text-body)">Theo báo cáo của Ban Thư ký Trung ương Hội, số hồ sơ đăng ký xét chọn tăng 18% so với năm học trước. Điểm mới của kỳ xét chọn năm nay là việc quy đổi rõ ràng thành tích nghiên cứu khoa học và số giờ tình nguyện, giúp giảm phần lớn khiếu nại về tiêu chí ở cấp trường.</p>
+
+      <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h3);line-height:1.24;font-weight:var(--fw-semibold);color:var(--text-strong);margin:var(--sp-4) 0 0">Từ phòng thí nghiệm đến điểm trường vùng cao</h2>
+
+      <p style="font-family:var(--font-ui);font-size:17.5px;line-height:1.78;color:var(--text-body)">Trong danh sách tuyên dương, nhiều sinh viên vừa có công bố quốc tế, vừa tham gia các đội hình tình nguyện dài hạn. Một nhóm sinh viên ngành kỹ thuật môi trường đã đưa mô hình quan trắc mặn tự chế tạo vào sử dụng tại ba hợp tác xã ở Cần Thơ, chi phí bằng khoảng một phần tư thiết bị nhập khẩu.</p>
+
+      <blockquote style="display:flex;flex-direction:column;gap:var(--sp-4);margin:var(--sp-4) 0;padding:var(--sp-6) var(--sp-8);border-left:var(--rule-accent) solid var(--brand-primary);background:var(--surface-brand-soft);border-radius:0 var(--radius-md) var(--radius-md) 0">
+        <p style="font-family:var(--font-editorial);font-size:23px;line-height:1.45;font-weight:var(--fw-medium);color:var(--text-strong);font-style:italic">“Danh hiệu không phải điểm đến. Điều chúng tôi mong là mỗi sinh viên giữ được nhịp học tập và cống hiến ấy sau khi tốt nghiệp.”</p>
+        <span style="font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;color:var(--text-muted)">— Đại diện Ban Thư ký Trung ương Hội Sinh viên Việt Nam</span>
+      </blockquote>
+
+      <div style="display:flex;flex-direction:column;gap:var(--sp-3)">
+        <div style="position:relative;width:100%;aspect-ratio:16/9;border-radius:var(--radius-md);overflow:hidden;background:var(--surface-sunken)">
+          <image-slot id="hsv-art-inline" shape="rect" radius="10" placeholder="Block image — MediaImage(mediaId) 16:9"></image-slot>
+        </div>
+        <span style="font-family:var(--font-ui);font-size:13px;line-height:1.6;color:var(--text-muted)">Các đại biểu trao đổi tại phiên giao lưu sau lễ tuyên dương.</span>
+      </div>
+
+      <p style="font-family:var(--font-ui);font-size:17.5px;line-height:1.78;color:var(--text-body)">Bên cạnh hoạt động chuyên môn, 41 sinh viên trong danh sách có trên 300 giờ tình nguyện, tập trung ở các chiến dịch “Mùa hè xanh”, “Tiếp sức mùa thi” và các đội hình hỗ trợ học sinh vùng khó khăn.</p>
+
+      <div style="display:flex;flex-direction:column;gap:var(--sp-3)">
+        <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--text-faint)">Block gallery · MediaGallery(mediaIds)</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));grid-auto-rows:180px;gap:10px">
+          <sc-for list="{{ gallery }}" as="g" hint-placeholder-count="5">
+            <button onClick="{{ g.onClick }}" style="position:relative;padding:0;border:0;border-radius:var(--radius-sm);overflow:hidden;background:var(--surface-sunken);cursor:pointer;grid-column:{{ g.col }};grid-row:{{ g.row }}">
+              <image-slot id="{{ g.slotId }}" shape="rect" radius="6" placeholder="{{ g.ratio }}"></image-slot>
+            </button>
+          </sc-for>
+        </div>
+        <span style="font-family:var(--font-ui);font-size:13px;color:var(--text-muted)">Gallery hỗ trợ ảnh ngang và dọc lẫn nhau; nhấn để mở lightbox, ảnh thiếu sẽ giữ khung theo tỉ lệ.</span>
+      </div>
+
+      <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h3);line-height:1.24;font-weight:var(--fw-semibold);color:var(--text-strong);margin:var(--sp-4) 0 0">Phóng sự tại lễ tuyên dương</h2>
+
+      <div style="display:flex;flex-direction:column;gap:var(--sp-3)">
+        <sc-if value="{{ videoIdle }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ playVideo }}" style="position:relative;width:100%;aspect-ratio:16/9;padding:0;border:0;border-radius:var(--radius-md);overflow:hidden;background:var(--surface-sunken);cursor:pointer">
+            <image-slot id="hsv-art-video" shape="rect" radius="10" placeholder="Poster YouTube 16:9"></image-slot>
+            <span style="position:absolute;inset:0;background:rgba(4,22,43,.24);pointer-events:none"></span>
+            <span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:var(--radius-pill);background:rgba(255,255,255,.95);display:grid;place-items:center;pointer-events:none;box-shadow:var(--shadow-lg)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--ink-1000)"><path d="M8 5v14l11-7z"></path></svg>
+            </span>
+          </button>
+        </sc-if>
+        <sc-if value="{{ videoPlaying }}" hint-placeholder-val="{{ false }}">
+          <div style="position:relative;width:100%;aspect-ratio:16/9;border-radius:var(--radius-md);overflow:hidden;background:#000;display:grid;place-items:center">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+              <span style="font-family:var(--font-mono);font-size:12.5px;letter-spacing:.06em;color:var(--ink-300)">VideoPlayer(videoId · dQw4w9WgXcQ)</span>
+              <span style="font-family:var(--font-ui);font-size:13px;color:var(--ink-400)">iframe YouTube được nạp sau click</span>
+            </div>
+          </div>
+        </sc-if>
+        <span style="font-family:var(--font-ui);font-size:13px;color:var(--text-muted)">Block youtube — chỉ lưu videoId, không lưu file video trên hệ thống.</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:var(--sp-4)">
+        <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--text-faint)">Block table</span>
+        <div style="border:1px solid var(--border-subtle);border-radius:var(--radius-md);overflow:hidden">
+          <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:16px;padding:13px 18px;background:var(--surface-sunken);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)">
+            <span>Khu vực</span><span>Số sinh viên</span><span>Tỉ lệ hồ sơ đạt</span>
+          </div>
+          <sc-for list="{{ tableRows }}" as="r" hint-placeholder-count="5">
+            <div style="display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:16px;padding:14px 18px;border-top:1px solid var(--border-subtle)">
+              <span style="font-family:var(--font-ui);font-size:14.5px;color:var(--text-body)">{{ r.area }}</span>
+              <span style="font-family:var(--font-mono);font-size:14px;color:var(--text-strong)">{{ r.count }}</span>
+              <span style="font-family:var(--font-mono);font-size:14px;color:var(--text-brand)">{{ r.rate }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:var(--sp-3)">
+        <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--text-faint)">Block embed</span>
+        <div style="display:flex;flex-direction:column;gap:12px;padding:var(--sp-6);border:1px dashed var(--border-default);border-radius:var(--radius-md);background:var(--surface-subtle)">
+          <span style="font-family:var(--font-ui);font-size:15px;font-weight:var(--fw-semibold);color:var(--text-strong)">Hướng dẫn xét chọn danh hiệu năm học 2026 – 2027</span>
+          <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)">embed · PDF viewer / iframe được whitelist theo domain</span>
+          <a href="#" style="align-self:flex-start;font-family:var(--font-ui);font-size:14px;font-weight:var(--fw-medium)">Mở văn bản gốc ↗</a>
+        </div>
+      </div>
+
+      <p style="font-family:var(--font-ui);font-size:17.5px;line-height:1.78;color:var(--text-body)">Trung ương Hội cho biết hồ sơ xét chọn năm học tới sẽ được nộp trực tuyến qua nền tảng Sinh viên 5 tốt, thay cho quy trình gửi bản in qua cấp trường như hiện nay.</p>
+
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding-top:var(--sp-6);border-top:1px solid var(--border-subtle)">
+        <sc-for list="{{ tags }}" as="t" hint-placeholder-count="4">
+          <a href="#" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--radius-pill);border:1px solid var(--border-default);font-family:var(--font-ui);font-size:13.5px;color:var(--text-body);text-decoration:none;white-space:nowrap;transition:all var(--dur-fast) var(--ease-standard)" style-hover="border-color:var(--border-brand);background:var(--surface-brand-soft);color:var(--text-brand);text-decoration:none"><span style="color:var(--brand-primary);font-family:var(--font-mono)">#</span>{{ t }}</a>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-5);flex-wrap:wrap;padding:var(--sp-5) 0;border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle)">
+        <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--text-muted)">Chia sẻ bài viết</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ shareFull }}" as="s" hint-placeholder-count="4">
+            <button style="display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:var(--radius-pill);border:1px solid var(--border-default);background:var(--surface-page);font-family:var(--font-ui);font-size:13.5px;font-weight:var(--fw-medium);color:var(--text-body);white-space:nowrap;cursor:pointer;transition:all var(--dur-fast) var(--ease-standard)" style-hover="border-color:var(--border-brand);color:var(--text-brand);background:var(--surface-brand-soft)">{{ s.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <section style="max-width:var(--container-wide);margin:0 auto;padding:var(--sp-20) var(--gutter) 0">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-6);flex-wrap:wrap;margin-bottom:var(--sp-8)">
+      <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h2);font-weight:var(--fw-medium);margin:0">Tin liên quan</h2>
+      <a href="HSV Homepage V1.dc.html" style="font-family:var(--font-ui);font-size:14.5px;font-weight:var(--fw-medium)">Về trang chủ</a>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:clamp(20px,2.2vw,32px)">
+      <sc-for list="{{ related }}" as="a" hint-placeholder-count="4">
+        <article style="display:flex;flex-direction:column;gap:var(--sp-4)">
+          <a href="#" style="display:block;aspect-ratio:16/10;border-radius:var(--radius-md);overflow:hidden;background:var(--surface-sunken)">
+            <image-slot id="{{ a.slotId }}" shape="rect" radius="10" placeholder="16:10"></image-slot>
+          </a>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--brand-primary)">{{ a.category }}</span>
+            <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint)">{{ a.date }}</span>
+          </div>
+          <h3 style="font-family:var(--font-editorial);font-size:var(--fs-h5);line-height:1.32;font-weight:var(--fw-medium);margin:0">
+            <a href="#" style="color:var(--text-strong);text-decoration:none" style-hover="color:var(--text-brand);text-decoration:none">{{ a.title }}</a>
+          </h3>
+        </article>
+      </sc-for>
+    </div>
+  </section>
+
+  <footer style="margin-top:var(--sp-24);background:var(--ink-1000);color:#fff;padding:var(--sp-16) 0 var(--sp-8)">
+    <div style="max-width:var(--container-wide);margin:0 auto;padding:0 var(--gutter);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-6);flex-wrap:wrap">
+      <span style="display:flex;align-items:center;gap:12px">
+        <img src="assets/hsv-logo.png" alt="Huy hiệu Hội Sinh viên Việt Nam" style="width:42px;height:42px;flex:0 0 auto;display:block;object-fit:contain" />
+        <span style="font-family:var(--font-ui);font-size:14.5px;font-weight:var(--fw-semibold);color:#fff">Hội Sinh viên Việt Nam</span>
+      </span>
+      <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--ink-500)">Article Page V1 · 8 block CMS</span>
+    </div>
+  </footer>
+
+  <sc-if value="{{ lightboxOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeLightbox }}" style="position:fixed;inset:0;z-index:130;background:rgba(4,22,43,.9);backdrop-filter:blur(10px);display:grid;place-items:center;padding:var(--gutter);animation:hsvRise var(--dur-base) var(--ease-entrance) both">
+      <div style="width:100%;max-width:1000px;display:flex;flex-direction:column;gap:var(--sp-4)">
+        <div style="position:relative;width:100%;aspect-ratio:3/2;border-radius:var(--radius-lg);overflow:hidden;background:#0b1119">
+          <image-slot id="{{ lightboxSlot }}" shape="rect" placeholder="Ảnh phóng to"></image-slot>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-5);flex-wrap:wrap">
+          <span style="font-family:var(--font-mono);font-size:12px;color:var(--ink-400)">{{ lightboxCount }}</span>
+          <button onClick="{{ closeLightbox }}" style="height:40px;padding:0 20px;border-radius:var(--radius-pill);border:1px solid rgba(255,255,255,.32);background:transparent;color:#fff;font-family:var(--font-ui);font-size:14px;white-space:nowrap;cursor:pointer">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440},&quot;galleryLayout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;grid&quot;],&quot;default&quot;:&quot;auto&quot;,&quot;tsType&quot;:&quot;'auto'|'grid'&quot;,&quot;section&quot;:&quot;MediaGallery&quot;}}">
+class Component extends DCLogic {
+  state = { playing: false, lightbox: null };
+
+  componentDidMount() {
+    this._onScroll = () => {
+      if (!this.progressEl) return;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const p = max > 0 ? Math.min(window.scrollY / max, 1) : 0;
+      this.progressEl.style.width = (p * 100).toFixed(1) + "%";
+    };
+    this._onKey = (e) => { if (e.key === "Escape") this.setState({ lightbox: null }); };
+    window.addEventListener("scroll", this._onScroll, { passive: true });
+    window.addEventListener("keydown", this._onKey);
+    this._onScroll();
+  }
+  componentWillUnmount() {
+    window.removeEventListener("scroll", this._onScroll);
+    window.removeEventListener("keydown", this._onKey);
+  }
+
+  renderVals() {
+    const layout = this.props.galleryLayout || "auto";
+    const shapes = layout === "grid"
+      ? [{ col: "auto", row: "auto" }, { col: "auto", row: "auto" }, { col: "auto", row: "auto" }, { col: "auto", row: "auto" }, { col: "auto", row: "auto" }]
+      : [{ col: "span 2", row: "span 2" }, { col: "auto", row: "auto" }, { col: "auto", row: "auto" }, { col: "auto", row: "span 2" }, { col: "auto", row: "auto" }];
+    const ratios = ["Ảnh ngang", "Vuông", "Vuông", "Ảnh dọc", "Vuông"];
+    const gallery = shapes.map((s, i) => ({
+      ...s,
+      ratio: ratios[i],
+      slotId: "hsv-art-gal-" + i,
+      onClick: () => this.setState({ lightbox: i })
+    }));
+
+    return {
+      progressRef: (el) => { this.progressEl = el; },
+      playVideo: () => this.setState({ playing: true }),
+      videoIdle: !this.state.playing,
+      videoPlaying: this.state.playing,
+      gallery,
+      lightboxOpen: this.state.lightbox !== null,
+      lightboxSlot: this.state.lightbox !== null ? "hsv-art-gal-" + this.state.lightbox : "hsv-art-gal-0",
+      lightboxCount: this.state.lightbox !== null ? (this.state.lightbox + 1) + " / " + gallery.length : "",
+      closeLightbox: () => this.setState({ lightbox: null }),
+      shareTop: [
+        { mark: "f", label: "Chia sẻ Facebook" },
+        { mark: "in", label: "Chia sẻ LinkedIn" },
+        { mark: "⧉", label: "Sao chép liên kết" }
+      ],
+      shareFull: [
+        { label: "Facebook" }, { label: "Zalo" }, { label: "LinkedIn" }, { label: "Sao chép liên kết" }
+      ],
+      tags: ["SinhVien5Tot", "TuyenDuong2026", "NghienCuuKhoaHoc", "TinhNguyen"],
+      tableRows: [
+        { area: "Miền Bắc", count: "43", rate: "72%" },
+        { area: "Miền Trung", count: "26", rate: "68%" },
+        { area: "Miền Nam", count: "29", rate: "70%" },
+        { area: "Du học sinh", count: "14", rate: "61%" },
+        { area: "Tổng", count: "112", rate: "69%" }
+      ],
+      related: [
+        { category: "Sinh viên 5 tốt", date: "30.08.2026", title: "Hướng dẫn mới về tiêu chuẩn xét chọn danh hiệu năm học 2026 – 2027" },
+        { category: "Nghiên cứu", date: "01.09.2026", title: "Bốn nhóm sinh viên có báo cáo được nhận tại hội nghị AI khu vực" },
+        { category: "Tình nguyện", date: "02.09.2026", title: "Chiến dịch “Mùa hè xanh” 2026 hoàn thành 148 công trình dân sinh" },
+        { category: "Hội nghị", date: "01.09.2026", title: "Phiên thảo luận về việc làm sau tốt nghiệp thu hút 200 đại biểu" }
+      ].map((a, i) => ({ ...a, slotId: "hsv-art-rel-" + i }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

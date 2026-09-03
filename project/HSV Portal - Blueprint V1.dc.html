@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="ds/styles.css" />
+<style>
+  body { margin: 0; background: var(--surface-page); color: var(--text-body); font-family: var(--font-ui); }
+  a { color: var(--text-link); text-decoration: none; }
+  a:hover { color: var(--text-link-hover); }
+  ::selection { background: var(--blue-100); }
+  html { scroll-behavior: smooth; }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:var(--surface-page)">
+
+  <div style="display:grid;grid-template-columns:248px minmax(0,1fr);gap:0;max-width:1512px;margin:0 auto">
+
+    <aside style="position:sticky;top:0;align-self:start;height:100vh;padding:40px 24px 40px 40px;border-right:1px solid var(--border-subtle);display:flex;flex-direction:column;gap:28px;box-sizing:border-box">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:26px;height:26px;border-radius:999px;background:var(--brand-primary);display:grid;place-items:center;color:#fff;font-family:var(--font-ui);font-size:11.5px;font-weight:700;letter-spacing:0.02em">HS</div>
+          <span style="font-family:var(--font-ui);font-size:13px;font-weight:600;color:var(--text-strong);letter-spacing:-0.01em">Cổng thông tin số</span>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-muted);letter-spacing:0.02em">BLUEPRINT · VÒNG 1</span>
+      </div>
+
+      <nav style="display:flex;flex-direction:column;gap:2px">
+        <sc-for list="{{ nav }}" as="item" hint-placeholder-count="9">
+          <a href="{{ item.href }}" style="display:grid;grid-template-columns:26px 1fr;gap:8px;padding:7px 8px;border-radius:var(--radius-sm);font-size:13.5px;color:var(--text-body);transition:background var(--dur-fast) var(--ease-standard)" style-hover="background:var(--surface-subtle);color:var(--text-strong)">
+            <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--brand-primary);padding-top:2px">{{ item.n }}</span>
+            <span>{{ item.label }}</span>
+          </a>
+        </sc-for>
+      </nav>
+
+      <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:20px;border-top:1px solid var(--border-subtle)">
+        <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint);line-height:1.6">STACK<br />Next.js · TS · Tailwind<br />shadcn/ui · GSAP</span>
+      </div>
+    </aside>
+
+    <main style="padding:0 0 160px 0;min-width:0">
+
+      <header style="padding:88px var(--gutter) 56px;border-bottom:1px solid var(--border-subtle)">
+        <span style="display:inline-block;font-family:var(--font-mono);font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--brand-primary);margin-bottom:24px">Giai đoạn 1 · Trước high-fidelity</span>
+        <h1 style="font-family:var(--font-editorial);font-size:var(--fs-display-2);line-height:1.04;letter-spacing:-0.02em;color:var(--text-strong);font-weight:500;margin:0 0 24px;max-width:20ch">Cổng thông tin số Hội Sinh viên Việt Nam</h1>
+        <p style="font-family:var(--font-ui);font-size:var(--fs-lead);line-height:var(--lh-lead);color:var(--text-muted);max-width:66ch;margin:0 0 40px;text-wrap:pretty">Tài liệu nền tảng cho vòng thiết kế đầu tiên: kiến trúc thông tin, bản đồ homepage, thư viện component, ma trận Feature → Data → UI, hệ thống thiết kế, hệ thống motion, chiến lược responsive, cảnh báo rủi ro triển khai và phân kỳ V1 / V1.5 / V2. Mọi đề xuất trong tài liệu đều ánh xạ được sang component Next.js và một nguồn dữ liệu xác định.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:12px">
+          <sc-for list="{{ headerFacts }}" as="f" hint-placeholder-count="4">
+            <div style="display:flex;flex-direction:column;gap:4px;padding:14px 18px;border:1px solid var(--border-subtle);border-radius:var(--radius-md);background:var(--surface-subtle);min-width:150px">
+              <span style="font-family:var(--font-mono);font-size:11.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">{{ f.k }}</span>
+              <span style="font-family:var(--font-ui);font-size:15px;font-weight:600;color:var(--text-strong)">{{ f.v }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </header>
+
+      <section id="s1" style="padding:80px var(--gutter) 0;scroll-margin-top:24px">
+        <div style="display:flex;align-items:baseline;gap:18px;border-top:var(--rule-accent) solid var(--brand-primary);padding-top:18px;margin-bottom:40px">
+          <span style="font-family:var(--font-mono);font-size:13px;color:var(--brand-primary);letter-spacing:0.02em">01</span>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h2);line-height:var(--lh-heading);letter-spacing:-0.012em;font-weight:500;color:var(--text-strong);margin:0">Kiến trúc thông tin</h2>
+            <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint);letter-spacing:0.06em">{{ en.ia }}</span>
+          </div>
+        </div>
+        <p style="font-size:var(--fs-body);line-height:var(--lh-body);color:var(--text-muted);max-width:66ch;margin:0 0 40px">Sáu nhóm nội dung, mỗi route ứng với một page Next.js App Router. Route động lấy nội dung từ CMS theo slug; route nền tảng số trỏ ra sub-domain riêng và chỉ cần platform data.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:24px">
+          <sc-for list="{{ ia }}" as="g" hint-placeholder-count="6">
+            <div style="display:flex;flex-direction:column;gap:14px;padding:24px;border:1px solid var(--border-subtle);border-radius:var(--radius-lg);background:var(--surface-card)">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <h3 style="font-family:var(--font-ui);font-size:var(--fs-h5);font-weight:600;color:var(--text-strong);margin:0">{{ g.group }}</h3>
+                <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint)">{{ g.count }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <sc-for list="{{ g.routes }}" as="r" hint-placeholder-count="4">
+                  <div style="display:grid;grid-template-columns:1fr;gap:3px;padding-left:14px;border-left:2px solid var(--border-default)">
+                    <span style="font-family:var(--font-mono);font-size:12.5px;color:var(--text-brand);letter-spacing:0.01em">{{ r.path }}</span>
+                    <span style="font-size:13px;color:var(--text-body)">{{ r.label }}</span>
+                    <span style="font-size:12.5px;color:var(--text-faint)">{{ r.note }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section id="s2" style="padding:80px var(--gutter) 0;scroll-margin-top:24px">
+        <div style="display:flex;align-items:baseline;gap:18px;border-top:var(--rule-accent) solid var(--brand-primary);padding-top:18px;margin-bottom:40px">
+          <span style="font-family:var(--font-mono);font-size:13px;color:var(--brand-primary);letter-spacing:0.02em">02</span>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h2);line-height:var(--lh-heading);letter-spacing:-0.012em;font-weight:500;color:var(--text-strong);margin:0">Bản đồ section homepage</h2>
+            <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint);letter-spacing:0.06em">{{ en.map }}</span>
+          </div>
+        </div>
+        <p style="font-size:var(--fs-body);line-height:var(--lh-body);color:var(--text-muted);max-width:66ch;margin:0 0 40px">Thứ tự đọc từ trên xuống, mỗi section có một nhiệm vụ duy nhất. Cột <em style="font-style:normal;font-family:var(--font-mono);font-size:12.5px">MOTION</em> ghi mức độ chuyển động cho phép; cột phân kỳ xác định phần nào vào V1.</p>
+        <div style="border:1px solid var(--border-subtle);border-radius:var(--radius-lg);overflow:hidden">
+          <div style="display:grid;grid-template-columns:32px 1.15fr 1.1fr 1.5fr 1fr 84px;gap:16px;padding:14px 20px;background:var(--surface-sunken);font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">
+            <span>#</span><span>Section</span><span>Component</span><span>Nhiệm vụ</span><span>Motion</span><span>Phase</span>
+          </div>
+          <sc-for list="{{ sections }}" as="s" hint-placeholder-count="11">
+            <div style="display:grid;grid-template-columns:32px 1.15fr 1.1fr 1.5fr 1fr 84px;gap:16px;padding:18px 20px;border-top:1px solid var(--border-subtle);align-items:start;transition:background var(--dur-fast) var(--ease-standard)" style-hover="background:var(--surface-subtle)">
+              <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-faint);opacity:{{ s.dim }}">{{ s.n }}</span>
+              <span style="font-size:14px;font-weight:600;color:var(--text-strong);opacity:{{ s.dim }}">{{ s.name }}</span>
+              <span style="font-family:var(--font-mono);font-size:12.5px;color:var(--text-brand);opacity:{{ s.dim }}">{{ s.component }}</span>
+              <span style="font-size:13.5px;line-height:1.55;color:var(--text-muted);opacity:{{ s.dim }}">{{ s.purpose }}</span>
+              <span style="font-size:13px;line-height:1.5;color:var(--text-body);opacity:{{ s.dim }}">{{ s.motion }}</span>
+              <span style="justify-self:start;font-family:var(--font-mono);font-size:11px;letter-spacing:0.04em;padding:4px 8px;border-radius:var(--radius-pill);background:{{ s.chipBg }};color:{{ s.chipFg }}">{{ s.scope }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section id="s3" style="padding:80px var(--gutter) 0;scroll-margin-top:24px">
+        <div style="display:flex;align-items:baseline;gap:18px;border-top:var(--rule-accent) solid var(--brand-primary);padding-top:18px;margin-bottom:40px">
+          <span style="font-family:var(--font-mono);font-size:13px;color:var(--brand-primary);letter-spacing:0.02em">03</span>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h2);line-height:var(--lh-heading);letter-spacing:-0.012em;font-weight:500;color:var(--text-strong);margin:0">Thư viện component</h2>
+            <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint);letter-spacing:0.06em">{{ en.comp }}</span>
+          </div>
+        </div>
+        <p style="font-size:var(--fs-body);line-height:var(--lh-body);color:var(--text-muted);max-width:66ch;margin:0 0 40px">Dựng component trước khi dựng trang. Mỗi component khai báo props tối thiểu và tập trạng thái bắt buộc phải có mockup trước khi bàn giao.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px">
+          <sc-for list="{{ components }}" as="c" hint-placeholder-count="18">
+            <div style="display:flex;flex-direction:column;gap:12px;padding:22px;border:1px solid var(--border-subtle);border-radius:var(--radius-lg);background:var(--surface-card);transition:box-shadow var(--dur-base) var(--ease-standard),transform var(--dur-base) var(--ease-standard)" style-hover="box-shadow:var(--shadow-md);transform:translateY(-2px)">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <span style="font-family:var(--font-mono);font-size:13.5px;font-weight:500;color:var(--text-strong)">{{ c.name }}</span>
+                <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint)">{{ c.kind }}</span>
+              </div>
+              <p style="font-size:13.5px;line-height:1.6;color:var(--text-muted);margin:0">{{ c.desc }}</p>
+              <div style="display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid var(--border-subtle)">
+                <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint)">Props</span>
+                <span style="font-family:var(--font-mono);font-size:12px;line-height:1.6;color:var(--text-brand);word-break:break-word">{{ c.props }}</span>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ c.states }}" as="st" hint-placeholder-count="4">
+                  <span style="font-family:var(--font-mono);font-size:11px;padding:3px 8px;border-radius:var(--radius-xs);background:var(--surface-sunken);color:var(--text-body)">{{ st }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section id="s4" style="padding:80px var(--gutter) 0;scroll-margin-top:24px">
+        <div style="display:flex;align-items:baseline;gap:18px;border-top:var(--rule-accent) solid var(--brand-primary);padding-top:18px;margin-bottom:40px">
+          <span style="font-family:var(--font-mono);font-size:13px;color:var(--brand-primary);letter-spacing:0.02em">04</span>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h2);line-height:var(--lh-heading);letter-spacing:-0.012em;font-weight:500;color:var(--text-strong);margin:0">Ma trận Feature → Data → UI</h2>
+            <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint);letter-spacing:0.06em">{{ en.matrix }}</span>
+          </div>
+        </div>
+        <p style="font-size:var(--fs-body);line-height:var(--lh-body);color:var(--text-muted);max-width:66ch;margin:0 0 40px">Không có dòng nào trong bảng này được để trống cột <em style="font-style:normal;font-family:var(--font-mono);font-size:12.5px">DATA SOURCE</em>. Nếu một tính năng không có nguồn, tính năng đó bị loại khỏi V1 (xem mục 09).</p>
+        <div style="border:1px solid var(--border-subtle);border-radius:var(--radius-lg);overflow:hidden">
+          <div style="display:grid;grid-template-columns:1fr 1.35fr 1fr 1.25fr;gap:18px;padding:14px 20px;background:var(--surface-sunken);font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">
+            <span>Feature</span><span>Data</span><span>Source</span><span>Loading / Empty / Error</span>
+          </div>
+          <sc-for list="{{ matrix }}" as="m" hint-placeholder-count="12">
+            <div style="display:grid;grid-template-columns:1fr 1.35fr 1fr 1.25fr;gap:18px;padding:18px 20px;border-top:1px solid var(--border-subtle);align-items:start;transition:background var(--dur-fast) var(--ease-standard)" style-hover="background:var(--surface-subtle)">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <span style="font-size:14px;font-weight:600;color:var(--text-strong)">{{ m.feature }}</span>
+                <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-brand)">{{ m.component }}</span>
+              </div>
+              <span style="font-family:var(--font-mono);font-size:12px;line-height:1.65;color:var(--text-body)">{{ m.data }}</span>
+              <span style="font-size:13px;line-height:1.55;color:var(--text-muted)">{{ m.source }}</span>
+              <span style="font-size:12.5px;line-height:1.6;color:var(--text-muted)">{{ m.states }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section id="s5" style="padding:80px var(--gutter) 0;scroll-margin-top:24px">
+        <div style="display:flex;align-items:baseline;gap:18px;border-top:var(--rule-accent) solid var(--brand-primary);padding-top:18px;margin-bottom:40px">
+          <span style="font-family:var(--font-mono);font-size:13px;color:var(--brand-primary);letter-spacing:0.02em">05</span>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h2);line-height:var(--lh-heading);letter-spacing:-0.012em;font-weight:500;color:var(--text-strong);margin:0">Nền tảng hệ thống thiết kế</h2>
+            <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint);letter-spacing:0.06em">{{ en.ds }}</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:32px;margin-bottom:40px">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted)">Màu nhận diện — dùng như màu nhấn</span>
+            <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:2px;border-radius:var(--radius-md);overflow:hidden">
+              <sc-for list="{{ blues }}" as="b" hint-placeholder-count="6">
+                <div style="height:76px;background:{{ b.hex }};display:flex;align-items:flex-end;padding:8px">
+                  <span style="font-family:var(--font-mono);font-size:10px;color:{{ b.fg }}">{{ b.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:2px;border-radius:var(--radius-md);overflow:hidden">
+              <sc-for list="{{ accents }}" as="a" hint-placeholder-count="8">
+                <div style="flex:1;height:44px;background:{{ a.hex }}"></div>
+              </sc-for>
+            </div>
+            <p style="font-size:13.5px;line-height:1.65;color:var(--text-muted);margin:0">Xanh <span style="font-family:var(--font-mono);font-size:12.5px;color:var(--text-brand)">--brand-primary</span> chỉ xuất hiện ở CTA, eyebrow, link, rule và trạng thái active. Nền trang giữ trắng và <span style="font-family:var(--font-mono);font-size:12.5px">--ink-50</span>; đỏ cờ và vàng sao dành cho nhấn nghi lễ, không dùng cho UI thường ngày.</p>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted)">Typography</span>
+            <div style="display:flex;flex-direction:column;gap:14px;padding:24px;border:1px solid var(--border-subtle);border-radius:var(--radius-lg)">
+              <sc-for list="{{ typeSpecimens }}" as="t" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:1fr;gap:4px;padding-bottom:14px;border-bottom:1px solid var(--border-subtle)">
+                  <span style="font-family:{{ t.family }};font-size:{{ t.size }};font-weight:{{ t.weight }};line-height:1.15;letter-spacing:-0.015em;color:var(--text-strong)">{{ t.sample }}</span>
+                  <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint)">{{ t.spec }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px">
+          <sc-for list="{{ foundations }}" as="f" hint-placeholder-count="4">
+            <div style="display:flex;flex-direction:column;gap:10px;padding:22px;border:1px solid var(--border-subtle);border-radius:var(--radius-lg);background:var(--surface-subtle)">
+              <span style="font-family:var(--font-ui);font-size:15px;font-weight:600;color:var(--text-strong)">{{ f.title }}</span>
+              <span style="font-family:var(--font-mono);font-size:12px;line-height:1.75;color:var(--text-body);white-space:pre-line">{{ f.body }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section id="s6" style="padding:80px var(--gutter) 0;scroll-margin-top:24px">
+        <div style="display:flex;align-items:baseline;gap:18px;border-top:var(--rule-accent) solid var(--brand-primary);padding-top:18px;margin-bottom:40px">
+          <span style="font-family:var(--font-mono);font-size:13px;color:var(--brand-primary);letter-spacing:0.02em">06</span>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h2);line-height:var(--lh-heading);letter-spacing:-0.012em;font-weight:500;color:var(--text-strong);margin:0">Hệ thống motion</h2>
+            <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint);letter-spacing:0.06em">{{ en.motion }}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:36px">
+          <sc-for list="{{ durations }}" as="d" hint-placeholder-count="4">
+            <div style="display:flex;flex-direction:column;gap:4px;padding:14px 20px;border:1px solid var(--border-subtle);border-radius:var(--radius-md);min-width:132px">
+              <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-brand)">{{ d.token }}</span>
+              <span style="font-family:var(--font-ui);font-size:19px;font-weight:600;color:var(--text-strong)">{{ d.ms }}</span>
+              <span style="font-size:12.5px;color:var(--text-muted)">{{ d.use }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:20px;margin-bottom:28px">
+          <sc-for list="{{ motions }}" as="m" hint-placeholder-count="4">
+            <div style="display:flex;flex-direction:column;gap:12px;padding:26px;border:1px solid var(--border-subtle);border-radius:var(--radius-lg);background:var(--surface-card)">
+              <div style="display:flex;align-items:baseline;gap:12px">
+                <span style="font-family:var(--font-mono);font-size:12px;color:var(--brand-primary)">{{ m.n }}</span>
+                <h3 style="font-family:var(--font-ui);font-size:var(--fs-h5);font-weight:600;color:var(--text-strong);margin:0">{{ m.name }}</h3>
+              </div>
+              <span style="font-size:13.5px;line-height:1.65;color:var(--text-muted)">{{ m.what }}</span>
+              <div style="display:grid;grid-template-columns:88px 1fr;gap:8px 14px;padding-top:12px;border-top:1px solid var(--border-subtle);font-size:12.5px;line-height:1.6">
+                <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint)">Impl</span>
+                <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-brand)">{{ m.impl }}</span>
+                <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint)">Reduced</span>
+                <span style="color:var(--text-body)">{{ m.reduced }}</span>
+                <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint)">Cost</span>
+                <span style="color:var(--text-body)">{{ m.cost }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:14px;padding:20px 24px;border-left:var(--rule-accent) solid var(--brand-primary);background:var(--surface-brand-soft);border-radius:0 var(--radius-md) var(--radius-md) 0">
+          <span style="font-size:13.5px;line-height:1.7;color:var(--text-body);max-width:82ch"><strong style="color:var(--text-strong)">Quy tắc chung:</strong> mọi animation chỉ chạm <span style="font-family:var(--font-mono);font-size:12.5px">transform</span> và <span style="font-family:var(--font-mono);font-size:12.5px">opacity</span>. Không animate layout property. Không có animation nào chặn việc đọc nội dung: nội dung render ở trạng thái cuối trong SSR, motion chỉ là lớp tăng cường và tự tắt hoàn toàn khi <span style="font-family:var(--font-mono);font-size:12.5px">prefers-reduced-motion: reduce</span>.</span>
+        </div>
+      </section>
+
+      <section id="s7" style="padding:80px var(--gutter) 0;scroll-margin-top:24px">
+        <div style="display:flex;align-items:baseline;gap:18px;border-top:var(--rule-accent) solid var(--brand-primary);padding-top:18px;margin-bottom:40px">
+          <span style="font-family:var(--font-mono);font-size:13px;color:var(--brand-primary);letter-spacing:0.02em">07</span>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h2);line-height:var(--lh-heading);letter-spacing:-0.012em;font-weight:500;color:var(--text-strong);margin:0">Chiến lược responsive</h2>
+            <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint);letter-spacing:0.06em">{{ en.res }}</span>
+          </div>
+        </div>
+        <div style="border:1px solid var(--border-subtle);border-radius:var(--radius-lg);overflow:hidden">
+          <div style="display:grid;grid-template-columns:1fr 1.2fr 1.2fr 1.2fr 1.2fr;gap:16px;padding:14px 20px;background:var(--surface-sunken);font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted)">
+            <span>Component</span><span>1440</span><span>1280</span><span>768</span><span>390</span>
+          </div>
+          <sc-for list="{{ responsive }}" as="r" hint-placeholder-count="9">
+            <div style="display:grid;grid-template-columns:1fr 1.2fr 1.2fr 1.2fr 1.2fr;gap:16px;padding:18px 20px;border-top:1px solid var(--border-subtle);align-items:start;transition:background var(--dur-fast) var(--ease-standard)" style-hover="background:var(--surface-subtle)">
+              <span style="font-family:var(--font-mono);font-size:12.5px;color:var(--text-brand)">{{ r.c }}</span>
+              <span style="font-size:13px;line-height:1.55;color:var(--text-body)">{{ r.d1 }}</span>
+              <span style="font-size:13px;line-height:1.55;color:var(--text-body)">{{ r.d2 }}</span>
+              <span style="font-size:13px;line-height:1.55;color:var(--text-body)">{{ r.d3 }}</span>
+              <span style="font-size:13px;line-height:1.55;color:var(--text-body)">{{ r.d4 }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section id="s8" style="padding:80px var(--gutter) 0;scroll-margin-top:24px">
+        <div style="display:flex;align-items:baseline;gap:18px;border-top:var(--rule-accent) solid var(--brand-accent);padding-top:18px;margin-bottom:40px">
+          <span style="font-family:var(--font-mono);font-size:13px;color:var(--brand-accent);letter-spacing:0.02em">08</span>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h2);line-height:var(--lh-heading);letter-spacing:-0.012em;font-weight:500;color:var(--text-strong);margin:0">Cảnh báo rủi ro triển khai</h2>
+            <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint);letter-spacing:0.06em">{{ en.risk }}</span>
+          </div>
+        </div>
+        <p style="font-size:var(--fs-body);line-height:var(--lh-body);color:var(--text-muted);max-width:66ch;margin:0 0 36px">Các hạng mục dưới đây cần quyết định trước khi vào high-fidelity, vì chúng ảnh hưởng đến kiến trúc chứ không chỉ giao diện.</p>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <sc-for list="{{ risks }}" as="r" hint-placeholder-count="7">
+            <div style="display:grid;grid-template-columns:150px 1fr;gap:24px;padding:24px;border:1px solid var(--border-subtle);border-left:var(--rule-accent) solid {{ r.color }};border-radius:0 var(--radius-lg) var(--radius-lg) 0;background:var(--surface-card)">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;padding:4px 8px;border-radius:var(--radius-pill);background:{{ r.chipBg }};color:{{ r.color }};justify-self:start">{{ r.level }}</span>
+                <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint)">{{ r.area }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <h3 style="font-family:var(--font-ui);font-size:var(--fs-h5);font-weight:600;color:var(--text-strong);margin:0">{{ r.title }}</h3>
+                <p style="font-size:13.5px;line-height:1.7;color:var(--text-muted);margin:0;max-width:82ch">{{ r.why }}</p>
+                <p style="font-size:13.5px;line-height:1.7;color:var(--text-body);margin:0;max-width:82ch"><strong style="color:var(--text-strong);font-weight:600">Đề xuất · </strong>{{ r.fix }}</p>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section id="s9" style="padding:80px var(--gutter) 0;scroll-margin-top:24px">
+        <div style="display:flex;align-items:baseline;gap:18px;border-top:var(--rule-accent) solid var(--brand-primary);padding-top:18px;margin-bottom:40px">
+          <span style="font-family:var(--font-mono);font-size:13px;color:var(--brand-primary);letter-spacing:0.02em">09</span>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h2);line-height:var(--lh-heading);letter-spacing:-0.012em;font-weight:500;color:var(--text-strong);margin:0">Phân kỳ V1 / V1.5 / V2</h2>
+            <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint);letter-spacing:0.06em">{{ en.scope }}</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+          <sc-for list="{{ phases }}" as="p" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:16px;padding:28px;border:1px solid {{ p.border }};border-radius:var(--radius-lg);background:{{ p.bg }}">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <span style="font-family:var(--font-editorial);font-size:var(--fs-h3);font-weight:500;color:var(--text-strong)">{{ p.name }}</span>
+                <span style="font-size:13.5px;line-height:1.6;color:var(--text-muted)">{{ p.goal }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px;padding-top:16px;border-top:1px solid var(--border-subtle)">
+                <sc-for list="{{ p.items }}" as="it" hint-placeholder-count="7">
+                  <div style="display:grid;grid-template-columns:14px 1fr;gap:10px;align-items:start">
+                    <span style="width:6px;height:6px;border-radius:999px;background:{{ p.dot }};margin-top:7px"></span>
+                    <span style="font-size:13.5px;line-height:1.6;color:var(--text-body)">{{ it }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section style="padding:80px var(--gutter) 0">
+        <div style="display:flex;flex-direction:column;gap:20px;padding:40px;border-radius:var(--radius-xl);background:var(--surface-invert);color:var(--text-invert)">
+          <span style="font-family:var(--font-mono);font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--blue-300)">Bước tiếp theo</span>
+          <h2 style="font-family:var(--font-editorial);font-size:var(--fs-h2);line-height:1.15;font-weight:500;margin:0;max-width:26ch;color:#fff">Sau khi tài liệu này được phê duyệt</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px;margin-top:8px">
+            <sc-for list="{{ nextSteps }}" as="s" hint-placeholder-count="3">
+              <div style="display:flex;flex-direction:column;gap:8px;padding-top:18px;border-top:1px solid rgba(255,255,255,.18)">
+                <span style="font-family:var(--font-mono);font-size:12px;color:var(--blue-300)">{{ s.n }}</span>
+                <span style="font-family:var(--font-ui);font-size:15px;font-weight:600;color:#fff">{{ s.title }}</span>
+                <span style="font-size:13.5px;line-height:1.65;color:var(--ink-300)">{{ s.desc }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <p style="font-size:13.5px;line-height:1.7;color:var(--ink-400);margin:12px 0 0;max-width:74ch">Chưa có dòng code production nào được viết ở giai đoạn này. Cần chốt: nguồn dữ liệu Sự kiện, cơ chế Media Service cho Google Drive, và phạm vi đăng nhập sinh viên.</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showEnglishLabels&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Tài liệu&quot;},&quot;highlightV1Only&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Tài liệu&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const showEN = p.showEnglishLabels ?? true;
+    const v1Only = p.highlightV1Only ?? false;
+    const t = (s) => (showEN ? s : "");
+
+    const dim = (scope) => (v1Only && scope !== "V1" ? 0.34 : 1);
+    const chip = (scope) =>
+      scope === "V1"
+        ? { chipBg: "var(--surface-brand-soft)", chipFg: "var(--text-brand)" }
+        : scope === "V1.5"
+        ? { chipBg: "var(--surface-gold-soft)", chipFg: "var(--gold-600)" }
+        : { chipBg: "var(--surface-sunken)", chipFg: "var(--text-muted)" };
+
+    const sections = [
+      { name: "Header", component: "SiteHeader", purpose: "Điều hướng 6 nhánh chính, search, login. Sticky, compact sau 96px scroll.", motion: "Compact transition 160ms", scope: "V1" },
+      { name: "Hero", component: "CinematicHero", purpose: "Một tin/chủ đề nổi bật do ban biên tập ghim. Ảnh lớn, headline, sapo, CTA.", motion: "Cinematic reveal + parallax nhẹ", scope: "V1" },
+      { name: "Trending Topics", component: "TrendingTagRail", purpose: "4–8 tag đang được đẩy, dẫn về trang chủ đề.", motion: "Hover underline", scope: "V1" },
+      { name: "Featured News", component: "FeaturedNewsGrid", purpose: "01 bài lớn + 03–04 bài phụ, dùng NewsCard tái sử dụng.", motion: "Fade-up stagger 70ms", scope: "V1" },
+      { name: "Dòng chảy sinh viên", component: "HorizontalStoryRail", purpose: "Signature interaction: 5–7 story theo địa phương/quốc gia.", motion: "Pin + translateX (desktop)", scope: "V1" },
+      { name: "Latest News", component: "NewsFeedList", purpose: "Feed editorial, ưu tiên đọc. Phân trang hoặc load-more.", motion: "Không animation nặng", scope: "V1" },
+      { name: "Video / Phóng sự", component: "VideoStoryStrip", purpose: "3–4 phóng sự YouTube, mở lightbox player.", motion: "Poster scale-in 240ms", scope: "V1" },
+      { name: "Hệ sinh thái số", component: "PlatformBentoGrid", purpose: "5 nền tảng số với URL thật, trạng thái live/current.", motion: "Bento micro-interaction", scope: "V1" },
+      { name: "Đang diễn ra", component: "LiveEventRail", purpose: "Sự kiện đang/sắp diễn ra, đếm ngược, trạng thái live.", motion: "Badge pulse (tôn trọng RM)", scope: "V1.5" },
+      { name: "Social / Media", component: "MediaMosaic + SocialCard", purpose: "Ảnh từ Media Service, video YouTube, link Facebook fanpage.", motion: "Hover zoom 1.03", scope: "V1.5" },
+      { name: "Footer", component: "SiteFooter", purpose: "Thông tin tổ chức, navigation, nền tảng số, social links.", motion: "Không", scope: "V1" }
+    ].map((s, i) => ({ ...s, n: String(i + 1).padStart(2, "0"), dim: dim(s.scope), ...chip(s.scope) }));
+
+    return {
+      en: {
+        ia: t("Information Architecture"),
+        map: t("Homepage Section Map"),
+        comp: t("Component Inventory"),
+        matrix: t("Feature → Data → UI Matrix"),
+        ds: t("Design System Foundation"),
+        motion: t("Motion System"),
+        res: t("Responsive Strategy"),
+        risk: t("Implementation Risk Register"),
+        scope: t("Release Phasing")
+      },
+      nav: [
+        { n: "01", label: "Kiến trúc thông tin", href: "#s1" },
+        { n: "02", label: "Bản đồ homepage", href: "#s2" },
+        { n: "03", label: "Thư viện component", href: "#s3" },
+        { n: "04", label: "Ma trận Data → UI", href: "#s4" },
+        { n: "05", label: "Design system", href: "#s5" },
+        { n: "06", label: "Motion system", href: "#s6" },
+        { n: "07", label: "Responsive", href: "#s7" },
+        { n: "08", label: "Rủi ro triển khai", href: "#s8" },
+        { n: "09", label: "Phân kỳ V1 / V2", href: "#s9" }
+      ],
+      headerFacts: [
+        { k: "Trang trong V1", v: "Homepage + Article" },
+        { k: "Component nền", v: "18 component" },
+        { k: "Breakpoint", v: "1440 / 1280 / 768 / 390" },
+        { k: "Signature motion", v: "04 hiệu ứng" }
+      ],
+      sections,
+      ia: [
+        {
+          group: "Tin tức",
+          routes: [
+            { path: "/", label: "Homepage", note: "CMS: hero ghim + feed" },
+            { path: "/tin-tuc", label: "Danh mục tin", note: "Filter theo category, phân trang" },
+            { path: "/tin-tuc/[slug]", label: "Article Page", note: "Block content từ CMS" },
+            { path: "/chu-de/[tag]", label: "Trang chủ đề", note: "Tag system" },
+            { path: "/tim-kiem", label: "Kết quả tìm kiếm", note: "Search API, query param" }
+          ]
+        },
+        {
+          group: "Phong trào & chương trình",
+          routes: [
+            { path: "/sinh-vien-5-tot", label: "Phong trào Sinh viên 5 tốt", note: "Hub: tin + 5 tiêu chuẩn + đăng ký xét chọn" },
+            { path: "/dong-hanh-sinh-vien", label: "Chương trình đồng hành, tư vấn, hỗ trợ sinh viên", note: "CMS: program collection + tin liên quan" },
+            { path: "/xay-dung-hoi", label: "Chương trình xây dựng Hội, bảo vệ hệ thống chính trị", note: "CMS: program + văn bản, hướng dẫn" },
+            { path: "/tai-nang-cong-nghe", label: "Chương trình đồng hành với sinh viên Việt Nam tài năng công nghệ", note: "CMS: program + link nền tảng Đào tạo" }
+          ]
+        },
+        {
+          group: "Nền tảng số",
+          routes: [
+            { path: "/nen-tang", label: "Hệ sinh thái số", note: "Platform registry (JSON/CMS)" },
+            { path: "↗ hoinghi.*", label: "Nền tảng Hội nghị", note: "External, mở tab mới" },
+            { path: "↗ daotao.*", label: "Nền tảng Đào tạo", note: "External" },
+            { path: "↗ tinhnguyen.*", label: "Nền tảng Tình nguyện", note: "External" }
+          ]
+        },
+        {
+          group: "Sự kiện & Media",
+          routes: [
+            { path: "/su-kien", label: "Lịch sự kiện", note: "Event API — cần chốt nguồn" },
+            { path: "/su-kien/[slug]", label: "Chi tiết sự kiện", note: "Event API" },
+            { path: "/media/anh", label: "Thư viện ảnh", note: "Media Service (Drive)" },
+            { path: "/media/video", label: "Thư viện video", note: "YouTube playlist" }
+          ]
+        },
+        {
+          group: "Tổ chức",
+          routes: [
+            { path: "/gioi-thieu", label: "Giới thiệu Hội", note: "CMS: static page" },
+            { path: "/van-ban", label: "Văn bản — hướng dẫn", note: "CMS: document list + file" },
+            { path: "/lien-he", label: "Liên hệ", note: "Static + form (V1.5)" }
+          ]
+        },
+        {
+          group: "Tài khoản",
+          routes: [
+            { path: "/dang-nhap", label: "Đăng nhập", note: "V1: chỉ entry point" },
+            { path: "/tai-khoan", label: "Trang cá nhân", note: "V2 — phụ thuộc hệ thống định danh" }
+          ]
+        }
+      ].map((g) => ({ ...g, count: g.routes.length + " route" })),
+      components: [
+        { name: "SiteHeader", kind: "layout", desc: "Sticky header, chuyển compact khi scroll, chứa Navigation + Search + UserMenu.", props: "variant: 'full' | 'compact'", states: ["default", "compact", "menu-open", "focus-visible"] },
+        { name: "Navigation", kind: "layout", desc: "6 nhánh chính; desktop dùng hover dropdown, mobile dùng drawer toàn màn.", props: "items: NavItem[]; activePath", states: ["default", "hover", "active", "drawer-open"] },
+        { name: "Button", kind: "primitive", desc: "shadcn/ui Button đã token hoá theo màu nhận diện.", props: "variant, size, asChild, loading", states: ["default", "hover", "active", "focus", "loading", "disabled"] },
+        { name: "Tag", kind: "primitive", desc: "Tag/chủ đề dạng pill, link về /chu-de/[tag].", props: "label, href, tone", states: ["default", "hover", "selected"] },
+        { name: "NewsCard", kind: "content", desc: "Card tin chuẩn: thumbnail, category, title, date. Ba biến thể tỉ lệ.", props: "article, layout: 'vertical'|'horizontal'|'text'", states: ["default", "hover", "loading", "no-image"] },
+        { name: "FeaturedNewsCard", kind: "content", desc: "Card tin lớn, ảnh 16:9 hoặc 3:2, có sapo và tag.", props: "article, priority", states: ["default", "hover", "loading"] },
+        { name: "HorizontalStoryCard", kind: "content", desc: "Card trong rail: ảnh dọc, địa phương/quốc gia, headline, category.", props: "story, index", states: ["default", "hover", "active-in-view", "loading"] },
+        { name: "VideoStoryCard", kind: "content", desc: "Poster YouTube + duration, click mở VideoPlayer.", props: "videoId, title, duration", states: ["default", "hover", "playing", "unavailable"] },
+        { name: "EventCard", kind: "content", desc: "Sự kiện: thời gian, địa điểm, trạng thái live/sắp diễn ra/đã kết thúc.", props: "event, showCountdown", states: ["upcoming", "live", "ended", "loading"] },
+        { name: "PlatformCard", kind: "content", desc: "Ô bento trỏ tới nền tảng số, có slot hiển thị hoạt động đang diễn ra.", props: "platform, size: 'sm'|'md'|'lg', activity?", states: ["default", "hover", "active", "live", "offline"] },
+        { name: "MediaImage", kind: "media", desc: "Abstraction bắt buộc cho ảnh: nhận mediaId, không nhận URL Drive.", props: "mediaId, alt, ratio, sizes, priority", states: ["loading", "loaded", "error", "missing"] },
+        { name: "MediaGallery", kind: "media", desc: "Gallery hỗ trợ 1 ảnh, nhiều ảnh, ảnh ngang/dọc lẫn nhau, lightbox.", props: "mediaIds[], layout: 'auto'|'grid'|'slider'", states: ["single", "multi", "loading", "partial-error", "empty"] },
+        { name: "VideoPlayer", kind: "media", desc: "Nhúng YouTube lazy: chỉ load iframe sau click, giữ LCP nhẹ.", props: "videoId, poster?, autoplay", states: ["poster", "loading", "playing", "error"] },
+        { name: "ArticleHero", kind: "article", desc: "Cover + category + title + sapo + meta; là đích của shared image transition.", props: "article", states: ["default", "no-cover", "loading"] },
+        { name: "ArticleBody", kind: "article", desc: "Renderer cho 8 block CMS: paragraph, heading, image, gallery, youtube, quote, table, embed.", props: "blocks: Block[]", states: ["default", "unknown-block-fallback", "loading"] },
+        { name: "SocialCard", kind: "content", desc: "Bài đăng fanpage; data-dependent, ẩn cả section nếu API không khả dụng.", props: "post", states: ["default", "hover", "loading", "api-unavailable"] },
+        { name: "SiteFooter", kind: "layout", desc: "Thông tin tổ chức, navigation, nền tảng số, social links.", props: "nav, platforms, socials", states: ["default"] },
+        { name: "Skeleton", kind: "primitive", desc: "Khối loading theo đúng tỉ lệ component thật để tránh layout shift.", props: "variant, count", states: ["shimmer", "static (reduced-motion)"] }
+      ],
+      matrix: [
+        { feature: "Tin nổi bật (Hero)", component: "CinematicHero", data: "title, sapo, coverMediaId, category, slug, publishedAt", source: "CMS — collection Article, cờ isHeroPinned", states: "Skeleton full-bleed / ẩn hero, đẩy Featured lên / dùng bài mới nhất" },
+        { feature: "Chủ đề nổi bật", component: "TrendingTagRail", data: "tag[]: name, slug, weight", source: "CMS tag system, sắp theo weight thủ công", states: "3 pill skeleton / ẩn section / ẩn section" },
+        { feature: "Tin tiêu điểm", component: "FeaturedNewsGrid", data: "article[1+4]: title, coverMediaId, category, date", source: "CMS query isFeatured, limit 5", states: "1+4 skeleton / hạ xuống dạng list / hiển thị Latest News" },
+        { feature: "Dòng chảy sinh viên", component: "HorizontalStoryRail", data: "story[5–7]: coverMediaId, place, headline, category, href", source: "CMS collection riêng (curated, thủ công)", states: "3 card skeleton / ẩn section / ẩn section, không phá scroll" },
+        { feature: "Tin mới nhất", component: "NewsFeedList", data: "article[]: title, excerpt, coverMediaId, category, date; cursor", source: "CMS query sort -publishedAt, phân trang cursor", states: "6 row skeleton / “Chưa có tin trong mục này” / nút Thử lại" },
+        { feature: "Phóng sự video", component: "VideoStoryStrip", data: "video[]: youtubeId, title, duration, publishedAt", source: "CMS lưu YouTube ID (không lưu file)", states: "Poster skeleton / ẩn section / poster + link mở YouTube" },
+        { feature: "Hệ sinh thái số", component: "PlatformBentoGrid", data: "platform[]: name, desc, url, icon, status, activityLabel?", source: "Platform registry trong CMS (dữ liệu tĩnh, ít đổi)", states: "Render ngay từ registry / không áp dụng / bỏ badge live, giữ link" },
+        { feature: "Đang diễn ra", component: "LiveEventRail", data: "event[]: title, startAt, endAt, location, status, href", source: "Event API — CHƯA CHỐT NGUỒN", states: "2 card skeleton / “Hiện chưa có sự kiện” / ẩn section" },
+        { feature: "Ảnh hoạt động", component: "MediaMosaic", data: "mediaId[], caption, ratio", source: "Google Drive → Media Service → CDN cache", states: "Blur/ratio placeholder / ẩn / khung giữ tỉ lệ + icon lỗi" },
+        { feature: "Fanpage", component: "SocialCard", data: "post[]: message, mediaId, permalink, createdAt", source: "Facebook Graph API (page token) — rủi ro", states: "2 card skeleton / ẩn / thay bằng CTA “Theo dõi fanpage”" },
+        { feature: "Tìm kiếm", component: "SearchOverlay", data: "query, result[]: type, title, href, snippet", source: "Search index của CMS", states: "Spinner inline / “Không có kết quả cho…” / thông báo lỗi + retry" },
+        { feature: "Nội dung bài viết", component: "ArticleBody", data: "block[]: 8 loại block CMS hỗ trợ", source: "CMS rich content field", states: "Skeleton dạng dòng văn / bài rỗng không publish / bỏ qua block lỗi, log lại" }
+      ],
+      blues: [
+        { hex: "#04162b", label: "950", fg: "#b6d6f4" },
+        { hex: "#062a4d", label: "900", fg: "#b6d6f4" },
+        { hex: "#0b5fa5", label: "600", fg: "#ffffff" },
+        { hex: "#1272c2", label: "500", fg: "#ffffff" },
+        { hex: "#b6d6f4", label: "200", fg: "#062a4d" },
+        { hex: "#f0f6fd", label: "50", fg: "#062a4d" }
+      ],
+      accents: [
+        { hex: "#da251d" }, { hex: "#ffcd00" }, { hex: "#0a0d12" }, { hex: "#454e5b" },
+        { hex: "#b9c1cc" }, { hex: "#e6eaef" }, { hex: "#f7f8fa" }, { hex: "#ffffff" }
+      ],
+      typeSpecimens: [
+        { family: "var(--font-editorial)", size: "40px", weight: 500, sample: "Dòng chảy sinh viên", spec: "Newsreader 500 · display / H1–H2 · ls -0.02em" },
+        { family: "var(--font-editorial)", size: "24px", weight: 400, sample: "Tiêu đề bài viết editorial", spec: "Newsreader 400 · H3 / article title" },
+        { family: "var(--font-ui)", size: "19px", weight: 400, sample: "Sapo và đoạn dẫn, dòng 1.55", spec: "Be Vietnam Pro 400 · --fs-lead" },
+        { family: "var(--font-ui)", size: "16px", weight: 400, sample: "Nội dung thân bài, tối đa 66ch mỗi dòng.", spec: "Be Vietnam Pro 400 · --fs-body / 1.68" },
+        { family: "var(--font-mono)", size: "13px", weight: 500, sample: "SINH VIÊN 5 TỐT · 12.09.2026", spec: "JetBrains Mono 500 · eyebrow / meta · ls 0.14em" }
+      ],
+      foundations: [
+        { title: "Grid & container", body: "12 cột · gap 24px\ncontainer 1280px (wide 1512)\ngutter clamp(20px, 4vw, 64px)\nđo chữ bài viết 720px" },
+        { title: "Spacing", body: "Thang 4px: 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96 · 128\nsection-y clamp(64px, 7vw, 128px)" },
+        { title: "Bán kính & viền", body: "radius sm 6 · md 10 · lg 16 · xl 24 · pill\nhairline 1px --border-subtle\nrule nhấn 3px --brand-primary" },
+        { title: "Elevation", body: "Mặc định phẳng, chỉ dùng viền.\nshadow-sm cho dropdown\nshadow-md khi hover card\nshadow-xl cho lightbox/modal" }
+      ],
+      durations: [
+        { token: "--dur-fast", ms: "160ms", use: "Hover, focus ring" },
+        { token: "--dur-base", ms: "240ms", use: "Card, dropdown" },
+        { token: "--dur-slow", ms: "420ms", use: "Reveal khi scroll" },
+        { token: "--dur-cinematic", ms: "700–900ms", use: "Hero, chuyển trang" }
+      ],
+      motions: [
+        { n: "01", name: "Cinematic Hero", what: "Ảnh scale 1.06 → 1.0 kèm scrim và headline vào theo dòng; parallax 18% khi scroll.", impl: "Framer Motion + CSS scroll-driven", reduced: "Ảnh tĩnh, chữ hiện ngay", cost: "Thấp" },
+        { n: "02", name: "Horizontal Story Rail", what: "Pin viewport, dịch rail theo scroll tiến độ; kết thúc trả lại scroll dọc.", impl: "GSAP ScrollTrigger (chỉ ≥1024px)", reduced: "Carousel có nút prev/next", cost: "Cao — cần QA kỹ" },
+        { n: "03", name: "Shared image transition", what: "Cover từ card homepage bay vào ArticleHero, giữ liên tục ngữ cảnh đọc.", impl: "View Transition API + fallback fade", reduced: "Cross-fade 1ms, điều hướng thường", cost: "Trung bình" },
+        { n: "04", name: "Bento micro-interaction", what: "Ô nền tảng nâng 2px, viền sáng dần, badge live nhấp nhẹ.", impl: "Framer Motion / CSS transition", reduced: "Chỉ đổi màu viền", cost: "Thấp" }
+      ],
+      responsive: [
+        { c: "SiteHeader", d1: "Nav ngang đầy đủ, search inline", d2: "Nav ngang, search thu thành icon", d3: "Logo + icon menu, drawer", d4: "Header 56px, drawer toàn màn" },
+        { c: "CinematicHero", d1: "Full-bleed 76vh, chữ 8/12 cột", d2: "70vh, chữ 9/12", d3: "Ảnh 16:9 trên, chữ dưới", d4: "Ảnh 4:5, headline 32px" },
+        { c: "FeaturedNewsGrid", d1: "1 lớn 7 cột + 4 phụ 5 cột", d2: "1 lớn + 3 phụ", d3: "2 cột đều", d4: "1 cột, card ngang" },
+        { c: "HorizontalStoryRail", d1: "Pin + translateX, 3.2 card/khung", d2: "Pin, 2.6 card/khung", d3: "Swipe native + scroll-snap", d4: "Swipe, 1.15 card, snap mandatory" },
+        { c: "NewsFeedList", d1: "3 cột grid", d2: "3 cột hẹp hơn", d3: "2 cột", d4: "1 cột, thumbnail 88px bên trái" },
+        { c: "PlatformBentoGrid", d1: "Bento 4×2, 1 ô lớn 2×2", d2: "Bento 3 cột", d3: "2 cột, mọi ô vuông", d4: "1 cột, card ngang, ô lớn lên đầu" },
+        { c: "VideoStoryStrip", d1: "1 lớn + 3 nhỏ", d2: "1 lớn + 2 nhỏ", d3: "Slider snap", d4: "Slider 1 card/khung" },
+        { c: "MediaGallery", d1: "Masonry 3 cột + lightbox", d2: "3 cột", d3: "2 cột", d4: "Slider snap, đếm 3/12" },
+        { c: "ArticleBody", d1: "720px giữa, ảnh tràn 1080px", d2: "680px giữa", d3: "Full - gutter 32px", d4: "Full - gutter 20px, chữ 17px" }
+      ],
+      risks: [
+        { level: "Cao", area: "Motion", color: "var(--red-600)", chipBg: "var(--status-danger-soft)", title: "Pinned scroll-to-horizontal của Story Rail", why: "GSAP ScrollTrigger pin dễ xung đột với sticky header, smooth-scroll của trình duyệt và thay đổi chiều cao ảnh khi lazy-load; trên máy yếu và trackpad quán tính rất dễ giật.", fix: "Chỉ bật ở ≥1024px và khi con trỏ là chuột; khoá chiều cao ảnh trước khi tính toán; luôn dựng sẵn biến thể carousel làm fallback thay vì coi nó là phương án phụ." },
+        { level: "Cao", area: "Media", color: "var(--red-600)", chipBg: "var(--status-danger-soft)", title: "Google Drive làm nguồn ảnh", why: "Drive có quota, không có variant responsive, không có định dạng hiện đại và độ trễ cao; gọi trực tiếp từ frontend sẽ vỡ khi lượng truy cập tăng.", fix: "Bắt buộc một Media Service ở giữa: đồng bộ Drive về object storage + CDN, sinh mediaId ổn định và nhiều kích thước. UI chỉ biết mediaId. Cần chốt hạng mục này trước khi vào high-fidelity." },
+        { level: "Trung bình", area: "Data", color: "var(--amber-600)", chipBg: "var(--status-warning-soft)", title: "Chưa xác định nguồn dữ liệu Sự kiện", why: "Section “Đang diễn ra” cần trạng thái theo thời gian thực (sắp diễn ra / đang diễn ra / đã kết thúc) nhưng chưa có Event API hay collection nào được xác nhận.", fix: "V1: lùi xuống collection Event trong CMS với startAt/endAt, tính trạng thái ở client. Chỉ làm real-time khi có API thật (V1.5)." },
+        { level: "Trung bình", area: "Integration", color: "var(--amber-600)", chipBg: "var(--status-warning-soft)", title: "Facebook Graph API cho Social", why: "Chỉ đọc được fanpage do tổ chức quản lý, cần page token dài hạn, token có thể hết hạn và Meta thay đổi policy thường xuyên.", fix: "Coi Social là component phụ thuộc dữ liệu: cache server-side 15 phút, và nếu API lỗi thì thay bằng CTA theo dõi fanpage — không để khung rỗng." },
+        { level: "Trung bình", area: "Motion", color: "var(--amber-600)", chipBg: "var(--status-warning-soft)", title: "View Transition API cho shared image", why: "Hỗ trợ cross-document còn chưa đồng đều; Safari và một số webview sẽ không chạy.", fix: "Xem như tăng cường tiến bộ: fallback là fade thường. Không thiết kế bố cục phụ thuộc vào transition này." },
+        { level: "Thấp", area: "Auth", color: "var(--text-muted)", chipBg: "var(--surface-sunken)", title: "Login/User trên header", why: "Chưa có hệ thống định danh sinh viên thống nhất; nếu thiết kế cả trang cá nhân sẽ tạo kỳ vọng sai.", fix: "V1 chỉ giữ entry point đăng nhập trỏ tới nền tảng có sẵn. Trang cá nhân để V2." },
+        { level: "Thấp", area: "Content", color: "var(--text-muted)", chipBg: "var(--surface-sunken)", title: "Story Rail cần nội dung tuyển chọn thủ công", why: "5–7 story cần ảnh dọc chất lượng cao và biên tập riêng; nếu không có người phụ trách, section sẽ nhanh chóng cũ.", fix: "Chốt nhịp cập nhật (2 tuần/lần) và quy chuẩn ảnh 3:4 tối thiểu 1200px trước khi phát hành." }
+      ],
+      phases: [
+        {
+          name: "V1",
+          goal: "Cổng tin tức chính thức chạy được, dữ liệu chắc chắn có nguồn.",
+          border: "var(--border-brand)",
+          bg: "var(--surface-brand-soft)",
+          dot: "var(--brand-primary)",
+          items: [
+            "Homepage: Header, Hero, Trending, Featured, Story Rail, Latest News, Video, Bento, Footer",
+            "Article Page với 8 block CMS",
+            "Trang danh mục tin + trang chủ đề (tag)",
+            "Tìm kiếm cơ bản trên index của CMS",
+            "Media Service + MediaImage(mediaId)",
+            "Signature motion 01, 02, 04",
+            "4 breakpoint + prefers-reduced-motion",
+            "Entry point đăng nhập (chưa có trang cá nhân)"
+          ]
+        },
+        {
+          name: "V1.5",
+          goal: "Bổ sung lớp dữ liệu động và media nâng cao.",
+          border: "var(--gold-200)",
+          bg: "var(--surface-gold-soft)",
+          dot: "var(--gold-500)",
+          items: [
+            "Section “Đang diễn ra” với Event collection",
+            "Social / Media mosaic + fallback fanpage",
+            "MediaGallery lightbox đầy đủ",
+            "Shared image transition (motion 03)",
+            "Hub Sinh viên 5 tốt + 3 trang chương trình còn lại",
+            "Trang văn bản — hướng dẫn"
+          ]
+        },
+        {
+          name: "V2",
+          goal: "Nền tảng có tài khoản và dữ liệu.",
+          border: "var(--border-default)",
+          bg: "var(--surface-subtle)",
+          dot: "var(--ink-400)",
+          items: [
+            "Đăng nhập sinh viên + trang cá nhân",
+            "Đăng ký hoạt động và tình nguyện trực tiếp trên cổng",
+            "Dashboard dữ liệu/báo cáo phong trào",
+            "Bản tin email và thông báo",
+            "Phiên bản tiếng Anh",
+            "Dark mode (token đã có sẵn)"
+          ]
+        }
+      ],
+      nextSteps: [
+        { n: "01", title: "Phê duyệt tài liệu này", desc: "Chốt IA, section map, phạm vi V1 và danh sách rủi ro." },
+        { n: "02", title: "High-fidelity Homepage", desc: "Dựng đủ 4 breakpoint kèm loading/empty/error cho từng section." },
+        { n: "03", title: "High-fidelity Article Page", desc: "8 block CMS, tags, share, related news, shared image transition." }
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>

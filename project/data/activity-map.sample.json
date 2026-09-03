@@ -1,0 +1,983 @@
+{
+  "note": "34 đơn vị hành chính cấp tỉnh (sau sáp nhập 2025). Hoàng Sa và Trường Sa là hai quần đảo thuộc chủ quyền Việt Nam, hiển thị trên bản đồ mang tính chất minh họa — không phải đơn vị cấp tỉnh, không tính vào provinces_reported. Khối Hội Sinh viên Việt Nam ở ngoài nước được tính riêng, không nằm trong 34 đơn vị trong nước.",
+  "updated_at": "2026-09-02T07:40:00+07:00",
+  "summary": {
+    "total_activities": 4214,
+    "total_articles": 1470,
+    "participating_students": 426510,
+    "provinces_total": 34,
+    "provinces_reported": 32,
+    "period": "Tháng 8/2026"
+  },
+  "categories": [
+    {
+      "slug": "all",
+      "label": "Tất cả"
+    },
+    {
+      "slug": "sv5tot",
+      "label": "Sinh viên 5 tốt"
+    },
+    {
+      "slug": "tinhnguyen",
+      "label": "Tình nguyện"
+    },
+    {
+      "slug": "nckh",
+      "label": "Nghiên cứu khoa học"
+    },
+    {
+      "slug": "hoinhap",
+      "label": "Hội nhập"
+    }
+  ],
+  "archipelagos": [
+    {
+      "id": "hoang-sa",
+      "name": "Quần đảo Hoàng Sa",
+      "administered_by": "TP. Đà Nẵng",
+      "lat": 16.5,
+      "lon": 112,
+      "islet_offsets": [
+        [
+          0,
+          0
+        ],
+        [
+          0.55,
+          0.5
+        ],
+        [
+          -0.5,
+          0.62
+        ],
+        [
+          0.35,
+          -0.55
+        ],
+        [
+          -0.45,
+          -0.35
+        ]
+      ],
+      "illustrative": true
+    },
+    {
+      "id": "truong-sa",
+      "name": "Quần đảo Trường Sa",
+      "administered_by": "Tỉnh Khánh Hoà",
+      "lat": 9.6,
+      "lon": 113.2,
+      "islet_offsets": [
+        [
+          0,
+          0
+        ],
+        [
+          0.7,
+          0.85
+        ],
+        [
+          -0.6,
+          0.7
+        ],
+        [
+          0.5,
+          -0.8
+        ],
+        [
+          -0.75,
+          -0.5
+        ],
+        [
+          1.1,
+          -0.1
+        ],
+        [
+          -0.15,
+          1.25
+        ]
+      ],
+      "illustrative": true
+    }
+  ],
+  "provinces": [
+    {
+      "province_id": "01",
+      "province_name": "Hà Nội",
+      "slug": "ha-noi",
+      "lat": 21.028,
+      "lon": 105.854,
+      "activity_count": 412,
+      "article_count": 188,
+      "unit_count": 62,
+      "latest_article": {
+        "title": "Đại hội đại biểu toàn quốc lần thứ XII khai mạc tại Hà Nội",
+        "published_at": "02.09.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 118,
+        "tinhnguyen": 142,
+        "nckh": 96,
+        "hoinhap": 56
+      },
+      "student_count": 49160,
+      "reported": true,
+      "unit_url": "/don-vi/ha-noi",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "79",
+      "province_name": "TP. Hồ Chí Minh",
+      "slug": "tp-ho-chi-minh",
+      "lat": 10.776,
+      "lon": 106.7,
+      "activity_count": 486,
+      "article_count": 214,
+      "unit_count": 74,
+      "latest_article": {
+        "title": "Ngày hội “Sinh viên với chuyển đổi số” 2026 mở đăng ký",
+        "published_at": "02.09.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 136,
+        "tinhnguyen": 168,
+        "nckh": 118,
+        "hoinhap": 64
+      },
+      "student_count": 58540,
+      "reported": true,
+      "unit_url": "/don-vi/tp-ho-chi-minh",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "48",
+      "province_name": "Đà Nẵng",
+      "slug": "da-nang",
+      "lat": 16.047,
+      "lon": 108.206,
+      "activity_count": 268,
+      "article_count": 96,
+      "unit_count": 29,
+      "latest_article": {
+        "title": "Tập huấn cán bộ Hội cấp trường khu vực miền Trung",
+        "published_at": "02.09.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 71,
+        "tinhnguyen": 88,
+        "nckh": 74,
+        "hoinhap": 35
+      },
+      "student_count": 24720,
+      "reported": true,
+      "unit_url": "/don-vi/da-nang",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "31",
+      "province_name": "Hải Phòng",
+      "slug": "hai-phong",
+      "lat": 20.865,
+      "lon": 106.684,
+      "activity_count": 168,
+      "article_count": 54,
+      "unit_count": 19,
+      "latest_article": {
+        "title": "Sinh viên Hàng hải khảo sát chất lượng nước ven bờ Đồ Sơn",
+        "published_at": "31.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 38,
+        "tinhnguyen": 72,
+        "nckh": 43,
+        "hoinhap": 15
+      },
+      "student_count": 16020,
+      "reported": true,
+      "unit_url": "/don-vi/hai-phong",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "46",
+      "province_name": "Huế",
+      "slug": "hue",
+      "lat": 16.463,
+      "lon": 107.59,
+      "activity_count": 156,
+      "article_count": 58,
+      "unit_count": 18,
+      "latest_article": {
+        "title": "Nhóm sinh viên số hoá 4.000 trang tư liệu Hán Nôm",
+        "published_at": "01.09.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 38,
+        "tinhnguyen": 52,
+        "nckh": 51,
+        "hoinhap": 15
+      },
+      "student_count": 15110,
+      "reported": true,
+      "unit_url": "/don-vi/hue",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "92",
+      "province_name": "Cần Thơ",
+      "slug": "can-tho",
+      "lat": 10.034,
+      "lon": 105.786,
+      "activity_count": 214,
+      "article_count": 76,
+      "unit_count": 26,
+      "latest_article": {
+        "title": "Mô hình quan trắc mặn do sinh viên tự chế tạo",
+        "published_at": "01.09.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 54,
+        "tinhnguyen": 84,
+        "nckh": 58,
+        "hoinhap": 18
+      },
+      "student_count": 21560,
+      "reported": true,
+      "unit_url": "/don-vi/can-tho",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "08",
+      "province_name": "Tuyên Quang",
+      "slug": "tuyen-quang",
+      "lat": 21.823,
+      "lon": 105.214,
+      "activity_count": 74,
+      "article_count": 24,
+      "unit_count": 9,
+      "latest_article": {
+        "title": "Hành trình “Theo dấu chân lịch sử” của sinh viên vùng Việt Bắc",
+        "published_at": "29.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 16,
+        "tinhnguyen": 38,
+        "nckh": 15,
+        "hoinhap": 5
+      },
+      "student_count": 7460,
+      "reported": true,
+      "unit_url": "/don-vi/tuyen-quang",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "04",
+      "province_name": "Cao Bằng",
+      "slug": "cao-bang",
+      "lat": 22.666,
+      "lon": 106.258,
+      "activity_count": null,
+      "article_count": null,
+      "unit_count": null,
+      "latest_article": null,
+      "category_distribution": null,
+      "student_count": null,
+      "reported": false,
+      "unit_url": "/don-vi/cao-bang",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "12",
+      "province_name": "Lai Châu",
+      "slug": "lai-chau",
+      "lat": 22.396,
+      "lon": 103.459,
+      "activity_count": 43,
+      "article_count": 13,
+      "unit_count": 5,
+      "latest_article": {
+        "title": "Đội hình sửa chữa điện dân dụng tại các xã vùng cao",
+        "published_at": "26.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 6,
+        "tinhnguyen": 28,
+        "nckh": 7
+      },
+      "student_count": 4190,
+      "reported": true,
+      "unit_url": "/don-vi/lai-chau",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "10",
+      "province_name": "Lào Cai",
+      "slug": "lao-cai",
+      "lat": 22.485,
+      "lon": 103.975,
+      "activity_count": 76,
+      "article_count": 25,
+      "unit_count": 8,
+      "latest_article": {
+        "title": "Lớp tiếng Việt hè cho học sinh vùng cao Bát Xát",
+        "published_at": "27.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 13,
+        "tinhnguyen": 45,
+        "nckh": 13,
+        "hoinhap": 5
+      },
+      "student_count": 6870,
+      "reported": true,
+      "unit_url": "/don-vi/lao-cai",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "19",
+      "province_name": "Thái Nguyên",
+      "slug": "thai-nguyen",
+      "lat": 21.594,
+      "lon": 105.848,
+      "activity_count": 187,
+      "article_count": 58,
+      "unit_count": 22,
+      "latest_article": {
+        "title": "Ngày hội hiến máu “Chủ nhật đỏ” của sinh viên vùng Việt Bắc",
+        "published_at": "30.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 52,
+        "tinhnguyen": 78,
+        "nckh": 41,
+        "hoinhap": 16
+      },
+      "student_count": 18380,
+      "reported": true,
+      "unit_url": "/don-vi/thai-nguyen",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "11",
+      "province_name": "Điện Biên",
+      "slug": "dien-bien",
+      "lat": 21.386,
+      "lon": 103.017,
+      "activity_count": 62,
+      "article_count": 24,
+      "unit_count": 7,
+      "latest_article": {
+        "title": "Bàn giao 12 điểm trường tại Điện Biên trước năm học mới",
+        "published_at": "31.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 9,
+        "tinhnguyen": 42,
+        "nckh": 8
+      },
+      "student_count": 5910,
+      "reported": true,
+      "unit_url": "/don-vi/dien-bien",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "20",
+      "province_name": "Lạng Sơn",
+      "slug": "lang-son",
+      "lat": 21.853,
+      "lon": 106.761,
+      "activity_count": 57,
+      "article_count": 18,
+      "unit_count": 7,
+      "latest_article": {
+        "title": "Sinh viên hỗ trợ số hoá thủ tục cho hộ kinh doanh vùng biên",
+        "published_at": "28.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 11,
+        "tinhnguyen": 30,
+        "nckh": 12,
+        "hoinhap": 4
+      },
+      "student_count": 5790,
+      "reported": true,
+      "unit_url": "/don-vi/lang-son",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "14",
+      "province_name": "Sơn La",
+      "slug": "son-la",
+      "lat": 21.327,
+      "lon": 103.914,
+      "activity_count": 68,
+      "article_count": 21,
+      "unit_count": 8,
+      "latest_article": {
+        "title": "Đội hình nông nghiệp sinh viên hỗ trợ vùng trồng cây ăn quả",
+        "published_at": "29.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 12,
+        "tinhnguyen": 38,
+        "nckh": 14
+      },
+      "student_count": 6680,
+      "reported": true,
+      "unit_url": "/don-vi/son-la",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "25",
+      "province_name": "Phú Thọ",
+      "slug": "phu-tho",
+      "lat": 21.323,
+      "lon": 105.402,
+      "activity_count": 112,
+      "article_count": 34,
+      "unit_count": 13,
+      "latest_article": {
+        "title": "Chương trình “Tiếp sức mùa thi” mở rộng tại vùng trung du",
+        "published_at": "30.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 26,
+        "tinhnguyen": 54,
+        "nckh": 22,
+        "hoinhap": 10
+      },
+      "student_count": 10900,
+      "reported": true,
+      "unit_url": "/don-vi/phu-tho",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "27",
+      "province_name": "Bắc Ninh",
+      "slug": "bac-ninh",
+      "lat": 21.186,
+      "lon": 106.076,
+      "activity_count": 124,
+      "article_count": 39,
+      "unit_count": 15,
+      "latest_article": {
+        "title": "Sinh viên kỹ thuật thực tập tại các nhà máy công nghệ cao",
+        "published_at": "01.09.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 31,
+        "tinhnguyen": 48,
+        "nckh": 33,
+        "hoinhap": 12
+      },
+      "student_count": 12450,
+      "reported": true,
+      "unit_url": "/don-vi/bac-ninh",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "22",
+      "province_name": "Quảng Ninh",
+      "slug": "quang-ninh",
+      "lat": 20.971,
+      "lon": 107.043,
+      "activity_count": 98,
+      "article_count": 31,
+      "unit_count": 11,
+      "latest_article": {
+        "title": "Đội hình sinh viên số hoá tư liệu di sản vùng vịnh",
+        "published_at": "29.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 21,
+        "tinhnguyen": 44,
+        "nckh": 24,
+        "hoinhap": 9
+      },
+      "student_count": 9290,
+      "reported": true,
+      "unit_url": "/don-vi/quang-ninh",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "33",
+      "province_name": "Hưng Yên",
+      "slug": "hung-yen",
+      "lat": 20.646,
+      "lon": 106.051,
+      "activity_count": 86,
+      "article_count": 26,
+      "unit_count": 10,
+      "latest_article": {
+        "title": "Ngày hội việc làm sinh viên khu vực đồng bằng sông Hồng",
+        "published_at": "28.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 22,
+        "tinhnguyen": 36,
+        "nckh": 20,
+        "hoinhap": 8
+      },
+      "student_count": 8380,
+      "reported": true,
+      "unit_url": "/don-vi/hung-yen",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "37",
+      "province_name": "Ninh Bình",
+      "slug": "ninh-binh",
+      "lat": 20.25,
+      "lon": 105.974,
+      "activity_count": 94,
+      "article_count": 29,
+      "unit_count": 11,
+      "latest_article": {
+        "title": "Sinh viên hướng dẫn viên tình nguyện tại khu di sản",
+        "published_at": "27.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 21,
+        "tinhnguyen": 42,
+        "nckh": 22,
+        "hoinhap": 9
+      },
+      "student_count": 9200,
+      "reported": true,
+      "unit_url": "/don-vi/ninh-binh",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "38",
+      "province_name": "Thanh Hoá",
+      "slug": "thanh-hoa",
+      "lat": 19.807,
+      "lon": 105.776,
+      "activity_count": 121,
+      "article_count": 36,
+      "unit_count": 13,
+      "latest_article": {
+        "title": "Tiếp sức mùa thi tại 27 điểm thi khu vực Bắc Trung Bộ",
+        "published_at": "26.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 26,
+        "tinhnguyen": 61,
+        "nckh": 24,
+        "hoinhap": 10
+      },
+      "student_count": 11100,
+      "reported": true,
+      "unit_url": "/don-vi/thanh-hoa",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "40",
+      "province_name": "Nghệ An",
+      "slug": "nghe-an",
+      "lat": 18.679,
+      "lon": 105.681,
+      "activity_count": 137,
+      "article_count": 45,
+      "unit_count": 15,
+      "latest_article": {
+        "title": "Sinh viên Vinh xây dựng bản đồ ngập lụt cộng đồng",
+        "published_at": "29.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 32,
+        "tinhnguyen": 63,
+        "nckh": 31,
+        "hoinhap": 11
+      },
+      "student_count": 12750,
+      "reported": true,
+      "unit_url": "/don-vi/nghe-an",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "42",
+      "province_name": "Hà Tĩnh",
+      "slug": "ha-tinh",
+      "lat": 18.343,
+      "lon": 105.906,
+      "activity_count": 79,
+      "article_count": 24,
+      "unit_count": 9,
+      "latest_article": {
+        "title": "Đội hình phòng chống thiên tai của sinh viên trước mùa mưa bão",
+        "published_at": "28.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 17,
+        "tinhnguyen": 42,
+        "nckh": 15,
+        "hoinhap": 5
+      },
+      "student_count": 7580,
+      "reported": true,
+      "unit_url": "/don-vi/ha-tinh",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "45",
+      "province_name": "Quảng Trị",
+      "slug": "quang-tri",
+      "lat": 17.468,
+      "lon": 106.622,
+      "activity_count": 88,
+      "article_count": 27,
+      "unit_count": 10,
+      "latest_article": {
+        "title": "Hành trình tri ân tại các nghĩa trang liệt sĩ của sinh viên",
+        "published_at": "31.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 19,
+        "tinhnguyen": 47,
+        "nckh": 16,
+        "hoinhap": 6
+      },
+      "student_count": 8420,
+      "reported": true,
+      "unit_url": "/don-vi/quang-tri",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "51",
+      "province_name": "Quảng Ngãi",
+      "slug": "quang-ngai",
+      "lat": 15.12,
+      "lon": 108.792,
+      "activity_count": 84,
+      "article_count": 26,
+      "unit_count": 9,
+      "latest_article": {
+        "title": "Sinh viên kiến trúc đo vẽ nhà cổ và làng biển",
+        "published_at": "25.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 18,
+        "tinhnguyen": 40,
+        "nckh": 20,
+        "hoinhap": 6
+      },
+      "student_count": 7690,
+      "reported": true,
+      "unit_url": "/don-vi/quang-ngai",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "52",
+      "province_name": "Gia Lai",
+      "slug": "gia-lai",
+      "lat": 13.782,
+      "lon": 109.219,
+      "activity_count": 116,
+      "article_count": 36,
+      "unit_count": 13,
+      "latest_article": {
+        "title": "Ngày hội khởi nghiệp sinh viên Nam Trung Bộ",
+        "published_at": "28.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 28,
+        "tinhnguyen": 49,
+        "nckh": 29,
+        "hoinhap": 10
+      },
+      "student_count": 10990,
+      "reported": true,
+      "unit_url": "/don-vi/gia-lai",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "56",
+      "province_name": "Khánh Hoà",
+      "slug": "khanh-hoa",
+      "lat": 12.238,
+      "lon": 109.196,
+      "activity_count": 134,
+      "article_count": 44,
+      "unit_count": 15,
+      "latest_article": {
+        "title": "Chiến dịch làm sạch bờ biển Nha Trang mùa cao điểm",
+        "published_at": "30.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 31,
+        "tinhnguyen": 63,
+        "nckh": 28,
+        "hoinhap": 12
+      },
+      "student_count": 12680,
+      "reported": true,
+      "unit_url": "/don-vi/khanh-hoa",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "68",
+      "province_name": "Lâm Đồng",
+      "slug": "lam-dong",
+      "lat": 11.94,
+      "lon": 108.442,
+      "activity_count": 108,
+      "article_count": 33,
+      "unit_count": 12,
+      "latest_article": {
+        "title": "Sinh viên Đà Lạt khảo sát rừng thông cùng kiểm lâm",
+        "published_at": "24.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 24,
+        "tinhnguyen": 47,
+        "nckh": 28,
+        "hoinhap": 9
+      },
+      "student_count": 10160,
+      "reported": true,
+      "unit_url": "/don-vi/lam-dong",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "66",
+      "province_name": "Đắk Lắk",
+      "slug": "dak-lak",
+      "lat": 12.68,
+      "lon": 108.05,
+      "activity_count": 96,
+      "article_count": 29,
+      "unit_count": 11,
+      "latest_article": {
+        "title": "Đội hình chuyển đổi số hỗ trợ hợp tác xã cà phê",
+        "published_at": "27.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 21,
+        "tinhnguyen": 45,
+        "nckh": 23,
+        "hoinhap": 7
+      },
+      "student_count": 9250,
+      "reported": true,
+      "unit_url": "/don-vi/dak-lak",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "75",
+      "province_name": "Đồng Nai",
+      "slug": "dong-nai",
+      "lat": 10.95,
+      "lon": 106.822,
+      "activity_count": 142,
+      "article_count": 44,
+      "unit_count": 17,
+      "latest_article": {
+        "title": "Sinh viên hỗ trợ công nhân trẻ học tiếng Anh buổi tối",
+        "published_at": "26.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 34,
+        "tinhnguyen": 64,
+        "nckh": 32,
+        "hoinhap": 12
+      },
+      "student_count": 14150,
+      "reported": true,
+      "unit_url": "/don-vi/dong-nai",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "72",
+      "province_name": "Tây Ninh",
+      "slug": "tay-ninh",
+      "lat": 11.31,
+      "lon": 106.098,
+      "activity_count": 72,
+      "article_count": 22,
+      "unit_count": 8,
+      "latest_article": {
+        "title": "Lớp học biên giới của sinh viên tình nguyện",
+        "published_at": "25.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 14,
+        "tinhnguyen": 40,
+        "hoinhap": 5
+      },
+      "student_count": 6780,
+      "reported": true,
+      "unit_url": "/don-vi/tay-ninh",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "86",
+      "province_name": "Vĩnh Long",
+      "slug": "vinh-long",
+      "lat": 10.253,
+      "lon": 105.972,
+      "activity_count": 81,
+      "article_count": 25,
+      "unit_count": 9,
+      "latest_article": {
+        "title": "Sinh viên hỗ trợ nông dân đăng ký mã vùng trồng",
+        "published_at": "26.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 18,
+        "tinhnguyen": 39,
+        "nckh": 18,
+        "hoinhap": 6
+      },
+      "student_count": 7620,
+      "reported": true,
+      "unit_url": "/don-vi/vinh-long",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "87",
+      "province_name": "Đồng Tháp",
+      "slug": "dong-thap",
+      "lat": 10.459,
+      "lon": 105.637,
+      "activity_count": 77,
+      "article_count": 23,
+      "unit_count": 9,
+      "latest_article": {
+        "title": "Mô hình lọc nước cho trường học vùng ngập của sinh viên",
+        "published_at": "24.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 16,
+        "tinhnguyen": 38,
+        "hoinhap": 6
+      },
+      "student_count": 7530,
+      "reported": true,
+      "unit_url": "/don-vi/dong-thap",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "91",
+      "province_name": "An Giang",
+      "slug": "an-giang",
+      "lat": 10.012,
+      "lon": 105.081,
+      "activity_count": 94,
+      "article_count": 28,
+      "unit_count": 11,
+      "latest_article": {
+        "title": "Đội hình sinh viên khảo sát rác thải nhựa đảo Phú Quốc",
+        "published_at": "23.08.2026"
+      },
+      "category_distribution": {
+        "sv5tot": 19,
+        "tinhnguyen": 50,
+        "nckh": 18,
+        "hoinhap": 7
+      },
+      "student_count": 9200,
+      "reported": true,
+      "unit_url": "/don-vi/an-giang",
+      "period": "Tháng 8/2026"
+    },
+    {
+      "province_id": "96",
+      "province_name": "Cà Mau",
+      "slug": "ca-mau",
+      "lat": 9.177,
+      "lon": 105.15,
+      "activity_count": null,
+      "article_count": null,
+      "unit_count": null,
+      "latest_article": null,
+      "category_distribution": null,
+      "student_count": null,
+      "reported": false,
+      "unit_url": "/don-vi/ca-mau",
+      "period": "Tháng 8/2026"
+    }
+  ],
+  "overseas": {
+    "label": "Hội Sinh viên Việt Nam ở ngoài nước",
+    "countries": [
+      {
+        "name": "Hội Sinh viên Việt Nam tại Australia",
+        "activity_count": 148
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Pháp",
+        "activity_count": 132
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Singapore",
+        "activity_count": 96
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Thái Lan",
+        "activity_count": 88
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Italia",
+        "activity_count": 54
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Hàn Quốc",
+        "activity_count": 126
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Bỉ",
+        "activity_count": 47
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Hungary",
+        "activity_count": 41
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Đức",
+        "activity_count": 118
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại New Zealand",
+        "activity_count": 52
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Vương quốc Anh",
+        "activity_count": 112
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Hà Lan",
+        "activity_count": 63
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Áo",
+        "activity_count": 38
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Liên bang Nga",
+        "activity_count": 104
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Ireland",
+        "activity_count": 29
+      },
+      {
+        "name": "Hội Sinh viên Việt Nam tại Ấn Độ",
+        "activity_count": 34
+      }
+    ],
+    "note": "Khối ngoài nước — tính riêng, không thuộc 34 đơn vị trong nước."
+  },
+  "source": "Dữ liệu mẫu (fixture) dùng cho bản thiết kế. API thật chưa được kết nối.",
+  "planned_endpoint": "GET /api/v1/activity-map?category=<slug>",
+  "geometry_source": {
+    "name": "Natural Earth 110m qua world-atlas 2.0.2 (topojson)",
+    "unit_codes": "Mã tỉnh, thành theo danh mục hành chính 2025 — CẦN KIỂM CHỨNG với danh mục chính thức",
+    "verified": false
+  },
+  "reporting_period": {
+    "label": "Tháng 8/2026",
+    "from": "2026-08-01",
+    "to": "2026-08-31"
+  }
+}

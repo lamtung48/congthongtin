@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>HSV Homepage V2 — kiểm tra rail (đầu / giữa / cuối) tại 1440</title>
+<style>
+  body { margin: 0; background: #0b1220; font-family: ui-monospace, monospace; color: #cbd5e1; }
+  .row { display: flex; gap: 20px; padding: 20px; align-items: flex-start; }
+  .box { display: flex; flex-direction: column; gap: 8px; }
+  .frame { width: 576px; height: 360px; overflow: hidden; border: 1px solid #1e293b; }
+  iframe { border: 0; width: 1440px; height: 900px; transform: scale(.4); transform-origin: 0 0; }
+  span { font-size: 12px; letter-spacing: .08em; }
+</style>
+</head>
+<body>
+<div class="row">
+  <div class="box"><span>RAIL · ĐẦU</span><div class="frame"><iframe data-p="0" src="../HSV Homepage V2.dc.html"></iframe></div></div>
+  <div class="box"><span>RAIL · GIỮA</span><div class="frame"><iframe data-p="0.5" src="../HSV Homepage V2.dc.html"></iframe></div></div>
+  <div class="box"><span>RAIL · CUỐI</span><div class="frame"><iframe data-p="1" src="../HSV Homepage V2.dc.html"></iframe></div></div>
+</div>
+<script>
+  function place(f) {
+    const p = parseFloat(f.dataset.p);
+    const d = f.contentDocument;
+    const sec = d.querySelector('[data-screen-label="Dòng chảy sinh viên"]');
+    if (!sec) return;
+    const sticky = sec.firstElementChild;
+    const range = Math.max(sec.offsetHeight - sticky.offsetHeight, 0);
+    f.contentWindow.scrollTo(0, sec.offsetTop - 64 + p * range);
+  }
+  window.addEventListener('load', () => {
+    document.querySelectorAll('iframe').forEach((f) => setTimeout(() => place(f), 1400));
+  });
+</script>
+</body>
+</html>
