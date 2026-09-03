@@ -1,0 +1,308 @@
+@import "tailwindcss";
+
+/* ============================================================
+   HSV Digital Design System — tokens
+   Ported from the Claude Design handoff bundle:
+   _ds/hsv-digital-design-system-.../tokens/*.css
+   ============================================================ */
+:root {
+  /* Base — HSV Việt Nam identity blue */
+  --blue-950: #04162b;
+  --blue-900: #062a4d;
+  --blue-800: #083a6a;
+  --blue-700: #0a4c8a;
+  --blue-600: #0b5fa5;
+  --blue-500: #1272c2;
+  --blue-400: #3f92db;
+  --blue-300: #79b4e9;
+  --blue-200: #b6d6f4;
+  --blue-100: #dceafa;
+  --blue-50: #f0f6fd;
+  /* Base — flag red */
+  --red-700: #a01711;
+  --red-600: #c11d16;
+  --red-500: #da251d;
+  --red-300: #f08b86;
+  --red-100: #fbdedc;
+  /* Base — sao vàng */
+  --gold-600: #c99a00;
+  --gold-500: #f0b400;
+  --gold-400: #ffcd00;
+  --gold-200: #ffe9a3;
+  --gold-50: #fff8e1;
+  /* Base — neutrals (warm-cool ink) */
+  --ink-1000: #0a0d12;
+  --ink-900: #12161d;
+  --ink-800: #1d232c;
+  --ink-700: #2c343f;
+  --ink-600: #454e5b;
+  --ink-500: #647081;
+  --ink-400: #8d97a5;
+  --ink-300: #b9c1cc;
+  --ink-200: #d9dee5;
+  --ink-150: #e6eaef;
+  --ink-100: #f0f2f6;
+  --ink-50: #f7f8fa;
+  --white: #ffffff;
+  /* Semantic — success / warn / danger / info */
+  --green-600: #0f7a4d;
+  --green-500: #159c62;
+  --green-100: #dcf3e8;
+  --amber-600: #b3720a;
+  --amber-500: #e0910f;
+  --amber-100: #fdf0d8;
+  --info-500: var(--blue-500);
+  /* Semantic aliases */
+  --brand-primary: var(--blue-600);
+  --brand-primary-hover: var(--blue-700);
+  --brand-primary-press: var(--blue-800);
+  --brand-primary-soft: var(--blue-50);
+  --brand-accent: var(--red-500);
+  --brand-gold: var(--gold-400);
+  --text-strong: var(--ink-1000);
+  --text-body: var(--ink-800);
+  --text-muted: var(--ink-500);
+  --text-faint: var(--ink-400);
+  --text-invert: var(--white);
+  --text-brand: var(--blue-600);
+  --text-link: var(--blue-600);
+  --text-link-hover: var(--blue-800);
+  --surface-page: var(--white);
+  --surface-subtle: var(--ink-50);
+  --surface-card: var(--white);
+  --surface-sunken: var(--ink-100);
+  --surface-invert: var(--ink-1000);
+  --surface-brand: var(--blue-600);
+  --surface-brand-soft: var(--blue-50);
+  --surface-gold-soft: var(--gold-50);
+  --border-subtle: var(--ink-150);
+  --border-default: var(--ink-200);
+  --border-strong: var(--ink-300);
+  --border-brand: var(--blue-600);
+  --border-invert: rgba(255, 255, 255, 0.18);
+  --focus-ring: var(--blue-400);
+  --status-success: var(--green-500);
+  --status-success-soft: var(--green-100);
+  --status-warning: var(--amber-500);
+  --status-warning-soft: var(--amber-100);
+  --status-danger: var(--red-600);
+  --status-danger-soft: var(--red-100);
+  --status-info: var(--blue-500);
+  --status-info-soft: var(--blue-100);
+  --scrim-bottom: linear-gradient(180deg, rgba(4, 22, 43, 0) 0%, rgba(4, 22, 43, 0.15) 40%, rgba(4, 22, 43, 0.82) 100%);
+  --scrim-left: linear-gradient(90deg, rgba(4, 22, 43, 0.88) 0%, rgba(4, 22, 43, 0.45) 45%, rgba(4, 22, 43, 0) 100%);
+  --scrim-flat: rgba(4, 22, 43, 0.55);
+
+  /* Typography */
+  --font-editorial: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --font-ui: var(--font-be-vietnam-pro), "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: var(--font-editorial);
+  --font-body: var(--font-ui);
+  --fs-display-1: clamp(48px, 6.6vw, 92px);
+  --fs-display-2: clamp(38px, 4.6vw, 64px);
+  --fs-h1: 44px;
+  --fs-h2: 34px;
+  --fs-h3: 26px;
+  --fs-h4: 21px;
+  --fs-h5: 18px;
+  --fs-lead: 19px;
+  --fs-body: 16px;
+  --fs-body-sm: 14.5px;
+  --fs-caption: 13px;
+  --fs-micro: 11.5px;
+  --lh-display: 1.02;
+  --lh-heading: 1.16;
+  --lh-lead: 1.55;
+  --lh-body: 1.68;
+  --lh-tight: 1.3;
+  --ls-display: -0.02em;
+  --ls-heading: -0.012em;
+  --ls-body: 0;
+  --ls-eyebrow: 0.14em;
+  --ls-mono: 0.02em;
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-extrabold: 800;
+  --measure-narrow: 34ch;
+  --measure-body: 66ch;
+  --measure-wide: 82ch;
+
+  /* Spacing / layout */
+  --sp-0: 0px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+  --sp-20: 80px;
+  --sp-24: 96px;
+  --sp-32: 128px;
+  --sp-40: 160px;
+  --section-y: clamp(64px, 7vw, 128px);
+  --grid-cols: 12;
+  --grid-gap: 24px;
+  --radius-none: 0px;
+  --radius-xs: 4px;
+  --border-w-hair: 1px;
+  --border-w-strong: 2px;
+  --rule-accent: 3px;
+
+  /* Elevation */
+  --shadow-none: none;
+  --shadow-xs: 0 1px 2px rgba(10, 13, 18, 0.06);
+  --shadow-sm: 0 1px 3px rgba(10, 13, 18, 0.07), 0 1px 2px rgba(10, 13, 18, 0.04);
+  --shadow-md: 0 6px 16px -4px rgba(10, 13, 18, 0.1), 0 2px 6px -2px rgba(10, 13, 18, 0.06);
+  --shadow-lg: 0 18px 40px -12px rgba(10, 13, 18, 0.18), 0 4px 10px -4px rgba(10, 13, 18, 0.06);
+  --shadow-xl: 0 34px 68px -24px rgba(6, 42, 77, 0.28);
+  --shadow-brand: 0 12px 28px -10px rgba(11, 95, 165, 0.45);
+  --shadow-inset-hair: inset 0 0 0 1px var(--border-subtle);
+  --blur-glass: saturate(160%) blur(14px);
+  --glass-light: rgba(255, 255, 255, 0.72);
+  --glass-dark: rgba(6, 42, 77, 0.42);
+
+  /* Motion */
+  --ease-standard: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-cinematic: cubic-bezier(0.65, 0.05, 0.36, 1);
+  --dur-instant: 90ms;
+  --dur-fast: 160ms;
+  --dur-base: 240ms;
+  --dur-slow: 420ms;
+  --dur-cinematic: 900ms;
+  --dur-scroll-scene: 1400ms;
+  --stagger: 70ms;
+  --hover-lift: -2px;
+  --press-scale: 0.985;
+  --parallax-depth: 0.18;
+
+  /* ===== DESIGN SYSTEM LOCK · phần việc 1 =====
+     Layout: nội dung tối đa 1312px, gutter 64px tại 1440px.
+     Radius: 8 / 16 / 24 (chỉ ba bậc + pill + hairline 4px).
+     Header: 78px mặc định · 64px compact. */
+  --gutter: clamp(24px, 4.45vw, 64px);
+  --container-max: 1280px;
+  --container-wide: calc(1312px + 2 * var(--gutter));
+  --container-text: 720px;
+  --radius-sm: 8px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 24px;
+  --radius-pill: 999px;
+  --header-h: 78px;
+  --header-h-compact: 64px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-base: 1ms;
+    --dur-slow: 1ms;
+    --dur-cinematic: 1ms;
+    --dur-scroll-scene: 1ms;
+    --stagger: 0ms;
+    --hover-lift: 0px;
+    --press-scale: 1;
+  }
+}
+
+/* ============================================================
+   Base reset
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+html { color-scheme: light; }
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-body);
+  background: var(--surface-page);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-editorial);
+  color: var(--text-strong);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-heading);
+  font-weight: var(--fw-semibold);
+  margin: 0;
+}
+p { margin: 0; text-wrap: pretty; }
+a { color: var(--text-link); text-decoration: none; transition: color var(--dur-fast) var(--ease-standard); }
+button { font: inherit; }
+:where(a, button, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 3px;
+  border-radius: var(--radius-xs);
+}
+::selection { background: var(--blue-200); color: var(--ink-1000); }
+
+/* ============================================================
+   Signature keyframes
+   ============================================================ */
+@keyframes hsvShimmer { 0% { background-position: -180% 0; } 100% { background-position: 180% 0; } }
+@keyframes hsvPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.82); } }
+@keyframes hsvRise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes hsvSpin { to { transform: rotate(360deg); } }
+@keyframes hsvLineUp { from { opacity: 0; transform: translateY(104%); } to { opacity: 1; transform: none; } }
+@keyframes hsvMediaIn { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: none; } }
+
+/* Scroll reveal: content is visible by default; only "armed" once JS confirms
+   an element is still below the fold, so a script failure never hides content. */
+[data-reveal] { transition: opacity var(--dur-slow) var(--ease-entrance), transform var(--dur-slow) var(--ease-entrance); }
+[data-reveal].is-armed { opacity: 0; transform: translateY(16px); }
+[data-reveal].is-armed.is-in { opacity: 1; transform: none; }
+
+[data-gallery-tile]:focus-visible { outline: 3px solid var(--brand-primary); outline-offset: 3px; }
+[data-gallery-tile]:hover [data-gcap], [data-gallery-tile]:focus-visible [data-gcap] { opacity: 1 !important; }
+[data-gallery-tile]:hover [data-ghint], [data-gallery-tile]:focus-visible [data-ghint] { opacity: 1 !important; transform: none !important; }
+
+[data-ev-btn]:disabled { opacity: 0.34; cursor: default; }
+
+.hsvRail { scrollbar-width: none; -ms-overflow-style: none; }
+.hsvRail::-webkit-scrollbar { display: none; }
+
+/* ============================================================
+   Responsive adaptation — layout branches per section.
+   1440 / 1280 = authored layout · 1024 = tablet · 680 = mobile 390
+   ============================================================ */
+@media (max-width: 1180px) {
+  [data-l="map"] { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (max-width: 1024px) {
+  [data-l="hero"] { grid-template-columns: minmax(0, 1fr) !important; padding-left: var(--gutter) !important; }
+  [data-l="hero"] > [data-hero-media] { order: -1; height: 52vw !important; min-height: 300px; border-radius: var(--radius-lg) !important; }
+  [data-l="hero"] > [data-hero-copy] { padding: var(--sp-8) 0 var(--sp-4) !important; }
+  [data-l="feat"], [data-l="video"], [data-l="local"] { grid-template-columns: minmax(0, 1fr) !important; }
+  [data-l="bento"], [data-l="gallery"], [data-l="latest"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  [data-l="bento"] > *, [data-l="gallery"] > *, [data-l="latest"] > * { grid-column: span 1 !important; grid-row: auto !important; }
+  [data-l="footer"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  [data-hide-md] { display: none !important; }
+}
+@media (max-width: 680px) {
+  [data-l="bento"], [data-l="gallery"], [data-l="latest"], [data-l="footer"] { grid-template-columns: minmax(0, 1fr) !important; }
+  [data-l="localrow"] { grid-template-columns: 40px minmax(0, 1fr) !important; }
+  [data-l="localrow"] > [data-local-thumb] { display: none !important; }
+  [data-l="feat-sec"] { grid-template-columns: minmax(0, 1fr) 96px !important; }
+  [data-hide-sm] { display: none !important; }
+  [data-gallery-tile] { aspect-ratio: 4 / 3 !important; height: auto !important; }
+}
+@media print {
+  [data-reveal] { opacity: 1 !important; transform: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1 !important; transform: none !important; }
+  * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+}
