@@ -65,11 +65,27 @@ export function LiveEvents({ events }: { events: Event[] }) {
     updateRail();
     const vp = railRef.current;
     if (!vp) return;
-    vp.addEventListener("scroll", updateRail, { passive: true });
-    window.addEventListener("resize", updateRail);
+    // updateRail() reads getBoundingClientRect() on every card — gate scroll
+    // via rAF (native rail scroll fires far more often than that during touch
+    // momentum) and debounce resize, instead of running the full scan on
+    // every event tick.
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = 0; updateRail(); });
+    };
+    let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+    const onResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(updateRail, 140);
+    };
+    vp.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
     return () => {
-      vp.removeEventListener("scroll", updateRail);
-      window.removeEventListener("resize", updateRail);
+      vp.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+      clearTimeout(resizeTimer);
+      if (raf) cancelAnimationFrame(raf);
     };
   }, []);
 

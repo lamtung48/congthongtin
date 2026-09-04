@@ -147,8 +147,22 @@ export function StoryRail({ stories }: { stories: StoryRailItem[] }) {
       if (raf) return;
       raf = requestAnimationFrame(() => { raf = 0; updateFlow(); });
     };
-    const onRailScroll = () => { if (!pinRef.current) updateFlow(); };
-    const onResize = () => layoutFlow();
+    // Native rail scroll (non-pinned/mobile) fires far more often than window
+    // scroll during touch momentum — route it through the same rAF gate so
+    // updateFlow's per-card getBoundingClientRect scan runs at most once a frame.
+    let railRaf = 0;
+    const onRailScroll = () => {
+      if (pinRef.current || railRaf) return;
+      railRaf = requestAnimationFrame(() => { railRaf = 0; updateFlow(); });
+    };
+    // layoutFlow() re-measures scrollWidth and toggles sticky/pin state — too
+    // costly to run on every resize tick, so debounce it like the
+    // ResizeObserver below already does.
+    let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+    const onResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(layoutFlow, 140);
+    };
     const onFlowFocus = (e: FocusEvent) => {
       const target = e.target as HTMLElement;
       const card = target.closest?.("[data-flow-card]") as HTMLElement | null;
@@ -193,6 +207,7 @@ export function StoryRail({ stories }: { stories: StoryRailItem[] }) {
     return () => {
       clearTimeout(flowTimer);
       clearTimeout(roTimer);
+      clearTimeout(resizeTimer);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("load", layoutFlow);
@@ -203,6 +218,7 @@ export function StoryRail({ stories }: { stories: StoryRailItem[] }) {
       nextBtn?.removeEventListener("click", onNext);
       ro?.disconnect();
       if (raf) cancelAnimationFrame(raf);
+      if (railRaf) cancelAnimationFrame(railRaf);
     };
   }, [reducedMotion]);
 

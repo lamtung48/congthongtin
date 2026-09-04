@@ -26,10 +26,22 @@ export function useViewport(): ViewportState {
   // same as the prototype's own componentDidMount-time resize handler.
   const [state, setState] = useState<ViewportState>(SERVER_STATE);
   useEffect(() => {
-    const onResize = () => setState(compute());
-    onResize();
+    const measure = () => setState(compute());
+    measure();
+    // compute() returns a new object every call, so an unthrottled listener
+    // would re-render every consumer (Header, ActivityMapSection, ...) on
+    // every tick of a window drag-resize — debounce like the rest of the
+    // codebase's resize handling (see StoryRail, VietnamMapSvg).
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onResize = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => setState(compute()), 120);
+    };
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      clearTimeout(timer);
+    };
   }, []);
   return state;
 }
