@@ -10,7 +10,9 @@
 .filterBtn:hover { border-color: var(--border-brand); color: var(--text-brand); }
 .filterBtnOn { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 16px; border-radius: var(--radius-pill); border: 1px solid var(--border-brand); background: var(--surface-brand-soft); color: var(--text-brand); font-family: var(--font-ui); font-size: 13px; font-weight: var(--fw-semibold); cursor: pointer; white-space: nowrap; }
 .filterCount { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
-.filterCountOn { font-family: var(--font-mono); font-size: 11px; opacity: .7; }
+/* No opacity here: it's inherited by the count text and blends the
+   already-AA color down below 4.5:1 against the soft-brand background. */
+.filterCountOn { font-family: var(--font-mono); font-size: 11px; }
 .srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); }
 
 .list { display: flex; flex-direction: column; }

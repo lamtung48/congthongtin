@@ -6,7 +6,8 @@
 .nlField { display: flex; flex-direction: column; gap: 10px; }
 .nlLabel { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--blue-300); }
 .nlRow { display: flex; gap: 8px; flex-wrap: wrap; }
-.nlInput { flex: 1; min-width: 200px; height: 48px; padding: 0 14px; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); color: #fff; font-family: var(--font-ui); font-size: 14.5px; outline: none; }
+.nlInput { flex: 1; min-width: 200px; height: 48px; padding: 0 14px; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); color: #fff; font-family: var(--font-ui); font-size: 14.5px; outline: none; transition: border-color var(--dur-fast) var(--ease-standard); }
+.nlInput:focus-visible { border-color: var(--focus-ring); }
 .nlInputInvalid { border-color: var(--red-300); }
 .nlSubmit { height: 48px; min-width: 120px; padding: 0 20px; border-radius: var(--radius-sm); border: 0; background: #fff; color: var(--ink-1000); font-family: var(--font-ui); font-size: 14px; font-weight: var(--fw-semibold); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 9px; }
 .nlSubmit:disabled { opacity: .7; cursor: default; }
@@ -29,15 +30,15 @@
 .colLinks { display: flex; flex-direction: column; gap: 10px; }
 .colLink { font-family: var(--font-ui); font-size: 14px; color: var(--ink-300); text-decoration: none; width: max-content; }
 .colLink:hover { color: #fff; text-decoration: none; }
-.colLinkSoon { font-family: var(--font-ui); font-size: 14px; color: rgba(255,255,255,.42); width: max-content; cursor: default; }
+.colLinkSoon { font-family: var(--font-ui); font-size: 14px; color: rgba(255,255,255,.58); width: max-content; cursor: default; }
 
 .socialList { display: flex; flex-direction: column; gap: 8px; }
 .socialItem { display: inline-flex; align-items: center; gap: 9px; height: 36px; padding: 0 12px; border-radius: var(--radius-pill); border: 1px dashed rgba(255,255,255,.18); font-family: var(--font-ui); font-size: 12.5px; color: var(--ink-400); width: max-content; }
-.socialNote { font-family: var(--font-mono); font-size: 10.5px; line-height: 1.5; letter-spacing: .04em; color: rgba(255,255,255,.42); }
+.socialNote { font-family: var(--font-mono); font-size: 10.5px; line-height: 1.5; letter-spacing: .04em; color: rgba(255,255,255,.58); }
 
 .bottomRow { max-width: var(--container-wide); margin: var(--sp-12) auto 0; padding: var(--sp-6) var(--gutter) 0; border-top: 1px solid rgba(255,255,255,.12); display: flex; justify-content: space-between; gap: var(--sp-5); flex-wrap: wrap; align-items: center; }
 .bottomGroup { display: flex; gap: var(--sp-5); flex-wrap: wrap; align-items: center; }
 .bottomText { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-400); }
 .policyLink { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-300); text-decoration: none; }
 .policyLink:hover { color: #fff; text-decoration: none; }
-.policySoon { font-family: var(--font-mono); font-size: 11.5px; color: rgba(255,255,255,.42); cursor: default; }
+.policySoon { font-family: var(--font-mono); font-size: 11.5px; color: rgba(255,255,255,.58); cursor: default; }

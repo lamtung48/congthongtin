@@ -48,7 +48,9 @@
   gap: 14px;
   padding: var(--sp-4) var(--sp-6) var(--sp-5);
   border-bottom: 1px solid var(--border-subtle);
+  transition: border-color var(--dur-fast) var(--ease-standard);
 }
+.inputRow:focus-within { border-bottom-color: var(--border-brand); }
 .input {
   flex: 1;
   min-width: 0;

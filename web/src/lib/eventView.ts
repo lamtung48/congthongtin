@@ -81,7 +81,11 @@ export function buildEventView(e: Event, now: Date): EventView {
     live: { badgeBg: "var(--red-500)", badgeFg: "#fff", label: "Đang diễn ra", time: "var(--red-600)", title: "var(--text-strong)", border: "var(--red-100)", op: "1" },
     upcoming: { badgeBg: "rgba(255,255,255,.94)", badgeFg: "var(--brand-primary)", label: "Sắp diễn ra", time: "var(--text-brand)", title: "var(--text-strong)", border: "var(--border-subtle)", op: "1" },
     soldout: { badgeBg: "var(--amber-100)", badgeFg: "var(--ink-900)", label: "Hết chỗ", time: "var(--text-body)", title: "var(--text-strong)", border: "var(--border-subtle)", op: "1" },
-    completed: { badgeBg: "rgba(255,255,255,.92)", badgeFg: "var(--text-muted)", label: "Đã kết thúc", time: "var(--text-muted)", title: "var(--text-muted)", border: "var(--border-subtle)", op: ".72" },
+    // De-emphasis for a completed event comes from the muted text colors
+    // above, not from fading the card — a whole-card opacity blends even
+    // AA-passing colors (like --text-muted) down toward the page background
+    // and silently drops them below the 4.5:1 contrast threshold.
+    completed: { badgeBg: "rgba(255,255,255,.92)", badgeFg: "var(--text-muted)", label: "Đã kết thúc", time: "var(--text-muted)", title: "var(--text-muted)", border: "var(--border-subtle)", op: "1" },
   }[status];
 
   return {

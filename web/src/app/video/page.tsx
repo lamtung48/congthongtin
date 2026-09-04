@@ -27,6 +27,7 @@ export default async function VideoIndexPage() {
         <EmptyState title="Chưa có video" description="Chưa có video nào trong dữ liệu hiện có." />
       ) : (
         <div className={styles.grid}>
+          <h2 className="srOnly">Danh sách video</h2>
           {videos.map((v) => (
             <article key={v.id} className={styles.card}>
               <div className={styles.thumb}>

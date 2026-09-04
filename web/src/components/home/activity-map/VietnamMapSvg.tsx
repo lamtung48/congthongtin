@@ -335,7 +335,7 @@ export function VietnamMapSvg({
 
         {tip && hoverProvince && (
           <div className={`${styles.tip} ${styles.tipOn}`} style={{ left: Math.round(tip.x), top: Math.round(tip.y) }}>
-            <h4 className={styles.tipHead}>{hoverProvince.province_name}</h4>
+            <h3 className={styles.tipHead}>{hoverProvince.province_name}</h3>
             {tip.none ? (
               <div className={styles.tipNone}>
                 {hoverProvince.reported === false ? "Đơn vị chưa báo cáo trong kỳ này." : "Chưa có dữ liệu cho chuyên mục đang chọn."}
@@ -369,7 +369,7 @@ export function VietnamMapSvg({
           >
             <div className={styles.gpanelHead}>
               <div>
-                <h4 className={styles.gpanelH4}>Hội Sinh viên Việt Nam ở ngoài nước</h4>
+                <h3 className={styles.gpanelH4}>Hội Sinh viên Việt Nam ở ngoài nước</h3>
                 <p className={styles.gpanelSub}>{ov.length} nước · tính riêng ngoài 34 tỉnh, thành</p>
               </div>
               <button type="button" className={styles.gpanelClose} aria-label="Đóng danh sách" onClick={() => { setGlobeOpen(false); globeGroupRef.current?.focus(); }}>

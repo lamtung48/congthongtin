@@ -223,12 +223,12 @@ export function StoryRail({ stories }: { stories: StoryRailItem[] }) {
   }, [reducedMotion]);
 
   return (
-    <section ref={outerRef} className={styles.section}>
+    <section ref={outerRef} aria-labelledby="storyrail-title" className={styles.section}>
       <div ref={stickyRef} className={styles.sticky}>
         <div className={styles.headRow}>
           <div className={styles.headText}>
             <span className={styles.eyebrow}>Phóng sự địa phương</span>
-            <h2 className={styles.title}>Dòng chảy sinh viên</h2>
+            <h2 id="storyrail-title" className={styles.title}>Dòng chảy sinh viên</h2>
             <p className={styles.desc}>
               Sáu câu chuyện từ các địa phương và du học sinh Việt Nam — mỗi nơi một cách sinh viên có mặt trong đời sống cộng đồng.
             </p>

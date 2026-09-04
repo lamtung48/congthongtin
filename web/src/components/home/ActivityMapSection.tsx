@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import styles from "./ActivityMapSection.module.css";
 import { VietnamMapSvg } from "./activity-map/VietnamMapSvg";
 import { useActivityMapData } from "./activity-map/useActivityMapData";
 import { provinceValue } from "./activity-map/provinceValue";
 import { useViewport } from "@/lib/hooks/useViewport";
+import { useModalDialog } from "@/lib/hooks/useModalDialog";
 import { IconArrowRight, IconChevronDown, IconClose, IconSearch } from "@/components/icons";
 import type { ActivityMapOverseasCountry } from "@/domain/activity";
 import { localityHref, unitHref } from "@/lib/routes";
@@ -116,6 +117,9 @@ export function ActivityMapSection() {
   const unitSelected = !!(selP || selectedOverseas);
   const showAside = unitSelected && !mobile;
   const showSheet = unitSelected && mobile;
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const sheetCloseRef = useRef<HTMLButtonElement>(null);
+  useModalDialog(showSheet, sheetRef, () => clearSelection(), sheetCloseRef);
 
   function selectProvince(slug: string | null) {
     setSelectedSlug(slug);
@@ -350,11 +354,11 @@ export function ActivityMapSection() {
       {showSheet && (
         <>
           <div className={styles.backdrop} onClick={clearSelection} />
-          <div role="dialog" aria-label="Chi tiết địa phương" className={styles.sheet}>
+          <div ref={sheetRef} role="dialog" aria-modal="true" aria-label="Chi tiết địa phương" className={styles.sheet}>
             <span className={styles.sheetGrab} />
             <span className={styles.sheetHead}>
               <span className={styles.sheetTitle}>{detailName}</span>
-              <button type="button" onClick={clearSelection} aria-label="Đóng" className={styles.sheetCloseBtn}>
+              <button ref={sheetCloseRef} type="button" onClick={clearSelection} aria-label="Đóng" className={styles.sheetCloseBtn}>
                 <IconClose size={16} />
               </button>
             </span>

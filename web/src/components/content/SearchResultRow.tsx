@@ -11,26 +11,32 @@ import type { SearchResultItem } from "@/domain/search";
  * (full, image + excerpt) pass the same item through the same component,
  * just with `full` toggled, the way `NewsCard`'s `wide` prop works. `id` +
  * `highlighted` back the overlay's arrow-key/`aria-activedescendant`
- * navigation — unused (and harmless to omit) on the results page, which
- * has no such list-box behavior. See `docs/SEARCH_ARCHITECTURE.md`.
+ * navigation, and only apply there — `/tim-kiem` renders results as plain
+ * page content (a `<ul>` of links), which needs no ARIA at all beyond what
+ * `<a>`/`<li>` already give it; forcing `role="option"` there breaks the
+ * ARIA option/listbox parent requirement instead of helping. See
+ * `docs/SEARCH_ARCHITECTURE.md`.
  */
 export function SearchResultRow({
   item,
   full = false,
   highlighted = false,
   id,
+  asOption = false,
 }: {
   item: SearchResultItem;
   full?: boolean;
   highlighted?: boolean;
   id?: string;
+  /** Set only by a `role="listbox"` container (the search overlay's combobox). */
+  asOption?: boolean;
 }) {
   return (
     <Link
       id={id}
       href={item.url}
-      role="option"
-      aria-selected={highlighted}
+      role={asOption ? "option" : undefined}
+      aria-selected={asOption ? highlighted : undefined}
       className={`${styles.row} ${full ? styles.full : ""} ${highlighted ? styles.highlighted : ""}`}
     >
       {full && item.image && (

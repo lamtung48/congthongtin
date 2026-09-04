@@ -10,6 +10,7 @@ import { IconArrowRight, IconPlay } from "@/components/icons";
 import type { Video } from "@/domain/video";
 import type { MediaAsset } from "@/domain/media";
 import { formatDateVi } from "@/lib/formatDate";
+import { useModalDialog } from "@/lib/hooks/useModalDialog";
 
 const PLAYLIST_THUMB_MEDIA: MediaAsset = { id: "video-playlist-thumb", provider: "local-placeholder", type: "image", status: "missing", placeholder: "Ảnh video" };
 
@@ -23,16 +24,12 @@ export function VideoSection({ videos }: { videos: Video[] }) {
   useEffect(() => {
     if (!playing) return;
     document.body.style.overflow = "hidden";
-    closeBtnRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPlaying(false);
-    };
-    window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = "";
-      window.removeEventListener("keydown", onKey);
     };
   }, [playing]);
+
+  useModalDialog(playing, backdropRef, () => setPlaying(false), closeBtnRef);
 
   function selectVideo(i: number) {
     if (i === index) return;
@@ -112,7 +109,7 @@ export function VideoSection({ videos }: { videos: Video[] }) {
       </div>
 
       {playing && (
-        <div ref={backdropRef} onClick={() => setPlaying(false)} role="dialog" aria-label="Trình phát video" className={styles.modalBackdrop}>
+        <div ref={backdropRef} onClick={() => setPlaying(false)} role="dialog" aria-modal="true" aria-label="Trình phát video" className={styles.modalBackdrop}>
           <div className={styles.modalInner} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalFrame}>
               <MediaVideo media={main.media} playing playLabel={main.title} />

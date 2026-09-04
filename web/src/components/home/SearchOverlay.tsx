@@ -191,7 +191,7 @@ export function SearchOverlay({
             <div id="search-listbox" role="listbox" aria-label="Tìm nhiều nhất" style={{ display: "flex", flexDirection: "column", gap: "var(--sp-1)" }}>
               <span className={styles.label}>Tìm nhiều nhất</span>
               {suggestions.map((s, i) => (
-                <SearchResultRow key={s.id} item={s} id={`search-option-${i}`} highlighted={i === highlightIndex} />
+                <SearchResultRow key={s.id} item={s} id={`search-option-${i}`} highlighted={i === highlightIndex} asOption />
               ))}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)", paddingTop: "var(--sp-5)", borderTop: "1px solid var(--border-subtle)" }}>
@@ -225,7 +225,7 @@ export function SearchOverlay({
               {results.length} kết quả
             </span>
             {results.map((r, i) => (
-              <SearchResultRow key={r.id} item={r} id={`search-option-${i}`} highlighted={i === highlightIndex} />
+              <SearchResultRow key={r.id} item={r} id={`search-option-${i}`} highlighted={i === highlightIndex} asOption />
             ))}
             <Link href={searchHref(query)} onClick={onClose} className={styles.allResults}>
               Xem tất cả kết quả

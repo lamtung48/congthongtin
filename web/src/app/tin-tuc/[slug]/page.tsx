@@ -81,7 +81,7 @@ export default async function ArticlePage({ params }: Props) {
           { label: article.title },
         ]}
       />
-      <div className={styles.wrap}>
+      <article className={styles.wrap}>
         <header className={styles.head}>
           <Link href={categoryHref(article.category.slug)} className={styles.category}>
             {article.category.name}
@@ -132,7 +132,7 @@ export default async function ArticlePage({ params }: Props) {
           <RelatedArticles articles={related} />
           <AdjacentArticleNav previous={adjacent.previous} next={adjacent.next} />
         </div>
-      </div>
+      </article>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
     </>
   );

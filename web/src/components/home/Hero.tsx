@@ -37,14 +37,14 @@ export function Hero({ hero }: { hero: HeroContent }) {
   }, []);
 
   return (
-    <section aria-label="Tin tiêu điểm" className={styles.section}>
+    <section aria-labelledby="hero-headline" className={styles.section}>
       <div data-l="hero" className={styles.grid}>
         <div data-hero-copy className={styles.copy}>
           <div className={styles.eyebrowRow}>
             <span className={styles.badge}>{hero.eyebrow}</span>
             <span className={styles.timestamp}>{formatDateTimeVi(hero.publishedAt)}</span>
           </div>
-          <h1 className={styles.headline}>
+          <h1 id="hero-headline" className={styles.headline}>
             {hero.headline}{" "}
             {hero.headlineAccent && <span className={styles.headlineAccent}>{hero.headlineAccent}</span>}
           </h1>

@@ -56,7 +56,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <div style={{ background: "var(--surface-page)", minHeight: "100vh", overflowX: "hidden" }}>
           <Header nav={homepage.nav} searchTopics={homepage.trendingTopics} searchCorpus={homepage.search.corpus} />
-          {children}
+          <main>{children}</main>
           <Footer footer={homepage.footer} />
         </div>
       </body>

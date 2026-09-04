@@ -9,6 +9,7 @@ import type { NavItem } from "@/domain/homepage";
 import type { SearchResultItem } from "@/domain/search";
 import type { Topic } from "@/domain/taxonomy";
 import { useViewport } from "@/lib/hooks/useViewport";
+import { useModalDialog } from "@/lib/hooks/useModalDialog";
 import { IconChevronDown, IconMenu, IconSearch, IconUser } from "@/components/icons";
 import { SearchOverlay } from "./SearchOverlay";
 
@@ -28,6 +29,8 @@ export function Header({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchBtnRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const drawerCloseRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const onScroll = () => setCompact(window.scrollY > 96);
@@ -47,12 +50,13 @@ export function Header({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      setDrawerOpen(false);
       setMoreOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useModalDialog(drawerOpen, drawerRef, () => setDrawerOpen(false), drawerCloseRef);
 
   const compactNav = navMode === "compact";
   const navVisible = compactNav ? nav.slice(0, 4) : nav;
@@ -141,10 +145,10 @@ export function Header({
       </div>
 
       {narrow && drawerOpen && (
-        <div role="dialog" aria-modal="true" aria-label="Điều hướng" className={styles.drawer}>
+        <div ref={drawerRef} role="dialog" aria-modal="true" aria-label="Điều hướng" className={styles.drawer}>
           <div className={styles.drawerHead}>
             <span className={styles.drawerEyebrow}>Điều hướng</span>
-            <button type="button" onClick={() => setDrawerOpen(false)} aria-label="Đóng menu" className={styles.iconBtn}>
+            <button ref={drawerCloseRef} type="button" onClick={() => setDrawerOpen(false)} aria-label="Đóng menu" className={styles.iconBtn}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                 <path d="M6 6l12 12M18 6L6 18" />
               </svg>

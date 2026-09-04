@@ -62,7 +62,11 @@
   --text-strong: var(--ink-1000);
   --text-body: var(--ink-800);
   --text-muted: var(--ink-500);
-  --text-faint: var(--ink-400);
+  /* Not an alias of --ink-400 on purpose: every --text-faint usage sits on a
+     light surface, where --ink-400 itself (2.95:1 on white) fails WCAG AA
+     text contrast; this value clears 4.5:1 while --ink-400 stays untouched
+     for its own (already-passing) uses on dark surfaces. */
+  --text-faint: #6b7686;
   --text-invert: var(--white);
   --text-brand: var(--blue-600);
   --text-link: var(--blue-600);
@@ -240,6 +244,10 @@ h1, h2, h3, h4, h5 {
   margin: 0;
 }
 p { margin: 0; text-wrap: pretty; }
+/* Screen-reader-only heading: gives a card grid a real h2 to sit under
+   (fixing an h1 → h3 heading-hierarchy skip on pages with no visible
+   section title) without adding visible content nothing else needed. */
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 a { color: var(--text-link); text-decoration: none; transition: color var(--dur-fast) var(--ease-standard); }
 button { font: inherit; }
 :where(a, button, input, [tabindex]):focus-visible {

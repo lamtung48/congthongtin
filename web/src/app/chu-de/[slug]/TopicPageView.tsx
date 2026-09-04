@@ -65,6 +65,7 @@ export async function TopicPageView({ slug, page }: { slug: string; page: number
           />
         ) : (
           <>
+            <h2 className="srOnly">Danh sách bài viết</h2>
             <div data-l="news-grid" className={styles.grid}>
               {items.map((a, i) => (
                 <NewsCard key={a.slug} article={a} wide={i % 4 === 0} />

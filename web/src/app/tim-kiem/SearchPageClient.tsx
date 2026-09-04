@@ -132,11 +132,13 @@ export function SearchPageClient() {
       )}
 
       {phase === "results" && (
-        <div role="list" aria-label="Kết quả tìm kiếm" aria-live="polite" className={styles.resultsList}>
+        <ul aria-label="Kết quả tìm kiếm" aria-live="polite" className={styles.resultsList}>
           {results.map((r) => (
-            <SearchResultRow key={r.id} item={r} full />
+            <li key={r.id} className={styles.resultItem}>
+              <SearchResultRow item={r} full />
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
       {phase === "empty" && (
