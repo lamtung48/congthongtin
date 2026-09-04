@@ -1,0 +1,5 @@
+.wrap { max-width: var(--container-wide); margin: 0 auto; padding: var(--sp-8) var(--gutter) var(--sp-24); min-height: 50vh; }
+.head { display: flex; flex-direction: column; gap: 10px; margin-bottom: var(--sp-10); }
+.eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--brand-primary); }
+.title { font-family: var(--font-editorial); font-size: var(--fs-h2); font-weight: var(--fw-medium); color: var(--text-strong); margin: 0; }
+.desc { font-size: var(--fs-body); line-height: 1.6; color: var(--text-muted); max-width: 70ch; margin: 0; }

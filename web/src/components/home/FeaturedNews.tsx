@@ -18,7 +18,7 @@ export function FeaturedNews({ featured }: { featured: FeaturedNewsResult }) {
           <span className={styles.eyebrow}>Tiêu điểm</span>
           <h2 className={styles.title}>Tin tiêu điểm</h2>
         </div>
-        <Link href="/tin-tuc" prefetch={false} className={styles.allLink}>
+        <Link href="/tin-tuc" className={styles.allLink}>
           Tất cả tin tức
           <IconArrowRight size={15} />
         </Link>
@@ -26,7 +26,7 @@ export function FeaturedNews({ featured }: { featured: FeaturedNewsResult }) {
 
       <div data-l="feat" className={styles.grid}>
         <Reveal as="article" className={styles.main}>
-          <Link href={main.url} prefetch={false} className={styles.mainMedia}>
+          <Link href={main.url} className={styles.mainMedia}>
             <div className={styles.mainMediaInner}>
               <MediaImage media={main.coverImage ?? GENERIC_ARTICLE_MEDIA} />
             </div>
@@ -38,7 +38,7 @@ export function FeaturedNews({ featured }: { featured: FeaturedNewsResult }) {
               <span className={styles.date}>{formatDateVi(main.publishedAt)}</span>
             </div>
             <h3 className={styles.mainTitle}>
-              <Link href={main.url} prefetch={false}>{main.title}</Link>
+              <Link href={main.url}>{main.title}</Link>
             </h3>
             <p className={styles.mainLead}>{main.lead}</p>
           </div>
@@ -53,15 +53,15 @@ export function FeaturedNews({ featured }: { featured: FeaturedNewsResult }) {
                   <span className={styles.secDate}>{formatDateVi(a.publishedAt)}</span>
                 </div>
                 <h4 className={styles.secTitle}>
-                  <Link href={a.url} prefetch={false}>{a.title}</Link>
+                  <Link href={a.url}>{a.title}</Link>
                 </h4>
               </div>
-              <Link href={a.url} prefetch={false} aria-hidden="true" tabIndex={-1} className={styles.secMedia}>
+              <Link href={a.url} aria-hidden="true" tabIndex={-1} className={styles.secMedia}>
                 <MediaImage media={GENERIC_ARTICLE_MEDIA} />
               </Link>
             </Reveal>
           ))}
-          <Link href="/tin-tuc" prefetch={false} className={styles.seeMore}>
+          <Link href="/tin-tuc" className={styles.seeMore}>
             Xem thêm tin tiêu điểm
             <IconArrowRight size={15} />
           </Link>

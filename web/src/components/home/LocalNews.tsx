@@ -71,7 +71,7 @@ export function LocalNews({ items }: { items: LocalNewsEntry[] }) {
                       <span className={styles.dot} />
                       <span className={styles.place}>{n.place}</span>
                     </span>
-                    <Link href={n.url} prefetch={false} className={styles.rowTitle}>{n.title}</Link>
+                    <Link href={n.url} className={styles.rowTitle}>{n.title}</Link>
                     <span className={styles.rowFoot}>
                       <span className={styles.date}>{formatDateVi(n.publishedAt)}</span>
                       {n.unitUrl ? (
@@ -89,7 +89,7 @@ export function LocalNews({ items }: { items: LocalNewsEntry[] }) {
                   </span>
                 </Reveal>
               ))}
-              <Link href="/tin-tuc" prefetch={false} className={styles.seeMore}>
+              <Link href="/tin-tuc" className={styles.seeMore}>
                 Toàn bộ tin từ cơ sở
                 <IconArrowRight size={15} />
               </Link>

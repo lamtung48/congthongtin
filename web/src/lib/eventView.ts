@@ -1,6 +1,7 @@
 import type { Event } from "@/domain/event";
 import type { EventStatus } from "@/domain/event";
 import type { MediaAsset } from "@/domain/media";
+import { eventHref } from "@/lib/routes";
 
 function midnight(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -41,8 +42,11 @@ export interface EventView {
   seatColor: string;
   cta: string;
   ctaHref: string;
-  hasCta: boolean;
-  noCta: boolean;
+  /** Every event now links somewhere — either its own external `url`, or
+   *  this app's `/su-kien/[slug]` detail page as a fallback. `ctaNote`
+   *  (non-empty only in the fallback case) explains what isn't connected
+   *  yet, shown alongside the link rather than in place of it. See
+   *  "Không để href=#" in `docs/ROUTES.md`. */
   ctaNote: string;
 }
 
@@ -105,10 +109,8 @@ export function buildEventView(e: Event, now: Date): EventView {
         ? `Còn ${(e.capacity as number) - (e.registered as number)}/${e.capacity} suất`
         : "",
     seatColor: full ? "var(--text-body)" : "var(--text-muted)",
-    cta,
-    ctaHref: e.url || "#",
-    hasCta: !!e.url,
-    noCta: !e.url,
-    ctaNote: note,
+    cta: e.url ? cta : "Xem chi tiết sự kiện",
+    ctaHref: e.url || eventHref(e.slug),
+    ctaNote: e.url ? "" : note,
   };
 }

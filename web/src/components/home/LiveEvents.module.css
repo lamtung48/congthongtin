@@ -43,7 +43,5 @@
 .footBlock { display: flex; flex-direction: column; gap: 10px; margin-top: auto; padding-top: var(--sp-4); border-top: 1px solid var(--border-subtle); }
 .seatLine { font-family: var(--font-mono); font-size: 11.5px; }
 .ctaLink { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; min-height: 44px; padding: 0 4px; font-family: var(--font-ui); font-size: 13.5px; font-weight: var(--fw-semibold); }
-.noCtaBlock { display: flex; flex-direction: column; gap: 4px; min-height: 44px; justify-content: center; }
-.noCtaLabel { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-ui); font-size: 13px; font-weight: var(--fw-semibold); color: var(--text-muted); }
 .noCtaNote { font-size: 11.5px; line-height: 1.5; color: var(--text-muted); }
 .fade { position: absolute; right: 0; top: 0; bottom: var(--sp-4); width: 88px; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, var(--surface-page) 76%); pointer-events: none; transition: opacity var(--dur-base) var(--ease-standard); }

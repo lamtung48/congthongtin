@@ -54,11 +54,11 @@ export function Hero({ hero }: { hero: HeroContent }) {
             <span>{hero.topicLabel}</span>
           </div>
           <div className={styles.ctaRow}>
-            <Link href={hero.articleUrl} prefetch={false} className={styles.ctaPrimary}>
+            <Link href={hero.articleUrl} className={styles.ctaPrimary}>
               Đọc bài viết
               <IconArrowRight size={17} />
             </Link>
-            <Link href={hero.secondaryCtaHref} prefetch={false} className={styles.ctaSecondary}>
+            <Link href={hero.secondaryCtaHref} className={styles.ctaSecondary}>
               {hero.secondaryCtaLabel}
             </Link>
           </div>
@@ -66,7 +66,7 @@ export function Hero({ hero }: { hero: HeroContent }) {
 
         <Link
           data-hero-media
-          href={hero.articleUrl} prefetch={false}
+          href={hero.articleUrl}
           aria-label={`${hero.headline} ${hero.headlineAccent ?? ""}`.trim()}
           className={styles.mediaLink}
         >

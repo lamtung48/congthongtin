@@ -2,7 +2,27 @@ import styles from "./EcosystemBento.module.css";
 import { Reveal } from "@/components/ui/Reveal";
 import { IconArrowRight } from "@/components/icons";
 import type { Platform } from "@/domain/platform";
-import { buildPlatformView } from "@/lib/view/platformView";
+import { buildPlatformView, type PlatformView } from "@/lib/view/platformView";
+
+/**
+ * `p.url === "#"` means the platform is a real, separate system that simply
+ * doesn't have a known address yet — rendering `<a href="#">` there would be
+ * a dead link with no destination, so this renders a disabled-looking note
+ * instead (never an anchor with nowhere to go). See "Không để href=#" in
+ * `docs/ROUTES.md`.
+ */
+function PlatformCta({ view, ctaClass, noteClass }: { view: PlatformView; ctaClass: string; noteClass: string }) {
+  if (view.hasCta && view.url !== "#") {
+    return (
+      <a href={view.url} className={ctaClass}>
+        {view.cta}
+        <IconArrowRight size={15} />
+      </a>
+    );
+  }
+  const message = !view.hasCta ? view.note : "Đường dẫn nền tảng chưa được kết nối.";
+  return <span className={noteClass}>{message}</span>;
+}
 
 function ConferenceIcon() {
   return (
@@ -80,11 +100,7 @@ export function EcosystemBento({ platforms }: { platforms: Platform[] }) {
             <span className={styles.featuredName}>{p1.name}</span>
             {p1.isLive && <span className={styles.featuredActivity}>{p1.activity}</span>}
             <span className={styles.featuredDesc}>{p1.desc}</span>
-            {p1.hasCta ? (
-              <a href={p1.url} className={styles.ctaWhite}>{p1.cta}<IconArrowRight size={15} /></a>
-            ) : (
-              <span className={styles.noteDark}>{p1.note}</span>
-            )}
+            <PlatformCta view={p1} ctaClass={styles.ctaWhite} noteClass={styles.noteDark} />
             <span className={styles.accessDark}>{p1.access}</span>
           </span>
         </Reveal>
@@ -98,7 +114,7 @@ export function EcosystemBento({ platforms }: { platforms: Platform[] }) {
           <span className={styles.cardBody}>
             <span className={styles.cardName}>{p2.name}</span>
             <span className={styles.cardDesc}>{p2.desc}</span>
-            <a href={p2.url} className={styles.ctaLink}>{p2.cta}<IconArrowRight size={15} /></a>
+            <PlatformCta view={p2} ctaClass={styles.ctaLink} noteClass={styles.noteLight} />
             <span className={styles.accessLight}>{p2.access}</span>
           </span>
         </Reveal>
@@ -109,7 +125,7 @@ export function EcosystemBento({ platforms }: { platforms: Platform[] }) {
           <span className={styles.cardBody}>
             <span className={styles.cardName}>{p3.name}</span>
             <span className={styles.cardDesc}>{p3.desc}</span>
-            <a href={p3.url} className={styles.ctaLink}>{p3.cta}<IconArrowRight size={15} /></a>
+            <PlatformCta view={p3} ctaClass={styles.ctaLink} noteClass={styles.noteLight} />
             <span className={styles.accessLight}>{p3.access}</span>
           </span>
         </Reveal>
@@ -125,11 +141,7 @@ export function EcosystemBento({ platforms }: { platforms: Platform[] }) {
           <span className={styles.cardBody}>
             <span className={styles.cardName}>{p4.name}</span>
             <span className={styles.cardDesc}>{p4.desc}</span>
-            {p4.hasCta ? (
-              <a href={p4.url} className={styles.ctaLink}>{p4.cta}<IconArrowRight size={15} /></a>
-            ) : (
-              <span className={styles.noteLight}>{p4.note}</span>
-            )}
+            <PlatformCta view={p4} ctaClass={styles.ctaLink} noteClass={styles.noteLight} />
             <span className={styles.accessLight}>{p4.access}</span>
           </span>
         </Reveal>
@@ -144,11 +156,7 @@ export function EcosystemBento({ platforms }: { platforms: Platform[] }) {
           <span className={styles.cardBody}>
             <span className={styles.cardName}>{p5.name}</span>
             <span className={styles.cardDesc}>{p5.desc}</span>
-            {p5.hasCta ? (
-              <a href={p5.url} className={styles.ctaLink}>{p5.cta}<IconArrowRight size={15} /></a>
-            ) : (
-              <span className={styles.noteLight}>{p5.note}</span>
-            )}
+            <PlatformCta view={p5} ctaClass={styles.ctaLink} noteClass={styles.noteLight} />
             <span className={styles.accessLight}>{p5.access}</span>
           </span>
         </Reveal>

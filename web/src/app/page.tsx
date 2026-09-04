@@ -1,4 +1,3 @@
-import { Header } from "@/components/home/Header";
 import { Hero } from "@/components/home/Hero";
 import { TrendingTopics } from "@/components/home/TrendingTopics";
 import { FeaturedNews } from "@/components/home/FeaturedNews";
@@ -10,7 +9,6 @@ import { EcosystemBento } from "@/components/home/EcosystemBento";
 import { LiveEvents } from "@/components/home/LiveEvents";
 import { Gallery } from "@/components/home/Gallery";
 import { LocalNews } from "@/components/home/LocalNews";
-import { Footer } from "@/components/home/Footer";
 import {
   getHomepage,
   getFeaturedArticles,
@@ -23,6 +21,8 @@ import {
   getGallery,
 } from "@/services/homepageService";
 
+/** Header/Footer render once in `app/layout.tsx` — this page is only its own
+ *  13 sections. See `docs/ROUTES.md` on why layout isn't duplicated per route. */
 export default async function Home() {
   const [homepage, featured, latestArticles, storyRail, videos, events, platforms, localNews, gallery] =
     await Promise.all([
@@ -38,8 +38,7 @@ export default async function Home() {
     ]);
 
   return (
-    <div style={{ background: "var(--surface-page)", minHeight: "100vh", overflowX: "hidden" }}>
-      <Header nav={homepage.nav} searchTopics={homepage.trendingTopics} searchCorpus={homepage.search.corpus} />
+    <>
       <Hero hero={homepage.hero} />
       <TrendingTopics topics={homepage.trendingTopics} />
       <FeaturedNews featured={featured} />
@@ -51,7 +50,6 @@ export default async function Home() {
       <LiveEvents events={events} />
       <Gallery gallery={gallery} />
       <LocalNews items={localNews} />
-      <Footer footer={homepage.footer} />
-    </div>
+    </>
   );
 }

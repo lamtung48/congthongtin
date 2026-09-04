@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getContentProvider } from "@/data-access";
 import type { ArticleSummary } from "@/domain/article";
 import type { Video } from "@/domain/video";
@@ -17,9 +18,14 @@ import type { FeaturedNewsResult, LocalNewsEntry, StoryRailItem } from "@/data-a
  * components. See `docs/DATA_ACCESS.md`.
  */
 
-export function getHomepage(): Promise<HomepageConfiguration> {
+/**
+ * `cache()`-wrapped: both the root layout (for Header/Footer) and the
+ * homepage itself (for Hero/TrendingTopics) call this in the same request —
+ * memoizing avoids assembling the homepage config twice per render.
+ */
+export const getHomepage = cache((): Promise<HomepageConfiguration> => {
   return getContentProvider().getHomepage();
-}
+});
 
 export function getFeaturedArticles(): Promise<FeaturedNewsResult> {
   return getContentProvider().getFeaturedArticles();

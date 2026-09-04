@@ -1,0 +1,7 @@
+.meta { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+.cover { position: relative; aspect-ratio: 16/9; border-radius: var(--radius-lg); overflow: hidden; background: var(--surface-sunken); }
+.body { display: flex; flex-direction: column; gap: var(--sp-6); max-width: 76ch; }
+.ctaRow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.cta { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 22px; border-radius: var(--radius-pill); background: var(--brand-primary); color: #fff; text-decoration: none; font-family: var(--font-ui); font-size: 14.5px; font-weight: var(--fw-semibold); }
+.cta:hover { text-decoration: none; opacity: 0.92; }
+.note { font-size: var(--fs-body-sm); color: var(--text-muted); }

@@ -104,7 +104,7 @@ export function Footer({ footer }: { footer: FooterConfiguration }) {
             <div className={styles.colLinks}>
               {c.items.map((l) =>
                 l.href ? (
-                  <Link key={l.label} href={l.href} prefetch={false} className={styles.colLink}>{l.label}</Link>
+                  <Link key={l.label} href={l.href} className={styles.colLink}>{l.label}</Link>
                 ) : (
                   <span key={l.label} title="Trang chưa được xây dựng" className={styles.colLinkSoon}>{l.label}</span>
                 )

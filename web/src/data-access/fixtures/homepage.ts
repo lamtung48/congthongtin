@@ -61,21 +61,27 @@ export const FOOTER_COPYRIGHT_LINE = "© 2026 Hội Sinh viên Việt Nam";
 export const FOOTER_GOVERNING_BODY_LINE = "Cơ quan chủ quản: Trung ương Hội Sinh viên Việt Nam";
 
 interface RawSearchCorpusItem {
+  slug: string;
   title: string;
   category: string;
   date: string;
 }
 
+/** Every entry here mirrors a real article slug from another fixture pool
+ *  (latest/featured articles) — kept in sync by hand since there's no single
+ *  "all articles" index yet (see `getArticleBySlug` in `fixtureProvider.ts`). */
 const RAW_SEARCH_CORPUS: RawSearchCorpusItem[] = [
-  { title: "Đại hội đại biểu toàn quốc Hội Sinh viên Việt Nam lần thứ XII khai mạc tại Hà Nội", category: "Đại hội XII", date: "2026-09-02" },
-  { title: "Tuyên dương 112 “Sinh viên 5 tốt” cấp Trung ương", category: "Sinh viên 5 tốt", date: "2026-08-31" },
-  { title: "Hướng dẫn tiêu chuẩn xét chọn “Sinh viên 5 tốt” năm học 2026 – 2027", category: "Văn bản", date: "2026-08-30" },
-  { title: "Chiến dịch “Mùa hè xanh” 2026 hoàn thành 148 công trình dân sinh", category: "Tình nguyện", date: "2026-09-02" },
-  { title: "Diễn đàn sinh viên Việt Nam tại châu Âu lần thứ 9 mở đăng ký", category: "Hội nhập", date: "2026-08-29" },
-  { title: "Trạm quan trắc không khí do sinh viên chế tạo đặt tại 12 trường phổ thông", category: "Nghiên cứu", date: "2026-09-01" },
+  { slug: "dai-hoi-xii-khai-mac", title: "Đại hội đại biểu toàn quốc Hội Sinh viên Việt Nam lần thứ XII khai mạc tại Hà Nội", category: "Đại hội XII", date: "2026-09-02" },
+  { slug: "tuyen-duong-112-sv5t", title: "Tuyên dương 112 “Sinh viên 5 tốt” cấp Trung ương", category: "Sinh viên 5 tốt", date: "2026-08-31" },
+  { slug: "huong-dan-sv5t-2026", title: "Hướng dẫn tiêu chuẩn xét chọn “Sinh viên 5 tốt” năm học 2026 – 2027", category: "Văn bản", date: "2026-08-30" },
+  { slug: "mua-he-xanh-148-cong-trinh", title: "Chiến dịch “Mùa hè xanh” 2026 hoàn thành 148 công trình dân sinh", category: "Tình nguyện", date: "2026-09-02" },
+  { slug: "dien-dan-sv-chau-au", title: "Diễn đàn sinh viên Việt Nam tại châu Âu lần thứ 9 mở đăng ký", category: "Hội nhập", date: "2026-08-29" },
+  { slug: "tram-quan-trac-khong-khi", title: "Trạm quan trắc không khí do sinh viên chế tạo đặt tại 12 trường phổ thông", category: "Nghiên cứu", date: "2026-09-01" },
 ];
 
 export const SEARCH_CORPUS: SearchSuggestion[] = RAW_SEARCH_CORPUS.map((r) => ({
+  slug: r.slug,
+  url: articleHref(r.slug),
   title: r.title,
   category: r.category,
   publishedAt: r.date,

@@ -9,7 +9,7 @@ export function TrendingTopics({ topics }: { topics: Topic[] }) {
         <span className={styles.label}>Chủ đề nổi bật</span>
         <div className={`hsvRail ${styles.rail}`}>
           {topics.map((t) => (
-            <Link key={t.slug} href={t.url} prefetch={false} className={styles.chip}>
+            <Link key={t.slug} href={t.url} className={styles.chip}>
               <span className={styles.hash}>#</span>
               <span className={styles.name}>{t.name}</span>
               <span className={styles.count}>{t.articleCount}</span>

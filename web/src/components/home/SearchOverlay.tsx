@@ -6,15 +6,9 @@ import styles from "./SearchOverlay.module.css";
 import type { SearchSuggestion } from "@/domain/homepage";
 import type { Topic } from "@/domain/taxonomy";
 import { formatDateVi } from "@/lib/formatDate";
+import { searchHref } from "@/lib/routes";
+import { matchesQuery } from "@/lib/search";
 import { IconClose, IconSearch } from "@/components/icons";
-
-function norm(v: string) {
-  return v
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/đ/g, "d")
-    .toLowerCase();
-}
 
 type Phase = "idle" | "loading" | "results" | "empty";
 
@@ -92,8 +86,7 @@ export function SearchOverlay({
     }
     setPhase("loading");
     timerRef.current = setTimeout(() => {
-      const k = norm(value.trim());
-      const hits = corpus.filter((c) => norm(c.title + " " + c.category).includes(k));
+      const hits = matchesQuery(corpus, value);
       setPhase(hits.length ? "results" : "empty");
       setResults(hits.slice(0, 5));
     }, 420);
@@ -139,13 +132,7 @@ export function SearchOverlay({
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
               <span className={styles.label}>Tìm nhiều nhất</span>
               {corpus.slice(0, 4).map((s) => (
-                <Link
-                  key={s.title}
-                  href="#"
-                  aria-disabled="true"
-                  title="Chưa khả dụng trong bản mẫu — cần URL thật khi triển khai"
-                  className={styles.suggestLink}
-                >
+                <Link key={s.slug} href={s.url} className={styles.suggestLink}>
                   <span style={{ fontFamily: "var(--font-ui)", fontSize: 14.5 }}>{s.title}</span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{s.category}</span>
                 </Link>
@@ -155,7 +142,7 @@ export function SearchOverlay({
               <span className={styles.label}>Chủ đề sẵn có</span>
               <div className={styles.tagRow}>
                 {topics.map((t) => (
-                  <Link key={t.slug} href={t.url} prefetch={false} className={styles.tagChip}>
+                  <Link key={t.slug} href={t.url} className={styles.tagChip}>
                     #{t.name}
                   </Link>
                 ))}
@@ -182,7 +169,7 @@ export function SearchOverlay({
               {results.length} kết quả
             </span>
             {results.map((r) => (
-              <Link key={r.title} href="/tin-tuc" prefetch={false} className={styles.resultLink}>
+              <Link key={r.slug} href={r.url} className={styles.resultLink}>
                 <span className={styles.resultMeta}>
                   <span className={styles.resultCat}>{r.category}</span>
                   <span className={styles.resultDate}>{formatDateVi(r.publishedAt)}</span>
@@ -190,7 +177,7 @@ export function SearchOverlay({
                 <span className={styles.resultTitle}>{r.title}</span>
               </Link>
             ))}
-            <Link href="/tin-tuc" prefetch={false} className={styles.allResults}>
+            <Link href={searchHref(query)} className={styles.allResults}>
               Xem tất cả kết quả
             </Link>
           </div>

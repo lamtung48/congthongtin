@@ -234,7 +234,7 @@ export function StoryRail({ stories }: { stories: StoryRailItem[] }) {
           <div ref={viewportRef} role="group" aria-label="Danh sách phóng sự địa phương" className={`hsvRail ${styles.viewport}`} tabIndex={0}>
             <div ref={trackRef} className={styles.track}>
               {stories.map((s, i) => (
-                <Link key={s.slug} href={s.url} prefetch={false} data-flow-card className={styles.card}>
+                <Link key={s.slug} href={s.url} data-flow-card className={styles.card}>
                   <span className={styles.cardMedia}>
                     <MediaImage media={CARD_MEDIA} />
                     <span className={styles.cardNumber}>{String(i + 1).padStart(2, "0")}</span>

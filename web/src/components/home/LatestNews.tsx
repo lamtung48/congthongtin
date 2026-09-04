@@ -115,7 +115,7 @@ export function LatestNews({ articles }: { articles: ArticleSummary[] }) {
           <>
             <div data-l="latest" className={styles.grid}>
               <Reveal as="article" className={styles.lead}>
-                <Link href={lead.url} prefetch={false} aria-hidden="true" tabIndex={-1} className={styles.leadMedia}>
+                <Link href={lead.url} aria-hidden="true" tabIndex={-1} className={styles.leadMedia}>
                   <MediaImage media={CARD_MEDIA} />
                 </Link>
                 <div className={styles.metaRow}>
@@ -123,7 +123,7 @@ export function LatestNews({ articles }: { articles: ArticleSummary[] }) {
                   <span className={styles.date}>{formatDateVi(lead.publishedAt)}</span>
                 </div>
                 <h3 className={styles.leadTitle}>
-                  <Link href={lead.url} prefetch={false}>{lead.title}</Link>
+                  <Link href={lead.url}>{lead.title}</Link>
                 </h3>
                 <p className={styles.leadDesc}>{lead.lead}</p>
               </Reveal>
@@ -131,7 +131,7 @@ export function LatestNews({ articles }: { articles: ArticleSummary[] }) {
               <Reveal className={styles.quick}>
                 <span className={styles.quickLabel}>Đọc nhanh</span>
                 {quick.map((q, i) => (
-                  <Link key={q.slug} href={q.url} prefetch={false} className={styles.quickItem}>
+                  <Link key={q.slug} href={q.url} className={styles.quickItem}>
                     <span className={styles.quickN}>{String(i + 1).padStart(2, "0")}</span>
                     <span>
                       <span className={styles.quickTitle}>{q.title}</span>
@@ -143,7 +143,7 @@ export function LatestNews({ articles }: { articles: ArticleSummary[] }) {
 
               {cards.map((c) => (
                 <Reveal key={c.slug} as="article" className={styles.card}>
-                  <Link href={c.url} prefetch={false} aria-hidden="true" tabIndex={-1} className={styles.cardMedia}>
+                  <Link href={c.url} aria-hidden="true" tabIndex={-1} className={styles.cardMedia}>
                     <MediaImage media={CARD_MEDIA} />
                   </Link>
                   <div className={styles.metaRow}>
@@ -151,7 +151,7 @@ export function LatestNews({ articles }: { articles: ArticleSummary[] }) {
                     <span className={styles.date}>{formatDateVi(c.publishedAt)}</span>
                   </div>
                   <h3 className={styles.cardTitle}>
-                    <Link href={c.url} prefetch={false}>{c.title}</Link>
+                    <Link href={c.url}>{c.title}</Link>
                   </h3>
                 </Reveal>
               ))}
@@ -160,10 +160,10 @@ export function LatestNews({ articles }: { articles: ArticleSummary[] }) {
                 <Reveal key={t.slug} as="article" className={styles.textCard}>
                   <span className={styles.cat}>{t.category.name}</span>
                   <h3 className={styles.textCardTitle}>
-                    <Link href={t.url} prefetch={false}>{t.title}</Link>
+                    <Link href={t.url}>{t.title}</Link>
                   </h3>
                   <p className={styles.textCardLead}>{t.lead}</p>
-                  <Link href={t.url} prefetch={false} className={styles.textCardLink}>Đọc tiếp →</Link>
+                  <Link href={t.url} className={styles.textCardLink}>Đọc tiếp →</Link>
                 </Reveal>
               ))}
             </div>
@@ -181,7 +181,7 @@ export function LatestNews({ articles }: { articles: ArticleSummary[] }) {
               {moreDone && (
                 <span className={styles.moreDone}>
                   Đã hiển thị toàn bộ tin mới nhất của mục này
-                  <Link href="/tin-tuc" prefetch={false} style={{ fontWeight: "var(--fw-semibold)" }}>Mở trang tin tức →</Link>
+                  <Link href="/tin-tuc" style={{ fontWeight: "var(--fw-semibold)" }}>Mở trang tin tức →</Link>
                 </span>
               )}
             </div>

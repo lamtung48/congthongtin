@@ -8,6 +8,8 @@ import { provinceValue } from "./activity-map/provinceValue";
 import { useViewport } from "@/lib/hooks/useViewport";
 import { IconArrowRight, IconChevronDown, IconClose, IconSearch } from "@/components/icons";
 import type { ActivityMapOverseasCountry } from "@/domain/activity";
+import { unitHref } from "@/lib/routes";
+import { slugifyOverseasName } from "@/lib/slug";
 
 function fmt(n: number) {
   return n.toLocaleString("vi-VN");
@@ -148,7 +150,11 @@ export function ActivityMapSection() {
   const activities = selectedOverseas ? (ovVal == null ? "—" : fmt(ovVal)) : selVal == null ? "—" : fmt(selVal);
   const articles = selectedOverseas ? "—" : selP && selP.article_count != null ? fmt(selP.article_count) : "—";
   const latestTitle = !selectedOverseas && selNews.length ? selNews[0].title : "Chưa có tin bài trong kỳ này";
-  const selUrl = selectedOverseas ? "#" : selP ? selP.unit_url || "#" : "#";
+  const selUrl = selectedOverseas
+    ? unitHref(slugifyOverseasName(selectedOverseas.name))
+    : selP
+      ? selP.unit_url || unitHref(selP.slug)
+      : "/";
 
   return (
     <section aria-label="Hoạt động sinh viên trên toàn quốc" className={styles.section}>
@@ -269,7 +275,7 @@ export function ActivityMapSection() {
                 <div className={styles.unselectedCard}>
                   <span className={styles.unselectedLabel}>Tin mới nhất từ các địa phương</span>
                   {mapLatest.map((p) => (
-                    <a key={p.slug} href={p.unit_url || "#"} className={styles.unselectedLink}>
+                    <a key={p.slug} href={p.unit_url || unitHref(p.slug)} className={styles.unselectedLink}>
                       <span className={styles.unselectedPlace}>{p.province_name}</span>
                       <span className={styles.unselectedTitle}>{p.latest_article?.title}</span>
                       <span className={styles.unselectedDate}>{p.latest_article?.published_at}</span>

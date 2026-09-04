@@ -45,10 +45,12 @@ export interface FooterConfiguration {
   governingBodyLine: string;
 }
 
-/** A search-corpus entry as shown in the search overlay's default/result
- *  list. Flat by design — the current search UI links generically to
- *  `/tin-tuc` rather than per-result, so no `url`/`slug` is needed yet. */
+/** A search-corpus entry as shown in the search overlay and `/tim-kiem`.
+ *  `url` is precomputed (same convention as `ArticleSummary.url`) so callers
+ *  never build the route themselves. */
 export interface SearchSuggestion {
+  slug: string;
+  url: string;
   title: string;
   category: string;
   publishedAt: string;

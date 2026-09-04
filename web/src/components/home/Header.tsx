@@ -73,23 +73,16 @@ export function Header({
             {navMode !== "drawer" && (
               <nav aria-label="Điều hướng chính" className={styles.nav}>
                 {navVisible.map((item) => {
-                  const active = item.href === "/" ? pathname === "/" : pathname?.startsWith(item.href) && item.href !== "#";
-                  if (active) {
+                  if (item.soon) {
                     return (
-                      <Link key={item.label} href={item.href} prefetch={item.href === "/" ? undefined : false} aria-current="page" className={styles.navLinkActive}>
+                      <span key={item.label} aria-disabled="true" title="Trang chưa có trong bản mẫu" className={styles.navLink}>
                         {item.label}
-                      </Link>
+                      </span>
                     );
                   }
+                  const active = item.href === "/" ? pathname === "/" : pathname?.startsWith(item.href);
                   return (
-                    <Link
-                      key={item.label}
-                      href={item.href}
-                      prefetch={item.href === "/" ? undefined : false}
-                      aria-disabled={item.soon || undefined}
-                      title={item.soon ? "Trang chưa có trong bản mẫu" : undefined}
-                      className={styles.navLink}
-                    >
+                    <Link key={item.label} href={item.href} aria-current={active ? "page" : undefined} className={active ? styles.navLinkActive : styles.navLink}>
                       {item.label}
                     </Link>
                   );
@@ -101,19 +94,17 @@ export function Header({
                     </button>
                     {moreOpen && (
                       <span className={styles.moreMenu}>
-                        {navOverflow.map((item) => (
-                          <Link
-                            key={item.label}
-                            href={item.href}
-                            prefetch={false}
-                            aria-disabled={item.soon || undefined}
-                            title={item.soon ? "Trang chưa có trong bản mẫu" : undefined}
-                            onClick={() => setMoreOpen(false)}
-                            className={styles.moreMenuLink}
-                          >
-                            {item.label}
-                          </Link>
-                        ))}
+                        {navOverflow.map((item) =>
+                          item.soon ? (
+                            <span key={item.label} aria-disabled="true" title="Trang chưa có trong bản mẫu" className={styles.moreMenuLink}>
+                              {item.label}
+                            </span>
+                          ) : (
+                            <Link key={item.label} href={item.href} onClick={() => setMoreOpen(false)} className={styles.moreMenuLink}>
+                              {item.label}
+                            </Link>
+                          )
+                        )}
                       </span>
                     )}
                   </span>
@@ -134,14 +125,9 @@ export function Header({
               {/* On mobile the login pill doesn't fit next to search + the
                   hamburger — it moves into the drawer below instead. */}
               {!mobile && (
-                <Link
-                  href="#"
-                  aria-disabled="true"
-                  title="Chưa khả dụng trong bản mẫu — cần URL thật khi triển khai"
-                  className={styles.loginBtn}
-                >
+                <span aria-disabled="true" title="Đăng nhập chưa khả dụng trong bản mẫu" className={styles.loginBtn}>
                   Đăng nhập
-                </Link>
+                </span>
               )}
               {narrow && (
                 <button type="button" onClick={() => setDrawerOpen(true)} aria-label="Mở menu" aria-expanded={drawerOpen} className={styles.iconBtn}>
@@ -164,33 +150,25 @@ export function Header({
             </button>
           </div>
           <div className={styles.drawerList}>
-            {nav.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                prefetch={item.href === "/" ? undefined : false}
-                aria-disabled={item.soon || undefined}
-                title={item.soon ? "Trang chưa có trong bản mẫu" : undefined}
-                onClick={() => setDrawerOpen(false)}
-                className={styles.drawerLink}
-              >
-                {item.label}
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                  <path d="M5 12h13M13 6l6 6-6 6" />
-                </svg>
-              </Link>
-            ))}
+            {nav.map((item) =>
+              item.soon ? (
+                <span key={item.label} aria-disabled="true" title="Trang chưa có trong bản mẫu" className={styles.drawerLink}>
+                  {item.label}
+                </span>
+              ) : (
+                <Link key={item.label} href={item.href} onClick={() => setDrawerOpen(false)} className={styles.drawerLink}>
+                  {item.label}
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                    <path d="M5 12h13M13 6l6 6-6 6" />
+                  </svg>
+                </Link>
+              )
+            )}
             {mobile && (
-              <Link
-                href="#"
-                aria-disabled="true"
-                title="Chưa khả dụng trong bản mẫu — cần URL thật khi triển khai"
-                onClick={() => setDrawerOpen(false)}
-                className={styles.drawerLink}
-              >
+              <span aria-disabled="true" title="Đăng nhập chưa khả dụng trong bản mẫu" className={styles.drawerLink}>
                 Đăng nhập
                 <IconUser size={18} />
-              </Link>
+              </span>
             )}
           </div>
         </div>

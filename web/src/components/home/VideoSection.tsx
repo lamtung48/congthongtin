@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import styles from "./VideoSection.module.css";
 import { MediaImage } from "@/components/ui/MediaImage";
 import { MediaVideo } from "@/components/ui/MediaVideo";
 import { Reveal } from "@/components/ui/Reveal";
-import { IconExternal, IconPlay } from "@/components/icons";
+import { IconArrowRight, IconPlay } from "@/components/icons";
 import type { Video } from "@/domain/video";
 import type { MediaAsset } from "@/domain/media";
 import { formatDateVi } from "@/lib/formatDate";
@@ -47,10 +48,10 @@ export function VideoSection({ videos }: { videos: Video[] }) {
             <span className={styles.eyebrow}>Kênh YouTube của Hội</span>
             <h2 className={styles.title}>Video &amp; phóng sự</h2>
           </div>
-          <a href="#" aria-disabled="true" title="Chưa khả dụng trong bản mẫu — cần URL thật khi triển khai" className={styles.playlistLink}>
+          <Link href="/video" className={styles.playlistLink}>
             Toàn bộ playlist
-            <IconExternal size={14} />
-          </a>
+            <IconArrowRight size={14} />
+          </Link>
         </div>
 
         <div data-l="video" className={styles.grid}>

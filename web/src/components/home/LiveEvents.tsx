@@ -171,20 +171,11 @@ export function LiveEvents({ events }: { events: Event[] }) {
                   </span>
                   <span className={styles.footBlock}>
                     {e.hasSeats && <span className={styles.seatLine} style={{ color: e.seatColor }}>{e.seatLine}</span>}
-                    {e.hasCta ? (
-                      <a href={e.ctaHref} className={styles.ctaLink}>
-                        {e.cta}
-                        <IconArrowRight size={15} />
-                      </a>
-                    ) : (
-                      <span className={styles.noCtaBlock}>
-                        <span className={styles.noCtaLabel}>
-                          <IconOffline size={14} />
-                          {e.cta} — chưa khả dụng
-                        </span>
-                        <span className={styles.noCtaNote}>{e.ctaNote}</span>
-                      </span>
-                    )}
+                    <a href={e.ctaHref} className={styles.ctaLink}>
+                      {e.cta}
+                      <IconArrowRight size={15} />
+                    </a>
+                    {e.ctaNote && <span className={styles.noCtaNote}>{e.ctaNote}</span>}
                   </span>
                 </span>
               </Reveal>

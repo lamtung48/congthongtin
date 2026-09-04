@@ -22,6 +22,10 @@ export function categoryByName(name: string): Category {
   return found;
 }
 
+export function categoryBySlug(slug: string): Category | undefined {
+  return CATEGORIES.find((c) => c.slug === slug);
+}
+
 export const TOPICS: Topic[] = [
   { id: "dai-hoi-xii", slug: "dai-hoi-xii", name: "DaiHoiXII", articleCount: 48, url: "/chu-de/dai-hoi-xii" },
   { id: "sinh-vien-5-tot", slug: "sinh-vien-5-tot", name: "SinhVien5Tot", articleCount: 126, url: "/chu-de/sinh-vien-5-tot" },
@@ -30,3 +34,7 @@ export const TOPICS: Topic[] = [
   { id: "hoi-nhap-quoc-te", slug: "hoi-nhap-quoc-te", name: "HoiNhapQuocTe", articleCount: 54, url: "/chu-de/hoi-nhap-quoc-te" },
   { id: "chuyen-doi-so", slug: "chuyen-doi-so", name: "ChuyenDoiSo", articleCount: 39, url: "/chu-de/chuyen-doi-so" },
 ];
+
+export function topicBySlug(slug: string): Topic | undefined {
+  return TOPICS.find((t) => t.slug === slug);
+}
