@@ -289,14 +289,10 @@ button { font: inherit; }
   [data-l="bento"], [data-l="gallery"], [data-l="latest"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   [data-l="bento"] > *, [data-l="gallery"] > *, [data-l="latest"] > * { grid-column: span 1 !important; grid-row: auto !important; }
   [data-l="footer"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-  [data-hide-md] { display: none !important; }
 }
 @media (max-width: 680px) {
   [data-l="bento"], [data-l="gallery"], [data-l="latest"], [data-l="footer"] { grid-template-columns: minmax(0, 1fr) !important; }
-  [data-l="localrow"] { grid-template-columns: 40px minmax(0, 1fr) !important; }
-  [data-l="localrow"] > [data-local-thumb] { display: none !important; }
   [data-l="feat-sec"] { grid-template-columns: minmax(0, 1fr) 96px !important; }
-  [data-hide-sm] { display: none !important; }
   [data-gallery-tile] { aspect-ratio: 4 / 3 !important; height: auto !important; }
 }
 @media print {
