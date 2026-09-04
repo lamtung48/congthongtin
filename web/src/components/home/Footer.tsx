@@ -46,7 +46,7 @@ export function Footer({ footer }: { footer: FooterConfiguration }) {
 
   return (
     <footer className={styles.footer}>
-      <form onSubmit={submit} className={styles.nlForm}>
+      <form onSubmit={submit} data-l="footer-nl" className={styles.nlForm}>
         <div className={styles.nlText}>
           <span className={styles.nlTitle}>Bản tin tuần của Hội</span>
           <span className={styles.nlNote}>

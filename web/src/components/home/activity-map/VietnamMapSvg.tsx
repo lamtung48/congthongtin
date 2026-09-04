@@ -13,6 +13,18 @@ function fmt(n: number) {
   return n.toLocaleString("vi-VN");
 }
 
+/**
+ * Center-anchored SVG text near a canvas edge spills past it and gets
+ * clipped (`.stage svg { overflow: hidden }`) — most visible once the map
+ * actually shrinks to a narrow mobile width. Switching to an edge anchor
+ * once the point is close enough keeps the label growing inward instead.
+ */
+function edgeAnchor(x: number, w: number, margin = 60): { x: number; anchor: "start" | "middle" | "end" } {
+  if (x < margin) return { x: 4, anchor: "start" };
+  if (x > w - margin) return { x: w - 4, anchor: "end" };
+  return { x, anchor: "middle" };
+}
+
 interface Props {
   state: MapLoadState;
   data: ActivityMapData | null;
@@ -47,6 +59,11 @@ export function VietnamMapSvg({
   const globeGroupRef = useRef<SVGGElement>(null);
 
   useEffect(() => {
+    // `hostRef` is only attached to a DOM node once the real map renders
+    // (the "loading" branch above returns a skeleton with no host element at
+    // all) — re-running this whenever `state` changes is what lets it find
+    // and observe the element on the loading → loaded transition, instead of
+    // only checking once on mount and finding nothing.
     const el = hostRef.current;
     if (!el || !window.ResizeObserver) return;
     let lastW = el.clientWidth;
@@ -64,7 +81,7 @@ export function VietnamMapSvg({
       clearTimeout(timer);
       ro.disconnect();
     };
-  }, []);
+  }, [state]);
 
   // Close the pinned globe panel on outside click / Escape.
   useEffect(() => {
@@ -144,7 +161,12 @@ export function VietnamMapSvg({
     });
 
   const ov = data.overseas?.countries ?? [];
-  const gr = ov.length ? Math.max(46, Math.round(W * 0.11)) : 0;
+  // The 46px floor was tuned for the desktop-width map; at the narrow W the
+  // map now correctly shrinks to on small screens (see the ResizeObserver
+  // fix above), a fixed 46px radius overwhelmed the canvas and collided
+  // with the Hoàng Sa archipelago label next to it. A lower floor keeps the
+  // globe legible without changing its size on wide screens.
+  const gr = ov.length ? Math.max(26, Math.round(W * 0.11)) : 0;
   const gcx = W - gr - 14;
   const gcy = gr + 34;
   const sorted = ov.slice().sort((a, b) => (b.activity_count || 0) - (a.activity_count || 0));
@@ -175,8 +197,8 @@ export function VietnamMapSvg({
   const tip = hoverProvince ? tooltipFor(hoverProvince) : null;
 
   return (
-    <div>
-      <div ref={hostRef} className={styles.stage} style={{ width: W, height: H }}>
+    <div ref={hostRef}>
+      <div className={styles.stage} style={{ width: W, height: H }}>
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Bản đồ hoạt động sinh viên theo tỉnh, thành phố">
           <rect x={0} y={0} width={W} height={H} fill="transparent" />
           <g aria-hidden="true">
@@ -199,10 +221,24 @@ export function VietnamMapSvg({
                   return <circle key={i} cx={q[0].toFixed(1)} cy={q[1].toFixed(1)} r={1.7} fill="var(--blue-500)" fillOpacity={0.85} />;
                 })}
                 <circle cx={c[0].toFixed(1)} cy={c[1].toFixed(1)} r={20} fill="none" stroke="var(--blue-300)" strokeWidth={1} strokeDasharray="3 3" strokeOpacity={0.9} />
-                <text x={c[0].toFixed(1)} y={(c[1] + 33).toFixed(1)} textAnchor="middle">{a.name}</text>
-                {a.administered_by && (
-                  <text className="sub" x={c[0].toFixed(1)} y={(c[1] + 44).toFixed(1)} textAnchor="middle">{a.administered_by}</text>
-                )}
+                {(() => {
+                  // A two-line Vietnamese label ("QUẦN ĐẢO ..." / administered-by)
+                  // needs a wider edge margin than the shorter globe label below.
+                  const { x: tx, anchor } = edgeAnchor(c[0], W, 100);
+                  // On a narrow map the two archipelago labels sit close enough
+                  // together that showing both lines risks them overlapping —
+                  // the administered-by line is supplementary, so drop it below
+                  // ~360px of map width and keep only the sovereignty name.
+                  const showSub = a.administered_by && W >= 360;
+                  return (
+                    <>
+                      <text x={tx.toFixed(1)} y={(c[1] + 33).toFixed(1)} textAnchor={anchor}>{a.name}</text>
+                      {showSub && (
+                        <text className="sub" x={tx.toFixed(1)} y={(c[1] + 44).toFixed(1)} textAnchor={anchor}>{a.administered_by}</text>
+                      )}
+                    </>
+                  );
+                })()}
               </g>
             );
           })}
@@ -238,7 +274,10 @@ export function VietnamMapSvg({
                 return <line key={f} x1={gcx - hx} y1={y} x2={gcx + hx} y2={y} stroke="var(--blue-300)" strokeWidth={0.9} />;
               })}
               <g className={styles.globeLabel}>
-                <text x={gcx} y={gcy + gr + 14} textAnchor="middle">Ngoài nước · {ov.length} nước</text>
+                {(() => {
+                  const { x: tx, anchor } = edgeAnchor(gcx, W);
+                  return <text x={tx} y={gcy + gr + 14} textAnchor={anchor}>Ngoài nước · {ov.length} nước</text>;
+                })()}
               </g>
             </g>
           )}

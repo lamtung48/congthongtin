@@ -304,7 +304,7 @@ button { font: inherit; }
   [data-l="locality-media"] { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 }
 @media (max-width: 680px) {
-  [data-l="bento"], [data-l="gallery"], [data-l="latest"], [data-l="footer"] { grid-template-columns: minmax(0, 1fr) !important; }
+  [data-l="bento"], [data-l="gallery"], [data-l="latest"], [data-l="footer"], [data-l="footer-nl"] { grid-template-columns: minmax(0, 1fr) !important; }
   [data-l="feat-sec"] { grid-template-columns: minmax(0, 1fr) 96px !important; }
   [data-gallery-tile] { aspect-ratio: 4 / 3 !important; height: auto !important; }
   [data-l="article-gallery"], [data-l="article-adjacent"] { grid-template-columns: minmax(0, 1fr) !important; }
