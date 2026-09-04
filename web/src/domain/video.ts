@@ -7,6 +7,11 @@ import type { MediaAsset } from "./media";
  * rather than `durationSeconds` — the fixture data was already authored this
  * way and no UI needs the raw seconds, so this avoids inventing a conversion
  * that has no current caller. Revisit if a real video backend supplies seconds.
+ *
+ * `media` (type `"video"`) is the single source of truth for both
+ * playability and thumbnail: whether the video has a real source
+ * (`status`/`sourceId`) and what to show while it isn't playing are both
+ * `MediaAsset` concerns, rendered via `<MediaVideo media={video.media} />`.
  */
 export interface Video {
   id: ID;
@@ -16,7 +21,5 @@ export interface Video {
   category: Category;
   durationLabel: string;
   publishedAt: ISODateTime;
-  /** External platform id (e.g. YouTube video id). Absent when no source is connected yet. */
-  externalId?: string;
-  thumbnail?: MediaAsset;
+  media: MediaAsset;
 }

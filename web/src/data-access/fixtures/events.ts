@@ -31,7 +31,7 @@ export const EVENTS: Event[] = RAW.map((r) => ({
   startAt: r.start,
   endAt: r.end,
   url: r.url || undefined,
-  cover: { kind: "image", placeholderNote: r.imageNeed },
+  cover: { id: `${r.slug}-cover`, provider: "drive", type: "image", status: "missing", placeholder: r.imageNeed },
   capacity: r.capacity,
   registered: r.registered,
 }));

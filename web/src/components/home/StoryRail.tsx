@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef } from "react";
 import styles from "./StoryRail.module.css";
-import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
+import { MediaImage } from "@/components/ui/MediaImage";
 import { IconArrowLeft, IconArrowRight } from "@/components/icons";
 import type { StoryRailItem } from "@/data-access/types";
+import type { MediaAsset } from "@/domain/media";
 import { formatDateVi } from "@/lib/formatDate";
+
+const CARD_MEDIA: MediaAsset = { id: "story-rail-card", provider: "local-placeholder", type: "image", status: "missing", placeholder: "Ảnh phóng sự địa phương" };
 
 /**
  * Signature "Dòng chảy sinh viên" section. Desktop (>=1024px, motion on):
@@ -233,7 +236,7 @@ export function StoryRail({ stories }: { stories: StoryRailItem[] }) {
               {stories.map((s, i) => (
                 <Link key={s.slug} href={s.url} prefetch={false} data-flow-card className={styles.card}>
                   <span className={styles.cardMedia}>
-                    <MediaPlaceholder need="Ảnh phóng sự địa phương" />
+                    <MediaImage media={CARD_MEDIA} />
                     <span className={styles.cardNumber}>{String(i + 1).padStart(2, "0")}</span>
                   </span>
                   <span className={styles.cardBody}>

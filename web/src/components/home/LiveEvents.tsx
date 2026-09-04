@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import styles from "./LiveEvents.module.css";
-import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
+import { MediaImage } from "@/components/ui/MediaImage";
 import { Reveal } from "@/components/ui/Reveal";
 import { IconArrowLeft, IconArrowRight, IconMapPin, IconOffline } from "@/components/icons";
 import type { Event } from "@/domain/event";
@@ -153,7 +153,7 @@ export function LiveEvents({ events }: { events: Event[] }) {
                 style={{ borderColor: e.borderColor, opacity: e.cardOpacity }}
               >
                 <span className={styles.cardMedia}>
-                  <MediaPlaceholder need={e.imageNeed} />
+                  <MediaImage media={e.cover} />
                   <span className={styles.statusBadge} style={{ background: e.badgeBg, color: e.badgeFg }}>
                     {e.isLive && <span className={styles.livePulse} />}
                     {e.statusLabel}

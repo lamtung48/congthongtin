@@ -37,5 +37,5 @@ export const LOCAL_NEWS: LocalNewsEntry[] = RAW.map((r) => ({
   orgName: r.org,
   place: r.place,
   unitUrl: r.unitUrl,
-  media: { kind: "image", placeholderNote: r.need },
+  media: { id: `${r.slug}-media`, provider: "drive", type: "image", status: "missing", placeholder: r.need },
 }));

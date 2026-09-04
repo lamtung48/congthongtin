@@ -2,11 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import styles from "./VideoSection.module.css";
-import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
+import { MediaImage } from "@/components/ui/MediaImage";
+import { MediaVideo } from "@/components/ui/MediaVideo";
 import { Reveal } from "@/components/ui/Reveal";
-import { IconExternal, IconOffline, IconPlay } from "@/components/icons";
+import { IconExternal, IconPlay } from "@/components/icons";
 import type { Video } from "@/domain/video";
+import type { MediaAsset } from "@/domain/media";
 import { formatDateVi } from "@/lib/formatDate";
+
+const PLAYLIST_THUMB_MEDIA: MediaAsset = { id: "video-playlist-thumb", provider: "local-placeholder", type: "image", status: "missing", placeholder: "Ảnh video" };
 
 export function VideoSection({ videos }: { videos: Video[] }) {
   const [index, setIndex] = useState(0);
@@ -52,20 +56,8 @@ export function VideoSection({ videos }: { videos: Video[] }) {
         <div data-l="video" className={styles.grid}>
           <Reveal className={styles.mainCol}>
             <div className={styles.player}>
-              <MediaPlaceholder need="Ảnh bìa phóng sự" />
+              <MediaVideo media={main.media} onPlayClick={() => setPlaying(true)} playLabel={`Phát video: ${main.title}`} />
               <span className={styles.playerScrim} />
-              {main.externalId ? (
-                <button type="button" onClick={() => setPlaying(true)} aria-label={`Phát video: ${main.title}`} className={styles.playBtn} style={{ color: "var(--ink-1000)" }}>
-                  <IconPlay size={24} />
-                </button>
-              ) : (
-                <span className={styles.unavailable}>
-                  <span className={styles.unavailIcon}>
-                    <IconOffline size={22} />
-                  </span>
-                  <span className={styles.unavailLabel}>Chưa kết nối nguồn video</span>
-                </span>
-              )}
               <span className={styles.duration}>{main.durationLabel}</span>
             </div>
             <div className={styles.metaBlock}>
@@ -86,7 +78,7 @@ export function VideoSection({ videos }: { videos: Video[] }) {
                 <div key={v.id} role="listitem" className={styles.playlistItem}>
                   {active && <span className={styles.activeBar} />}
                   <button type="button" onClick={() => selectVideo(i)} aria-label={`Chọn video: ${v.title}`} className={styles.thumbBtn}>
-                    <MediaPlaceholder need="Ảnh video" />
+                    <MediaImage media={PLAYLIST_THUMB_MEDIA} />
                     <span className={styles.thumbOverlay}>
                       <IconPlay size={18} />
                     </span>
@@ -96,7 +88,7 @@ export function VideoSection({ videos }: { videos: Video[] }) {
                       <span className={styles.plCat}>{v.category.name}</span>
                       <span className={styles.plDuration}>{v.durationLabel}</span>
                       {active && <span className={styles.plBadgeActive}>Đang chọn</span>}
-                      {!v.externalId && <span className={styles.plBadgeOffline}>Chưa có nguồn</span>}
+                      {!(v.media.status === "ready" && v.media.sourceId) && <span className={styles.plBadgeOffline}>Chưa có nguồn</span>}
                     </div>
                     <button
                       type="button"
@@ -122,14 +114,7 @@ export function VideoSection({ videos }: { videos: Video[] }) {
         <div ref={backdropRef} onClick={() => setPlaying(false)} role="dialog" aria-label="Trình phát video" className={styles.modalBackdrop}>
           <div className={styles.modalInner} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalFrame}>
-              <div className={styles.modalPlaceholder}>
-                <span className={styles.modalPlayCircle}>
-                  <IconPlay size={22} />
-                </span>
-                <span className={styles.modalNote}>
-                  Video sẽ phát tại đây. Nếu video không khả dụng, bản dựng thật sẽ hiển thị liên kết mở trên kênh YouTube của Hội.
-                </span>
-              </div>
+              <MediaVideo media={main.media} playing playLabel={main.title} />
             </div>
             <div className={styles.modalFoot}>
               <span className={styles.modalTitle}>{main.title}</span>

@@ -2,10 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./Gallery.module.css";
-import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
+import { MediaImage } from "@/components/ui/MediaImage";
 import { IconArrowLeft, IconArrowRight, IconClose, IconImageBroken, IconOffline } from "@/components/icons";
-import type { Gallery as GalleryDomain } from "@/domain/media";
+import type { Gallery as GalleryDomain, MediaAsset } from "@/domain/media";
 import { formatDateVi } from "@/lib/formatDate";
+
+function metaLine(m: MediaAsset) {
+  const place = typeof m.metadata?.locationLabel === "string" ? m.metadata.locationLabel : undefined;
+  const capturedAt = typeof m.metadata?.capturedAt === "string" ? formatDateVi(m.metadata.capturedAt) : undefined;
+  return [place, capturedAt].filter(Boolean).join(" · ");
+}
 
 export function Gallery({ gallery }: { gallery: GalleryDomain }) {
   const gallerySource = gallery.items;
@@ -94,11 +100,11 @@ export function Gallery({ gallery }: { gallery: GalleryDomain }) {
           data-gallery-tile
           className={`${styles.tile} ${styles.tileFeature}`}
         >
-          <MediaPlaceholder need={feature.placeholderNote ?? ""} />
+          <MediaImage media={feature} />
           <span aria-hidden="true" className={styles.tileScrimFeature} />
           <span className={styles.tileInfoFeature}>
             <span data-gcap className={styles.captionFeature}>{feature.caption}</span>
-            <span className={styles.metaFeature}>{[feature.locationLabel, feature.capturedAt && formatDateVi(feature.capturedAt)].filter(Boolean).join(" · ")}</span>
+            <span className={styles.metaFeature}>{metaLine(feature)}</span>
             <span data-ghint className={styles.hintFeature}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M4 9V4h5M20 15v5h-5M20 9V4h-5M4 15v5h5" /></svg>
               Xem ảnh lớn
@@ -117,11 +123,11 @@ export function Gallery({ gallery }: { gallery: GalleryDomain }) {
               data-gallery-tile
               className={styles.tile}
             >
-              <MediaPlaceholder need={g.placeholderNote ?? ""} />
+              <MediaImage media={g} />
               <span aria-hidden="true" className={styles.tileScrim} />
               <span className={styles.tileInfo}>
                 <span data-gcap className={styles.caption}>{g.caption}</span>
-                <span data-ghint className={styles.hint}>{[g.locationLabel, g.capturedAt && formatDateVi(g.capturedAt)].filter(Boolean).join(" · ")}</span>
+                <span data-ghint className={styles.hint}>{metaLine(g)}</span>
               </span>
             </button>
           );
@@ -155,7 +161,7 @@ export function Gallery({ gallery }: { gallery: GalleryDomain }) {
                     <span aria-live="polite" className={styles.lbLoadingLabel}>Đang tải ảnh…</span>
                   </div>
                 ) : (
-                  <MediaPlaceholder need={item.placeholderNote ?? ""} />
+                  <MediaImage media={item} />
                 )}
               </div>
               <button type="button" onClick={() => step(1)} aria-label="Ảnh sau" className={styles.lbIconBtn}>
@@ -164,7 +170,7 @@ export function Gallery({ gallery }: { gallery: GalleryDomain }) {
             </div>
             <div className={styles.lbCaptionBlock}>
               <span className={styles.lbCaption}>{item.caption}</span>
-              <span className={styles.lbMeta}>{[item.locationLabel, item.capturedAt && formatDateVi(item.capturedAt)].filter(Boolean).join(" · ")}</span>
+              <span className={styles.lbMeta}>{metaLine(item)}</span>
               <span className={styles.lbMeta}>Nguồn ảnh: chưa được cung cấp</span>
             </div>
           </div>

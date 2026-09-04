@@ -16,7 +16,7 @@ export const FEATURED_ARTICLES: FeaturedNewsResult = {
     lead: "Danh hiệu năm nay ghi nhận nhiều sinh viên vừa đạt thành tích nghiên cứu quốc tế, vừa duy trì hoạt động tình nguyện tại địa phương trong suốt bốn năm học.",
     category: categoryByName("Sinh viên 5 tốt"),
     publishedAt: "2026-08-31",
-    coverImage: { kind: "image", placeholderNote: "Ảnh bài tiêu điểm" },
+    coverImage: { id: `${MAIN_SLUG}-cover`, provider: "drive", type: "image", status: "missing", placeholder: "Ảnh bài tiêu điểm" },
   },
   secondary: [
     { slug: "phien-thao-luan-viec-lam", category: "Hội nghị", date: "2026-09-01", title: "Phiên thảo luận về việc làm sau tốt nghiệp thu hút 200 đại biểu" },

@@ -1,5 +1,6 @@
 import type { Event } from "@/domain/event";
 import type { EventStatus } from "@/domain/event";
+import type { MediaAsset } from "@/domain/media";
 
 function midnight(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -19,7 +20,7 @@ function duration(ms: number) {
 
 export interface EventView {
   slug: string;
-  imageNeed: string;
+  cover: MediaAsset;
   title: string;
   place: string;
   isLive: boolean;
@@ -81,7 +82,7 @@ export function buildEventView(e: Event, now: Date): EventView {
 
   return {
     slug: e.slug,
-    imageNeed: e.cover?.placeholderNote ?? "",
+    cover: e.cover ?? { id: `${e.slug}-cover`, provider: "local-placeholder", type: "image", status: "missing" },
     title: e.title,
     place: e.place,
     isLive: status === "live",

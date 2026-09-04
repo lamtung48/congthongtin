@@ -22,11 +22,13 @@ const RAW: RawGalleryItem[] = [
 export const HOMEPAGE_GALLERY: Gallery = {
   id: "homepage-activity-gallery",
   title: "Ảnh hoạt động",
-  items: RAW.map((r) => ({
-    kind: "image",
+  items: RAW.map((r, i) => ({
+    id: `gallery-${i}`,
+    provider: "drive",
+    type: "image",
+    status: "missing",
     caption: r.caption,
-    locationLabel: r.place,
-    capturedAt: r.date,
-    placeholderNote: r.need,
+    placeholder: r.need,
+    metadata: { locationLabel: r.place, capturedAt: r.date },
   })),
 };

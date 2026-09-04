@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import styles from "./LocalNews.module.css";
-import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
+import { MediaImage } from "@/components/ui/MediaImage";
 import { Reveal } from "@/components/ui/Reveal";
 import { IconArrowRight, IconOffline, IconProvince, IconSchool, IconGlobe } from "@/components/icons";
 import type { LocalNewsEntry } from "@/data-access/types";
@@ -85,7 +85,7 @@ export function LocalNews({ items }: { items: LocalNewsEntry[] }) {
                     </span>
                   </span>
                   <span className={styles.thumb}>
-                    <MediaPlaceholder need={n.media.placeholderNote ?? ""} />
+                    <MediaImage media={n.media} />
                   </span>
                 </Reveal>
               ))}

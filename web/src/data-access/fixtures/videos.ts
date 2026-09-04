@@ -24,6 +24,13 @@ export const VIDEOS: Video[] = RAW.map((r) => ({
   category: categoryByName(r.category),
   durationLabel: r.duration,
   publishedAt: r.date,
-  externalId: r.videoId || undefined,
-  thumbnail: { kind: "image", placeholderNote: "Ảnh bìa phóng sự" },
+  media: {
+    id: `${r.videoId || r.title}-media`,
+    provider: r.videoId ? "youtube" : "local-placeholder",
+    type: "video",
+    sourceId: r.videoId || undefined,
+    status: r.videoId ? "ready" : "missing",
+    placeholder: "Ảnh bìa phóng sự",
+    alt: r.title,
+  },
 }));

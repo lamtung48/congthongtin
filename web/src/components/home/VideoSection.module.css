@@ -10,16 +10,6 @@
 .mainCol { display: flex; flex-direction: column; gap: var(--sp-5); }
 .player { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: var(--radius-lg); overflow: hidden; background: #0a1626; border: 1px solid rgba(255, 255, 255, 0.1); }
 .playerScrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(4, 22, 43, 0) 40%, rgba(4, 22, 43, .6) 100%); pointer-events: none; }
-.playBtn {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: 74px; height: 74px; border: 0; border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, .95); display: grid; place-items: center; cursor: pointer;
-  box-shadow: var(--shadow-lg); transition: transform var(--dur-base) var(--ease-standard);
-}
-.playBtn:hover { transform: translate(-50%, -50%) scale(1.06); }
-.unavailable { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; pointer-events: none; }
-.unavailIcon { width: 56px; height: 56px; border-radius: var(--radius-pill); border: 1px solid rgba(255, 255, 255, .34); display: grid; place-items: center; color: rgba(255, 255, 255, .7); }
-.unavailLabel { font-family: var(--font-ui); font-size: 13.5px; color: rgba(255, 255, 255, .82); }
 .duration { position: absolute; right: 14px; bottom: 14px; font-family: var(--font-mono); font-size: 12px; padding: 5px 9px; border-radius: var(--radius-xs); background: rgba(4, 22, 43, .82); color: #fff; pointer-events: none; }
 .metaBlock { display: flex; flex-direction: column; gap: 10px; }
 .metaRow { display: flex; align-items: center; gap: 10px; }

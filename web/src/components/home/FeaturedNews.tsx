@@ -1,10 +1,13 @@
 import Link from "next/link";
 import styles from "./FeaturedNews.module.css";
-import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
+import { MediaImage } from "@/components/ui/MediaImage";
 import { Reveal } from "@/components/ui/Reveal";
 import { IconArrowRight } from "@/components/icons";
 import type { FeaturedNewsResult } from "@/data-access/types";
+import type { MediaAsset } from "@/domain/media";
 import { formatDateVi } from "@/lib/formatDate";
+
+const GENERIC_ARTICLE_MEDIA: MediaAsset = { id: "featured-secondary", provider: "local-placeholder", type: "image", status: "missing", placeholder: "Ảnh bài viết" };
 
 export function FeaturedNews({ featured }: { featured: FeaturedNewsResult }) {
   const { main, secondary } = featured;
@@ -25,7 +28,7 @@ export function FeaturedNews({ featured }: { featured: FeaturedNewsResult }) {
         <Reveal as="article" className={styles.main}>
           <Link href={main.url} prefetch={false} className={styles.mainMedia}>
             <div className={styles.mainMediaInner}>
-              <MediaPlaceholder need={main.coverImage?.placeholderNote ?? ""} />
+              <MediaImage media={main.coverImage ?? GENERIC_ARTICLE_MEDIA} />
             </div>
           </Link>
           <div className={styles.mainBody}>
@@ -54,7 +57,7 @@ export function FeaturedNews({ featured }: { featured: FeaturedNewsResult }) {
                 </h4>
               </div>
               <Link href={a.url} prefetch={false} aria-hidden="true" tabIndex={-1} className={styles.secMedia}>
-                <MediaPlaceholder need="Ảnh bài viết" />
+                <MediaImage media={GENERIC_ARTICLE_MEDIA} />
               </Link>
             </Reveal>
           ))}

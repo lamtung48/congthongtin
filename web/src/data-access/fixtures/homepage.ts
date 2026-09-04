@@ -29,9 +29,13 @@ export const HERO: HeroContent = {
   secondaryCtaLabel: "Chuyên đề Đại hội XII",
   secondaryCtaHref: "/chu-de/dai-hoi-xii",
   media: {
-    kind: "image",
-    placeholderNote: "Ảnh phiên khai mạc Đại hội XII — ngang, tối thiểu 2400px",
-    locationLabel: "Trung tâm Hội nghị Quốc gia, Hà Nội",
+    id: "hero-media",
+    provider: "drive",
+    type: "image",
+    status: "missing",
+    placeholder: "Ảnh phiên khai mạc Đại hội XII — ngang, tối thiểu 2400px",
+    alt: "Đại hội đại biểu toàn quốc Hội Sinh viên Việt Nam lần thứ XII khai mạc tại Hà Nội",
+    metadata: { locationLabel: "Trung tâm Hội nghị Quốc gia, Hà Nội" },
   },
 };
 

@@ -1,0 +1,21 @@
+.playBtn {
+  position: absolute; z-index: 1; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 74px; height: 74px; border: 0; border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, .95); display: grid; place-items: center; cursor: pointer;
+  box-shadow: var(--shadow-lg); transition: transform var(--dur-base) var(--ease-standard);
+  color: var(--ink-1000);
+}
+.playBtn:hover { transform: translate(-50%, -50%) scale(1.06); }
+
+/* z-index keeps this above a caller-provided scrim overlay (e.g.
+   VideoSection's gradient), which sits as a DOM sibling after this
+   component and would otherwise paint on top per source order. */
+.unavailable { position: absolute; z-index: 1; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; pointer-events: none; }
+.unavailIcon { width: 56px; height: 56px; border-radius: var(--radius-pill); border: 1px solid rgba(255, 255, 255, .34); display: grid; place-items: center; color: rgba(255, 255, 255, .7); }
+.unavailLabel { font-family: var(--font-ui); font-size: 13.5px; color: rgba(255, 255, 255, .82); }
+
+.playing { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: var(--sp-6); background: #000; }
+.playCircle { width: 66px; height: 66px; border-radius: var(--radius-pill); border: 2px solid rgba(255, 255, 255, .4); display: grid; place-items: center; color: #fff; }
+.note { font-family: var(--font-ui); font-size: 14px; color: var(--ink-300); max-width: 52ch; }
+
+.embedFrame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }

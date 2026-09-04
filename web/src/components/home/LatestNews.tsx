@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import styles from "./LatestNews.module.css";
-import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
+import { MediaImage } from "@/components/ui/MediaImage";
 import { Reveal } from "@/components/ui/Reveal";
 import { IconSpinner } from "@/components/icons";
 import type { ArticleSummary } from "@/domain/article";
+import type { MediaAsset } from "@/domain/media";
 import { formatDateVi } from "@/lib/formatDate";
 
 const FILTERS = ["Tất cả", "Tình nguyện", "Nghiên cứu", "Sinh viên 5 tốt", "Hội nhập"] as const;
+const CARD_MEDIA: MediaAsset = { id: "latest-news-card", provider: "local-placeholder", type: "image", status: "missing", placeholder: "Ảnh bài viết" };
 
 export function LatestNews({ articles }: { articles: ArticleSummary[] }) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("Tất cả");
@@ -114,7 +116,7 @@ export function LatestNews({ articles }: { articles: ArticleSummary[] }) {
             <div data-l="latest" className={styles.grid}>
               <Reveal as="article" className={styles.lead}>
                 <Link href={lead.url} prefetch={false} aria-hidden="true" tabIndex={-1} className={styles.leadMedia}>
-                  <MediaPlaceholder need="Ảnh bài viết" />
+                  <MediaImage media={CARD_MEDIA} />
                 </Link>
                 <div className={styles.metaRow}>
                   <span className={styles.cat}>{lead.category.name}</span>
@@ -142,7 +144,7 @@ export function LatestNews({ articles }: { articles: ArticleSummary[] }) {
               {cards.map((c) => (
                 <Reveal key={c.slug} as="article" className={styles.card}>
                   <Link href={c.url} prefetch={false} aria-hidden="true" tabIndex={-1} className={styles.cardMedia}>
-                    <MediaPlaceholder need="Ảnh bài viết" />
+                    <MediaImage media={CARD_MEDIA} />
                   </Link>
                   <div className={styles.metaRow}>
                     <span className={styles.cat}>{c.category.name}</span>

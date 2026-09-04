@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import styles from "./Hero.module.css";
-import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
+import { MediaImage } from "@/components/ui/MediaImage";
 import { IconArrowRight, IconMapPin } from "@/components/icons";
 import type { HeroContent } from "@/domain/homepage";
 import { formatDateTimeVi } from "@/lib/formatDate";
@@ -71,13 +71,13 @@ export function Hero({ hero }: { hero: HeroContent }) {
           className={styles.mediaLink}
         >
           <span className={styles.mediaShift} ref={mediaRef}>
-            <MediaPlaceholder need={hero.media.placeholderNote ?? ""} />
+            <MediaImage media={hero.media} />
           </span>
           <span className={styles.mediaVignette} />
           <span className={styles.mediaScrim} />
           <span className={styles.mediaCaption}>
             <IconMapPin size={13} />
-            {hero.media.locationLabel}
+            {hero.media.metadata?.locationLabel}
           </span>
         </Link>
       </div>

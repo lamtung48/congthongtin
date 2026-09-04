@@ -1,27 +1,53 @@
 import type { ID } from "./common";
 
-export type MediaAssetKind = "image" | "video" | "illustration";
+/**
+ * Where the underlying file lives (or will live). `drive` and `youtube` are
+ * real future sources — the frontend never talks to either API directly (see
+ * `docs/MEDIA_ARCHITECTURE.md`); `local-placeholder` marks an asset that is
+ * intentionally generic/decorative and was never meant to have a per-item
+ * file (e.g. a card's generic "Ảnh bài viết" slot), as opposed to a `drive`
+ * asset with `status: "missing"`, which has real per-item metadata already
+ * and is genuinely waiting on a file upload.
+ */
+export type MediaProvider = "drive" | "youtube" | "local-placeholder";
+
+export type MediaType = "image" | "video";
 
 /**
- * A single visual asset. `url` is absent whenever the real file hasn't been
- * supplied yet — the UI then renders `placeholderNote` instead (see
- * `MediaPlaceholder`). Both fields are optional independently so a caller can
- * model "asset exists, no alt text yet" as well as "no asset yet".
+ * Lifecycle of the asset as known by the content layer — not to be confused
+ * with a component's runtime load state (loading/loaded/error), which is a
+ * property of one render attempt, not of the data.
+ */
+export type MediaStatus = "ready" | "missing" | "removed" | "processing";
+
+/**
+ * The one media contract every image/video in the app is described by.
+ * Nothing outside `src/lib/media/resolveMedia.ts` ever turns `sourceId` into
+ * an actual URL — components render `MediaAsset` as-is and never see a raw
+ * Drive or YouTube URL.
  */
 export interface MediaAsset {
-  id?: ID;
-  kind: MediaAssetKind;
-  url?: string;
+  id: string;
+  provider: MediaProvider;
+  type: MediaType;
+  /** Drive file id or YouTube video id. Absent when `provider` is
+   *  `local-placeholder`, or when a real asset hasn't been uploaded yet. */
+  sourceId?: string;
   alt?: string;
+  caption?: string;
   width?: number;
   height?: number;
-  caption?: string;
-  locationLabel?: string;
-  capturedAt?: string;
-  placeholderNote?: string;
+  aspectRatio?: number;
+  mimeType?: string;
+  /** Shown by `MediaImage`/`MediaVideo` whenever no real source resolves. */
+  placeholder?: string;
+  status: MediaStatus;
+  /** Provider-specific extras (e.g. capture location/date) that don't
+   *  warrant their own top-level field. */
+  metadata?: Record<string, string | number>;
 }
 
-/** A curated, ordered collection of media assets (e.g. the homepage photo wall). */
+/** A curated, ordered collection of media assets — the homepage photo wall. */
 export interface Gallery {
   id: ID;
   title: string;
