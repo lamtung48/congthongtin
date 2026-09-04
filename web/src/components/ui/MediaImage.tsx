@@ -19,8 +19,14 @@ type LoadState = "idle" | "loading" | "loaded" | "error";
  * same placeholder underneath while the image decodes; `loaded` cross-fades
  * the real image in; `error` (the URL 404s or the file was removed) falls
  * back to `MediaPlaceholder` again rather than a broken-image icon.
+ *
+ * `priority` opts out of the default `loading="lazy"` for the rare image
+ * that's above the fold on first paint (the Hero cover, Featured News' main
+ * card) — everywhere else, deferring the image request until it's near the
+ * viewport is free, native lazy loading with no JS cost. See
+ * `docs/PERFORMANCE.md`.
  */
-export function MediaImage({ media, className }: { media: MediaAsset; className?: string }) {
+export function MediaImage({ media, className, priority = false }: { media: MediaAsset; className?: string; priority?: boolean }) {
   const src = resolveImageUrl(media);
   const [state, setState] = useState<LoadState>(src ? "loading" : "idle");
   // Reset the load state when `src` changes — computed during render (not an
@@ -45,6 +51,9 @@ export function MediaImage({ media, className }: { media: MediaAsset; className?
         <img
           src={src}
           alt={media.alt ?? ""}
+          loading={priority ? "eager" : "lazy"}
+          decoding={priority ? "sync" : "async"}
+          fetchPriority={priority ? "high" : "auto"}
           onLoad={() => setState("loaded")}
           onError={() => setState("error")}
           style={{

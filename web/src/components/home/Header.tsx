@@ -68,7 +68,7 @@ export function Header({
         <header className={`${styles.bar} ${compact ? styles.compact : ""}`}>
           <div className={styles.inner}>
             <Link href="/" className={styles.brand}>
-              <Image src="/images/hsv-logo.png" alt="Huy hiệu Hội Sinh viên Việt Nam" width={40} height={40} style={{ flex: "0 0 auto", display: "block", objectFit: "contain" }} />
+              <Image src="/images/hsv-logo.png" alt="Huy hiệu Hội Sinh viên Việt Nam" width={40} height={40} priority style={{ flex: "0 0 auto", display: "block", objectFit: "contain" }} />
               <span className={styles.brandText}>
                 <span className={styles.brandName}>Hội Sinh viên Việt Nam</span>
                 <span className={styles.brandSub}>Cổng thông tin số</span>

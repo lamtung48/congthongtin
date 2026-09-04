@@ -7,18 +7,27 @@ import { getHomepage } from "@/services/homepageService";
 import { organizationJsonLd } from "@/lib/structuredData";
 import { SITE_DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/siteConfig";
 
+// Weights/styles trimmed to exactly what the CSS uses — verified by
+// grepping every `font-weight`/`font-style` declaration in the codebase
+// (see docs/PERFORMANCE.md, "font loading"): only 400 (the unstyled
+// default), 500 (--fw-medium), and 600 (--fw-semibold) ever appear;
+// --fw-light/--fw-bold/--fw-extrabold (300/700/800) are declared as tokens
+// but never applied anywhere. next/font/google fetches one font file per
+// weight+style combination, so each unused one removed here is one real
+// file this app no longer downloads. Newsreader keeps italic — the
+// article pull-quote (`ArticleBody.module.css` `.quoteText`) is the one
+// place `font-style: italic` is actually used, and it's on this family.
 const beVietnamPro = Be_Vietnam_Pro({
   variable: "--font-be-vietnam-pro",
   subsets: ["latin", "vietnamese"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-  style: ["normal", "italic"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
 const newsreader = Newsreader({
   variable: "--font-newsreader",
   subsets: ["latin", "vietnamese"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
   style: ["normal", "italic"],
   display: "swap",
 });
@@ -26,7 +35,7 @@ const newsreader = Newsreader({
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin", "vietnamese"],
-  weight: ["400", "500", "700"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 

@@ -76,7 +76,7 @@ export function Hero({ hero }: { hero: HeroContent }) {
           style={{ viewTransitionName: articleCoverTransitionName(hero.articleUrl) }}
         >
           <span className={styles.mediaShift} ref={mediaRef}>
-            <MediaImage media={hero.media} />
+            <MediaImage media={hero.media} priority />
           </span>
           <span className={styles.mediaVignette} />
           <span className={styles.mediaScrim} />

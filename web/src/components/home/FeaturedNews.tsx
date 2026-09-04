@@ -1,21 +1,27 @@
-"use client";
-
 import Link from "next/link";
 import styles from "./FeaturedNews.module.css";
 import { MediaImage } from "@/components/ui/MediaImage";
 import { Reveal } from "@/components/ui/Reveal";
+import { ArticleCoverLink } from "@/components/content/ArticleCoverLink";
 import { IconArrowRight } from "@/components/icons";
 import type { FeaturedNewsResult } from "@/data-access/types";
 import type { MediaAsset } from "@/domain/media";
 import { formatDateVi } from "@/lib/formatDate";
 import { articleCoverTransitionName } from "@/lib/viewTransition";
-import { useArticleTransitionClick } from "@/lib/hooks/useArticleTransitionClick";
 
 const GENERIC_ARTICLE_MEDIA: MediaAsset = { id: "featured-secondary", provider: "local-placeholder", type: "image", status: "missing", placeholder: "Ảnh bài viết" };
 
+/**
+ * A Server Component: `MediaImage`/`Reveal` are Client Components already
+ * (they need `useState`/`IntersectionObserver`), but everything *here* —
+ * the card layout, the `secondary` list mapping, date formatting — is
+ * plain markup with no client-only behavior. The one exception, the main
+ * cover's View Transition `onClick`, is isolated in `ArticleCoverLink`
+ * instead of forcing this whole section into the client bundle for it. See
+ * `docs/PERFORMANCE.md`.
+ */
 export function FeaturedNews({ featured }: { featured: FeaturedNewsResult }) {
   const { main, secondary } = featured;
-  const onMainCoverClick = useArticleTransitionClick(main.url);
   return (
     <section aria-label="Tin tiêu điểm" className={styles.section}>
       <div className={styles.head}>
@@ -31,16 +37,15 @@ export function FeaturedNews({ featured }: { featured: FeaturedNewsResult }) {
 
       <div data-l="feat" className={styles.grid}>
         <Reveal as="article" className={styles.main}>
-          <Link
+          <ArticleCoverLink
             href={main.url}
-            onClick={onMainCoverClick}
             className={styles.mainMedia}
             style={{ viewTransitionName: articleCoverTransitionName(main.url) }}
           >
             <div className={styles.mainMediaInner}>
-              <MediaImage media={main.coverImage ?? GENERIC_ARTICLE_MEDIA} />
+              <MediaImage media={main.coverImage ?? GENERIC_ARTICLE_MEDIA} priority />
             </div>
-          </Link>
+          </ArticleCoverLink>
           <div className={styles.mainBody}>
             <div className={styles.metaRow}>
               <span className={styles.cat}>{main.category.name}</span>
