@@ -1,0 +1,11 @@
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
+.item {
+  display: flex; flex-direction: column; gap: 6px; padding: var(--sp-5);
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+  transition: border-color var(--dur-fast) var(--ease-standard);
+  min-width: 0;
+}
+.item:hover { border-color: var(--brand-primary); text-decoration: none; }
+.next { text-align: right; align-items: flex-end; }
+.dir { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); }
+.title { font-family: var(--font-editorial); font-size: var(--fs-body); font-weight: var(--fw-medium); color: var(--text-strong); line-height: 1.35; }

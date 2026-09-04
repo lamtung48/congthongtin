@@ -11,7 +11,7 @@ export const NAV: NavItem[] = [
   { label: "Giới thiệu", href: "#", soon: true },
 ];
 
-const HERO_SLUG = "dai-hoi-xii-khai-mac";
+export const HERO_SLUG = "dai-hoi-xii-khai-mac";
 
 /** Prototype fixture. Used to be hardcoded directly in `Hero.tsx` JSX (an
  *  audit-flagged inconsistency with every other section, which reads its

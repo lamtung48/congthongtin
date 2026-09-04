@@ -1,3 +1,20 @@
-.meta { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
-.cover { position: relative; aspect-ratio: 16/9; border-radius: var(--radius-lg); overflow: hidden; background: var(--surface-sunken); }
-.body { display: flex; flex-direction: column; gap: var(--sp-6); max-width: 76ch; }
+/* `--article-wide` is read by `ArticleBody.module.css`'s `.stack` — a
+   single source of truth for how wide "wide" blocks (image/gallery/table/
+   embed/video) are allowed to get, without introducing a new global token
+   for what is specific to this one route. */
+.wrap { max-width: var(--container-wide); margin: 0 auto; padding: var(--sp-6) var(--gutter) var(--sp-24); --article-wide: 960px; }
+
+.head { max-width: var(--container-text); margin: 0 auto var(--sp-8); display: flex; flex-direction: column; gap: var(--sp-4); }
+.category { font-family: var(--font-mono); font-size: 11px; letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--brand-primary); }
+.category:hover { text-decoration: underline; }
+.headline { font-family: var(--font-editorial); font-size: clamp(30px, 4.2vw, 50px); line-height: 1.1; font-weight: var(--fw-semibold); letter-spacing: var(--ls-heading); margin: 0; color: var(--text-strong); }
+.sapo { font-family: var(--font-ui); font-size: var(--fs-lead); line-height: var(--lh-lead); color: var(--text-muted); margin: 0; }
+
+.coverWrap { max-width: var(--article-wide); margin: 0 auto var(--sp-8); }
+.cover { position: relative; aspect-ratio: 16/9; border-radius: var(--radius-xl); overflow: hidden; background: var(--surface-sunken); animation: hsvMediaIn var(--dur-slow) var(--ease-entrance); }
+.coverCaption { display: block; margin-top: 10px; font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text-muted); text-align: center; }
+
+.section { max-width: var(--article-wide); margin: 0 auto; display: flex; flex-direction: column; gap: var(--sp-8); }
+.tagsRow { max-width: var(--container-text); margin: 0 auto; width: 100%; }
+
+.bottomSection { max-width: var(--article-wide); margin: var(--sp-16) auto 0; padding-top: var(--sp-10); border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: var(--sp-16); }

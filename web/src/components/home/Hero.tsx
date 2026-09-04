@@ -7,9 +7,12 @@ import { MediaImage } from "@/components/ui/MediaImage";
 import { IconArrowRight, IconMapPin } from "@/components/icons";
 import type { HeroContent } from "@/domain/homepage";
 import { formatDateTimeVi } from "@/lib/formatDate";
+import { articleCoverTransitionName } from "@/lib/viewTransition";
+import { useArticleTransitionClick } from "@/lib/hooks/useArticleTransitionClick";
 
 export function Hero({ hero }: { hero: HeroContent }) {
   const mediaRef = useRef<HTMLSpanElement>(null);
+  const onCoverClick = useArticleTransitionClick(hero.articleUrl);
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -67,8 +70,10 @@ export function Hero({ hero }: { hero: HeroContent }) {
         <Link
           data-hero-media
           href={hero.articleUrl}
+          onClick={onCoverClick}
           aria-label={`${hero.headline} ${hero.headlineAccent ?? ""}`.trim()}
           className={styles.mediaLink}
+          style={{ viewTransitionName: articleCoverTransitionName(hero.articleUrl) }}
         >
           <span className={styles.mediaShift} ref={mediaRef}>
             <MediaImage media={hero.media} />

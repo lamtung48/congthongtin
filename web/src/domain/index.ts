@@ -3,6 +3,7 @@ export * from "./taxonomy";
 export * from "./geo";
 export * from "./media";
 export * from "./people";
+export * from "./articleContent";
 export * from "./article";
 export * from "./video";
 export * from "./event";

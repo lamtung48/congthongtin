@@ -1,0 +1,53 @@
+/* `--article-wide` is defined on the page's outer wrap (see
+   `src/app/tin-tuc/[slug]/page.module.css`) — falls back to 960px so this
+   module still renders sanely if used standalone. */
+.stack { max-width: var(--article-wide, 960px); margin: 0 auto; display: flex; flex-direction: column; gap: var(--sp-8); }
+
+/* Paragraph/heading/quote read best at a fixed measure — never as wide as
+   the page itself. Images/tables/galleries/embeds/video are allowed to
+   fill the full article column (`.wideBlock`) for a bit of visual variety. */
+.narrowBlock { max-width: var(--container-text); margin: 0 auto; width: 100%; }
+.wideBlock { width: 100%; }
+
+.paragraph { font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-body); margin: 0; }
+.inlineLink { color: var(--text-link); text-underline-offset: 2px; text-decoration: underline; text-decoration-color: var(--border-strong); }
+.inlineLink:hover { color: var(--text-link-hover); }
+
+.heading2 { font-size: var(--fs-h3); font-weight: var(--fw-semibold); margin: 0; scroll-margin-top: calc(var(--header-h) + var(--sp-4)); }
+.heading3 { font-size: var(--fs-h4); font-weight: var(--fw-semibold); margin: 0; scroll-margin-top: calc(var(--header-h) + var(--sp-4)); }
+
+.figure { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.imageFrame { position: relative; aspect-ratio: 16/9; border-radius: var(--radius-lg); overflow: hidden; background: var(--surface-sunken); }
+.caption { font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text-muted); text-align: center; margin: 0; }
+
+.galleryGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
+.galleryTile { display: flex; flex-direction: column; gap: 6px; }
+.galleryFrame { position: relative; aspect-ratio: 4/3; border-radius: var(--radius-md); overflow: hidden; background: var(--surface-sunken); }
+.galleryItemCaption { font-family: var(--font-ui); font-size: 12px; color: var(--text-muted); margin: 0; }
+
+.quote {
+  margin: 0; padding: var(--sp-2) 0 var(--sp-2) var(--sp-6);
+  border-left: var(--rule-accent) solid var(--brand-primary);
+  display: flex; flex-direction: column; gap: var(--sp-3);
+}
+.quoteText { font-family: var(--font-editorial); font-size: var(--fs-h5); line-height: var(--lh-heading); font-style: italic; color: var(--text-strong); margin: 0; }
+.quoteCite { font-family: var(--font-ui); font-size: var(--fs-body-sm); color: var(--text-muted); font-style: normal; }
+
+.tableWrap { overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.table { width: 100%; min-width: 480px; border-collapse: collapse; font-size: var(--fs-body-sm); }
+.table caption { text-align: left; font-family: var(--font-ui); font-size: var(--fs-caption); color: var(--text-muted); padding: var(--sp-3) var(--sp-4) 0; caption-side: top; }
+.table th, .table td { text-align: left; padding: 10px var(--sp-4); border-bottom: 1px solid var(--border-subtle); }
+.table th { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); background: var(--surface-subtle); white-space: nowrap; }
+.table tbody tr:last-child td { border-bottom: 0; }
+
+.embedFrameWrap { position: relative; width: 100%; border-radius: var(--radius-lg); overflow: hidden; background: #000; }
+.embedFrame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.embedPlaceholder {
+  aspect-ratio: 16/9; border-radius: var(--radius-lg); border: 1px dashed var(--border-strong);
+  background: var(--surface-subtle); display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 8px; text-align: center; padding: var(--sp-6); color: var(--text-muted);
+}
+.embedPlaceholderTitle { font-family: var(--font-ui); font-size: var(--fs-body-sm); font-weight: var(--fw-medium); color: var(--text-body); }
+.embedPlaceholderNote { font-family: var(--font-ui); font-size: var(--fs-caption); max-width: 46ch; }
+
+.videoFrame { position: relative; aspect-ratio: 16/9; border-radius: var(--radius-lg); overflow: hidden; background: #000; }

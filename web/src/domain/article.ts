@@ -3,6 +3,7 @@ import type { Category, Tag, Topic } from "./taxonomy";
 import type { Author, Organization } from "./people";
 import type { MediaAsset } from "./media";
 import type { Province } from "./geo";
+import type { ArticleBlock } from "./articleContent";
 
 export type ArticleStatus = "draft" | "published" | "archived";
 
@@ -29,7 +30,11 @@ export interface ArticleSummary {
 /** Full article — the shape a detail page (`/tin/[slug]`, not yet built) would render. */
 export interface Article extends ArticleSummary {
   status: ArticleStatus;
-  body?: string;
+  /** Absent (not `[]`) means "no body authored yet" — the detail page
+   *  renders an editing-in-progress empty state, distinct from an
+   *  intentionally short article (which would have a short but present
+   *  `body` array). See `docs/ARTICLE_DETAIL.md`. */
+  body?: ArticleBlock[];
   topics?: Topic[];
   tags?: Tag[];
   author?: Author;

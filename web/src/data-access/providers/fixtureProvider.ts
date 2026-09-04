@@ -8,16 +8,17 @@ import type { ActivityMapDataset } from "@/domain/activity";
 import type { Gallery } from "@/domain/media";
 import type { Category, Topic } from "@/domain/taxonomy";
 import type { Province, OverseasOrganization } from "@/domain/geo";
-import type { FeaturedNewsResult, LocalNewsEntry, LocalityProfile, StoryRailItem, UnitProfile } from "../types";
+import type { AdjacentArticles, FeaturedNewsResult, LocalNewsEntry, LocalityProfile, StoryRailItem, UnitProfile } from "../types";
 import { slugify } from "@/lib/slug";
 import { matchesQuery } from "@/lib/search";
 import { withBasePath } from "@/lib/basePath";
 
-import { CATEGORIES, TOPICS, categoryBySlug, topicBySlug } from "../fixtures/taxonomy";
+import { CATEGORIES, TOPICS, categoryByName, categoryBySlug, topicBySlug } from "../fixtures/taxonomy";
 import { LATEST_ARTICLES } from "../fixtures/latestArticles";
 import { FEATURED_ARTICLES } from "../fixtures/featuredArticles";
 import { STORY_RAIL } from "../fixtures/storyRail";
 import { LOCAL_NEWS } from "../fixtures/localNews";
+import { ARTICLE_CONTENT } from "../fixtures/articleContent";
 import { VIDEOS } from "../fixtures/videos";
 import { EVENTS } from "../fixtures/events";
 import { PLATFORMS } from "../fixtures/platforms";
@@ -27,6 +28,7 @@ import { OVERSEAS_ORGANIZATIONS, overseasOrganizationBySlug } from "../fixtures/
 import {
   NAV,
   HERO,
+  HERO_SLUG,
   FOOTER_COLUMNS,
   FOOTER_SOCIALS,
   FOOTER_POLICIES,
@@ -50,6 +52,48 @@ function storyToArticle(s: StoryRailItem): Article {
 
 function localNewsToArticle(n: LocalNewsEntry): Article {
   return { id: n.slug, slug: n.slug, url: n.url, title: n.title, category: LOCAL_NEWS_ARTICLE_CATEGORY, publishedAt: n.publishedAt, coverImage: n.media, place: n.place, status: "published" };
+}
+
+/** The homepage Hero is itself a linkable article — see `HERO_SLUG` in
+ *  `fixtures/homepage.ts`. Sourced from `HERO` directly so the two never
+ *  drift apart, the way a second hand-authored copy would risk. */
+function heroToArticle(): Article {
+  return {
+    id: HERO_SLUG,
+    slug: HERO_SLUG,
+    url: HERO.articleUrl,
+    title: [HERO.headline, HERO.headlineAccent].filter(Boolean).join(" "),
+    lead: HERO.lead,
+    category: categoryByName(HERO.eyebrow),
+    publishedAt: HERO.publishedAt,
+    coverImage: HERO.media,
+    author: HERO.author,
+    readingTimeMinutes: HERO.readingTimeMinutes,
+    status: "published",
+  };
+}
+
+/**
+ * Every article the fixtures know about, deduped by slug — the single pool
+ * `getArticleBySlug`, `getArticleSlugs`, `getRelatedArticles` and
+ * `getAdjacentArticles` all read from, so they can never disagree about
+ * which slugs exist (a real risk when each built its own list — see
+ * `docs/ARTICLE_DETAIL.md`). Content authored in `ARTICLE_CONTENT` (body,
+ * tags, topics, ...) is merged in per slug.
+ */
+function allArticles(): Article[] {
+  const pool: Article[] = [
+    heroToArticle(),
+    ...LATEST_ARTICLES.map((a): Article => ({ ...a, status: "published" })),
+    { ...FEATURED_ARTICLES.main, status: "published" },
+    ...FEATURED_ARTICLES.secondary.map((a): Article => ({ ...a, status: "published" })),
+    ...STORY_RAIL.map(storyToArticle),
+    ...LOCAL_NEWS.map(localNewsToArticle),
+  ];
+  const seen = new Set<string>();
+  return pool
+    .filter((a) => (seen.has(a.slug) ? false : (seen.add(a.slug), true)))
+    .map((a) => (ARTICLE_CONTENT[a.slug] ? { ...a, ...ARTICLE_CONTENT[a.slug] } : a));
 }
 
 /**
@@ -133,26 +177,33 @@ export class FixtureProvider implements ContentProvider {
   /* ---------- Route architecture lookups ---------- */
 
   async getArticleBySlug(slug: string): Promise<Article | null> {
-    const fromLatest = LATEST_ARTICLES.find((a) => a.slug === slug);
-    if (fromLatest) return { ...fromLatest, status: "published" };
-    const fromFeatured = FEATURED_ARTICLES.main.slug === slug ? FEATURED_ARTICLES.main : FEATURED_ARTICLES.secondary.find((a) => a.slug === slug);
-    if (fromFeatured) return { ...fromFeatured, status: "published" };
-    const fromStory = STORY_RAIL.find((s) => s.slug === slug);
-    if (fromStory) return storyToArticle(fromStory);
-    const fromLocal = LOCAL_NEWS.find((n) => n.slug === slug);
-    if (fromLocal) return localNewsToArticle(fromLocal);
-    return null;
+    return allArticles().find((a) => a.slug === slug) ?? null;
   }
 
   async getArticleSlugs(): Promise<string[]> {
-    const slugs = [
-      ...LATEST_ARTICLES.map((a) => a.slug),
-      FEATURED_ARTICLES.main.slug,
-      ...FEATURED_ARTICLES.secondary.map((a) => a.slug),
-      ...STORY_RAIL.map((s) => s.slug),
-      ...LOCAL_NEWS.map((n) => n.slug),
-    ];
-    return [...new Set(slugs)];
+    return allArticles().map((a) => a.slug);
+  }
+
+  async getRelatedArticles(slug: string, limit = 4): Promise<ArticleSummary[]> {
+    const all = allArticles();
+    const current = all.find((a) => a.slug === slug);
+    if (!current) return [];
+    return all
+      .filter((a) => a.slug !== slug && a.category.slug === current.category.slug)
+      .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1))
+      .slice(0, limit);
+  }
+
+  async getAdjacentArticles(slug: string): Promise<AdjacentArticles> {
+    const ordered = allArticles().sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
+    const i = ordered.findIndex((a) => a.slug === slug);
+    if (i === -1) return { previous: null, next: null };
+    // Sorted newest-first: an older article (published before this one) sits
+    // at a later index; a newer one (published after) sits at an earlier index.
+    return {
+      previous: i < ordered.length - 1 ? ordered[i + 1] : null,
+      next: i > 0 ? ordered[i - 1] : null,
+    };
   }
 
   async searchContent(query: string): Promise<SearchSuggestion[]> {

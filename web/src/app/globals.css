@@ -271,6 +271,14 @@ button { font: inherit; }
 
 [data-ev-btn]:disabled { opacity: 0.34; cursor: default; }
 
+/* Shared-image view transition: Hero / FeaturedNews' main card → the
+   Article Hero cover image (see `src/lib/viewTransition.ts`). Only the
+   named group morphs between the two pages; the rest of the document is
+   excluded from the default root cross-fade so this stays a small, targeted
+   effect rather than a full-page transition — see `docs/ARTICLE_DETAIL.md`. */
+::view-transition-group(*) { animation-duration: var(--dur-slow); animation-timing-function: var(--ease-entrance); }
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+
 .hsvRail { scrollbar-width: none; -ms-overflow-style: none; }
 .hsvRail::-webkit-scrollbar { display: none; }
 
@@ -289,11 +297,13 @@ button { font: inherit; }
   [data-l="bento"], [data-l="gallery"], [data-l="latest"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   [data-l="bento"] > *, [data-l="gallery"] > *, [data-l="latest"] > * { grid-column: span 1 !important; grid-row: auto !important; }
   [data-l="footer"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  [data-l="article-gallery"], [data-l="article-adjacent"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
 @media (max-width: 680px) {
   [data-l="bento"], [data-l="gallery"], [data-l="latest"], [data-l="footer"] { grid-template-columns: minmax(0, 1fr) !important; }
   [data-l="feat-sec"] { grid-template-columns: minmax(0, 1fr) 96px !important; }
   [data-gallery-tile] { aspect-ratio: 4 / 3 !important; height: auto !important; }
+  [data-l="article-gallery"], [data-l="article-adjacent"] { grid-template-columns: minmax(0, 1fr) !important; }
 }
 @media print {
   [data-reveal] { opacity: 1 !important; transform: none !important; }

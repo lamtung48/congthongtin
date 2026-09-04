@@ -7,7 +7,7 @@ import type { ActivityMapDataset } from "@/domain/activity";
 import type { Gallery } from "@/domain/media";
 import type { Category, Topic } from "@/domain/taxonomy";
 import type { Province, OverseasOrganization } from "@/domain/geo";
-import type { FeaturedNewsResult, LocalNewsEntry, LocalityProfile, StoryRailItem, UnitProfile } from "./types";
+import type { AdjacentArticles, FeaturedNewsResult, LocalNewsEntry, LocalityProfile, StoryRailItem, UnitProfile } from "./types";
 
 /**
  * The port every content data source implements — a fixture today,
@@ -45,6 +45,11 @@ export interface ContentProvider {
    *  for `/tin-tuc/[slug]` needs the full list to pre-render at build time
    *  (static export has no per-request rendering; see `docs/DEPLOYMENT.md`). */
   getArticleSlugs(): Promise<string[]>;
+  /** `/tin-tuc/[slug]`'s "related articles" rail — same category, most
+   *  recent first, current article excluded. */
+  getRelatedArticles(slug: string, limit?: number): Promise<ArticleSummary[]>;
+  /** `/tin-tuc/[slug]`'s prev/next nav, ordered by `publishedAt`. */
+  getAdjacentArticles(slug: string): Promise<AdjacentArticles>;
   /** `/tim-kiem` and the search overlay share this — same corpus, same rule. */
   searchContent(query: string): Promise<SearchSuggestion[]>;
 

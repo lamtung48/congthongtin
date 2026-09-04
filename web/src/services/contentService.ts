@@ -4,7 +4,7 @@ import type { Event } from "@/domain/event";
 import type { Category, Topic } from "@/domain/taxonomy";
 import type { Province, OverseasOrganization } from "@/domain/geo";
 import type { SearchSuggestion } from "@/domain/homepage";
-import type { LocalityProfile, UnitProfile } from "@/data-access/types";
+import type { AdjacentArticles, LocalityProfile, UnitProfile } from "@/data-access/types";
 
 /**
  * Data needed by the route pages under `src/app/` (as opposed to
@@ -18,6 +18,14 @@ export function getArticleBySlug(slug: string): Promise<Article | null> {
 
 export function getArticleSlugs(): Promise<string[]> {
   return getContentProvider().getArticleSlugs();
+}
+
+export function getRelatedArticles(slug: string, limit?: number): Promise<ArticleSummary[]> {
+  return getContentProvider().getRelatedArticles(slug, limit);
+}
+
+export function getAdjacentArticles(slug: string): Promise<AdjacentArticles> {
+  return getContentProvider().getAdjacentArticles(slug);
 }
 
 export function searchContent(query: string): Promise<SearchSuggestion[]> {

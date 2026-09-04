@@ -69,3 +69,11 @@ export interface LocalityProfile {
   localNews: LocalNewsEntry[];
   stories: StoryRailItem[];
 }
+
+/** `getAdjacentArticles()` result for `/tin-tuc/[slug]`'s prev/next nav —
+ *  either side is `null` when the current article is at that end of the
+ *  reading order (see `docs/ARTICLE_DETAIL.md`). */
+export interface AdjacentArticles {
+  previous: ArticleSummary | null;
+  next: ArticleSummary | null;
+}
