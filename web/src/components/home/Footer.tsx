@@ -4,14 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import styles from "./Footer.module.css";
-import { footerColumns, socials, policies } from "@/lib/data/homepage";
+import type { FooterConfiguration } from "@/domain/homepage";
 import { IconExternal } from "@/components/icons";
 
 type NlPhase = "idle" | "invalid" | "loading" | "done" | "error";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-export function Footer() {
+export function Footer({ footer }: { footer: FooterConfiguration }) {
   const [email, setEmail] = useState("");
   const [phase, setPhase] = useState<NlPhase>("idle");
   const [msg, setMsg] = useState("");
@@ -83,22 +83,22 @@ export function Footer() {
         <div className={styles.brandCol}>
           <span className={styles.brandRow}>
             <Image src="/images/hsv-logo.png" alt="Huy hiệu Hội Sinh viên Việt Nam" width={44} height={44} style={{ flex: "0 0 auto", display: "block", objectFit: "contain" }} />
-            <span className={styles.brandName}>Hội Sinh viên Việt Nam</span>
+            <span className={styles.brandName}>{footer.orgName}</span>
           </span>
-          <p className={styles.brandDesc}>Cổng thông tin số của Trung ương Hội Sinh viên Việt Nam.</p>
+          <p className={styles.brandDesc}>{footer.orgDescription}</p>
           <span className={styles.addrBlock}>
             <span className={styles.addrLabel}>Địa chỉ</span>
-            <span className={styles.addrText}>62 Bà Triệu, Hoàn Kiếm, Hà Nội</span>
+            <span className={styles.addrText}>{footer.address}</span>
           </span>
           <span className={styles.contactNote}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" className={styles.contactIcon}>
               <circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16.2v.1" />
             </svg>
-            Điện thoại và email liên hệ chờ xác nhận từ Văn phòng Trung ương Hội
+            {footer.contactNote}
           </span>
         </div>
 
-        {footerColumns.map((c) => (
+        {footer.columns.map((c) => (
           <div key={c.title} className={styles.col}>
             <span className={styles.colTitle}>{c.title}</span>
             <div className={styles.colLinks}>
@@ -116,7 +116,7 @@ export function Footer() {
         <div className={styles.col}>
           <span className={styles.colTitle}>Kết nối</span>
           <div role="list" className={styles.socialList}>
-            {socials.map((name) => (
+            {footer.socials.map((name) => (
               <span key={name} role="listitem" className={styles.socialItem}>
                 <IconExternal size={15} />
                 {name}
@@ -129,11 +129,11 @@ export function Footer() {
 
       <div className={styles.bottomRow}>
         <span className={styles.bottomGroup}>
-          <span className={styles.bottomText}>© 2026 Hội Sinh viên Việt Nam</span>
-          <span className={styles.bottomText}>Cơ quan chủ quản: Trung ương Hội Sinh viên Việt Nam</span>
+          <span className={styles.bottomText}>{footer.copyrightLine}</span>
+          <span className={styles.bottomText}>{footer.governingBodyLine}</span>
         </span>
         <span className={styles.bottomGroup}>
-          {policies.map((p) => (
+          {footer.policies.map((p) => (
             <span key={p.label} className={styles.policySoon}>{p.label} · chưa có trang</span>
           ))}
         </span>

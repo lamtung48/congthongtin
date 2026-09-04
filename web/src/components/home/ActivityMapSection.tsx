@@ -7,7 +7,7 @@ import { useActivityMapData } from "./activity-map/useActivityMapData";
 import { provinceValue } from "./activity-map/provinceValue";
 import { useViewport } from "@/lib/hooks/useViewport";
 import { IconArrowRight, IconChevronDown, IconClose, IconSearch } from "@/components/icons";
-import type { ActivityMapOverseasCountry } from "@/lib/types";
+import type { ActivityMapOverseasCountry } from "@/domain/activity";
 
 function fmt(n: number) {
   return n.toLocaleString("vi-VN");

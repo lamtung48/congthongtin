@@ -6,12 +6,12 @@ import styles from "./LatestNews.module.css";
 import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
 import { Reveal } from "@/components/ui/Reveal";
 import { IconSpinner } from "@/components/icons";
-import { newsAll, articleHref } from "@/lib/data/news";
-import type { NewsCategory } from "@/lib/types";
+import type { ArticleSummary } from "@/domain/article";
+import { formatDateVi } from "@/lib/formatDate";
 
-const FILTERS: Array<NewsCategory | "Tất cả"> = ["Tất cả", "Tình nguyện", "Nghiên cứu", "Sinh viên 5 tốt", "Hội nhập"];
+const FILTERS = ["Tất cả", "Tình nguyện", "Nghiên cứu", "Sinh viên 5 tốt", "Hội nhập"] as const;
 
-export function LatestNews() {
+export function LatestNews({ articles }: { articles: ArticleSummary[] }) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("Tất cả");
   const [loading, setLoading] = useState(false);
   const [extraFor, setExtraFor] = useState<string | null>(null);
@@ -21,8 +21,8 @@ export function LatestNews() {
   const moreTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const pool = useMemo(
-    () => newsAll.filter((n) => filter === "Tất cả" || n.cat === filter),
-    [filter]
+    () => articles.filter((n) => filter === "Tất cả" || n.category.name === filter),
+    [articles, filter]
   );
   const baseN = filter === "Tất cả" ? 8 : 6;
   const base = pool.slice(0, baseN);
@@ -31,8 +31,8 @@ export function LatestNews() {
   const rest = shown.slice(4);
   const lead = shown[0];
   const quick = shown.slice(1, 4);
-  const cards = rest.filter((n) => !n.textOnly);
-  const textCards = rest.filter((n) => n.textOnly);
+  const cards = rest.filter((n) => !n.isTextOnly);
+  const textCards = rest.filter((n) => n.isTextOnly);
   const isEmpty = !loading && shown.length === 0;
   const isLoaded = !loading && !isEmpty;
   const moreAvailable = !moreLoading && extraPool.length > 0 && extraFor !== filter;
@@ -113,15 +113,15 @@ export function LatestNews() {
           <>
             <div data-l="latest" className={styles.grid}>
               <Reveal as="article" className={styles.lead}>
-                <Link href={articleHref(lead.slug)} prefetch={false} aria-hidden="true" tabIndex={-1} className={styles.leadMedia}>
+                <Link href={lead.url} prefetch={false} aria-hidden="true" tabIndex={-1} className={styles.leadMedia}>
                   <MediaPlaceholder need="Ảnh bài viết" />
                 </Link>
                 <div className={styles.metaRow}>
-                  <span className={styles.cat}>{lead.cat}</span>
-                  <span className={styles.date}>{lead.date}</span>
+                  <span className={styles.cat}>{lead.category.name}</span>
+                  <span className={styles.date}>{formatDateVi(lead.publishedAt)}</span>
                 </div>
                 <h3 className={styles.leadTitle}>
-                  <Link href={articleHref(lead.slug)} prefetch={false}>{lead.title}</Link>
+                  <Link href={lead.url} prefetch={false}>{lead.title}</Link>
                 </h3>
                 <p className={styles.leadDesc}>{lead.lead}</p>
               </Reveal>
@@ -129,11 +129,11 @@ export function LatestNews() {
               <Reveal className={styles.quick}>
                 <span className={styles.quickLabel}>Đọc nhanh</span>
                 {quick.map((q, i) => (
-                  <Link key={q.slug} href={articleHref(q.slug)} prefetch={false} className={styles.quickItem}>
+                  <Link key={q.slug} href={q.url} prefetch={false} className={styles.quickItem}>
                     <span className={styles.quickN}>{String(i + 1).padStart(2, "0")}</span>
                     <span>
                       <span className={styles.quickTitle}>{q.title}</span>
-                      <span className={styles.quickMeta}>{q.cat} · {q.date.slice(0, 5)}</span>
+                      <span className={styles.quickMeta}>{q.category.name} · {formatDateVi(q.publishedAt).slice(0, 5)}</span>
                     </span>
                   </Link>
                 ))}
@@ -141,27 +141,27 @@ export function LatestNews() {
 
               {cards.map((c) => (
                 <Reveal key={c.slug} as="article" className={styles.card}>
-                  <Link href={articleHref(c.slug)} prefetch={false} aria-hidden="true" tabIndex={-1} className={styles.cardMedia}>
+                  <Link href={c.url} prefetch={false} aria-hidden="true" tabIndex={-1} className={styles.cardMedia}>
                     <MediaPlaceholder need="Ảnh bài viết" />
                   </Link>
                   <div className={styles.metaRow}>
-                    <span className={styles.cat}>{c.cat}</span>
-                    <span className={styles.date}>{c.date}</span>
+                    <span className={styles.cat}>{c.category.name}</span>
+                    <span className={styles.date}>{formatDateVi(c.publishedAt)}</span>
                   </div>
                   <h3 className={styles.cardTitle}>
-                    <Link href={articleHref(c.slug)} prefetch={false}>{c.title}</Link>
+                    <Link href={c.url} prefetch={false}>{c.title}</Link>
                   </h3>
                 </Reveal>
               ))}
 
               {textCards.map((t) => (
                 <Reveal key={t.slug} as="article" className={styles.textCard}>
-                  <span className={styles.cat}>{t.cat}</span>
+                  <span className={styles.cat}>{t.category.name}</span>
                   <h3 className={styles.textCardTitle}>
-                    <Link href={articleHref(t.slug)} prefetch={false}>{t.title}</Link>
+                    <Link href={t.url} prefetch={false}>{t.title}</Link>
                   </h3>
                   <p className={styles.textCardLead}>{t.lead}</p>
-                  <Link href={articleHref(t.slug)} prefetch={false} className={styles.textCardLink}>Đọc tiếp →</Link>
+                  <Link href={t.url} prefetch={false} className={styles.textCardLink}>Đọc tiếp →</Link>
                 </Reveal>
               ))}
             </div>

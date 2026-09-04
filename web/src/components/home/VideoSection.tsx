@@ -5,9 +5,10 @@ import styles from "./VideoSection.module.css";
 import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
 import { Reveal } from "@/components/ui/Reveal";
 import { IconExternal, IconOffline, IconPlay } from "@/components/icons";
-import { videos } from "@/lib/data/homepage";
+import type { Video } from "@/domain/video";
+import { formatDateVi } from "@/lib/formatDate";
 
-export function VideoSection() {
+export function VideoSection({ videos }: { videos: Video[] }) {
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -53,7 +54,7 @@ export function VideoSection() {
             <div className={styles.player}>
               <MediaPlaceholder need="Ảnh bìa phóng sự" />
               <span className={styles.playerScrim} />
-              {main.videoId ? (
+              {main.externalId ? (
                 <button type="button" onClick={() => setPlaying(true)} aria-label={`Phát video: ${main.title}`} className={styles.playBtn} style={{ color: "var(--ink-1000)" }}>
                   <IconPlay size={24} />
                 </button>
@@ -65,15 +66,15 @@ export function VideoSection() {
                   <span className={styles.unavailLabel}>Chưa kết nối nguồn video</span>
                 </span>
               )}
-              <span className={styles.duration}>{main.duration}</span>
+              <span className={styles.duration}>{main.durationLabel}</span>
             </div>
             <div className={styles.metaBlock}>
               <div className={styles.metaRow}>
-                <span className={styles.cat}>{main.category}</span>
-                <span className={styles.date}>{main.date}</span>
+                <span className={styles.cat}>{main.category.name}</span>
+                <span className={styles.date}>{formatDateVi(main.publishedAt)}</span>
               </div>
               <h3 className={styles.mainTitle}>{main.title}</h3>
-              <p className={styles.mainDesc}>{main.desc}</p>
+              <p className={styles.mainDesc}>{main.description}</p>
             </div>
           </Reveal>
 
@@ -82,7 +83,7 @@ export function VideoSection() {
             {videos.map((v, i) => {
               const active = i === index;
               return (
-                <div key={v.videoId || v.title} role="listitem" className={styles.playlistItem}>
+                <div key={v.id} role="listitem" className={styles.playlistItem}>
                   {active && <span className={styles.activeBar} />}
                   <button type="button" onClick={() => selectVideo(i)} aria-label={`Chọn video: ${v.title}`} className={styles.thumbBtn}>
                     <MediaPlaceholder need="Ảnh video" />
@@ -92,10 +93,10 @@ export function VideoSection() {
                   </button>
                   <div className={styles.plMeta}>
                     <div className={styles.plMetaRow}>
-                      <span className={styles.plCat}>{v.category}</span>
-                      <span className={styles.plDuration}>{v.duration}</span>
+                      <span className={styles.plCat}>{v.category.name}</span>
+                      <span className={styles.plDuration}>{v.durationLabel}</span>
                       {active && <span className={styles.plBadgeActive}>Đang chọn</span>}
-                      {!v.videoId && <span className={styles.plBadgeOffline}>Chưa có nguồn</span>}
+                      {!v.externalId && <span className={styles.plBadgeOffline}>Chưa có nguồn</span>}
                     </div>
                     <button
                       type="button"

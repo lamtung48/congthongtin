@@ -1,4 +1,4 @@
-import type { ActivityMapProvince } from "@/lib/types";
+import type { ActivityMapProvince } from "@/domain/activity";
 
 /**
  * null = no figure yet (unit hasn't reported, or this category has no data

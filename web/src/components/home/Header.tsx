@@ -5,12 +5,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import styles from "./Header.module.css";
-import { navAll } from "@/lib/data/homepage";
+import type { NavItem, SearchSuggestion } from "@/domain/homepage";
+import type { Topic } from "@/domain/taxonomy";
 import { useViewport } from "@/lib/hooks/useViewport";
 import { IconChevronDown, IconMenu, IconSearch, IconUser } from "@/components/icons";
 import { SearchOverlay } from "./SearchOverlay";
 
-export function Header() {
+export function Header({
+  nav,
+  searchTopics,
+  searchCorpus,
+}: {
+  nav: NavItem[];
+  searchTopics: Topic[];
+  searchCorpus: SearchSuggestion[];
+}) {
   const { navMode, narrow, mobile } = useViewport();
   const pathname = usePathname();
   const [compact, setCompact] = useState(false);
@@ -45,8 +54,8 @@ export function Header() {
   }, []);
 
   const compactNav = navMode === "compact";
-  const navVisible = compactNav ? navAll.slice(0, 4) : navAll;
-  const navOverflow = compactNav ? navAll.slice(4) : [];
+  const navVisible = compactNav ? nav.slice(0, 4) : nav;
+  const navOverflow = compactNav ? nav.slice(4) : [];
 
   return (
     <>
@@ -155,7 +164,7 @@ export function Header() {
             </button>
           </div>
           <div className={styles.drawerList}>
-            {navAll.map((item) => (
+            {nav.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
@@ -187,7 +196,13 @@ export function Header() {
         </div>
       )}
 
-      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} returnFocusRef={searchBtnRef} />
+      <SearchOverlay
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        returnFocusRef={searchBtnRef}
+        topics={searchTopics}
+        corpus={searchCorpus}
+      />
     </>
   );
 }

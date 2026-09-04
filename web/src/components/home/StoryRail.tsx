@@ -5,16 +5,19 @@ import { useCallback, useEffect, useRef } from "react";
 import styles from "./StoryRail.module.css";
 import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
 import { IconArrowLeft, IconArrowRight } from "@/components/icons";
-import { articleHref } from "@/lib/data/news";
-import { stories } from "@/lib/data/homepage";
+import type { StoryRailItem } from "@/data-access/types";
+import { formatDateVi } from "@/lib/formatDate";
 
 /**
  * Signature "Dòng chảy sinh viên" section. Desktop (>=1024px, motion on):
  * the section pins via sticky while the vertical scroll it consumes is
  * mapped onto horizontal translateX of the track. Below that breakpoint, or
  * with reduced motion, it's a plain native horizontal scroller with snap.
+ *
+ * Only the data source changed here (`stories` prop instead of a fixture
+ * import) — the sticky-pin/scroll-progress logic below is untouched.
  */
-export function StoryRail() {
+export function StoryRail({ stories }: { stories: StoryRailItem[] }) {
   const outerRef = useRef<HTMLElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -228,7 +231,7 @@ export function StoryRail() {
           <div ref={viewportRef} role="group" aria-label="Danh sách phóng sự địa phương" className={`hsvRail ${styles.viewport}`} tabIndex={0}>
             <div ref={trackRef} className={styles.track}>
               {stories.map((s, i) => (
-                <Link key={s.slug} href={articleHref(s.slug)} prefetch={false} data-flow-card className={styles.card}>
+                <Link key={s.slug} href={s.url} prefetch={false} data-flow-card className={styles.card}>
                   <span className={styles.cardMedia}>
                     <MediaPlaceholder need="Ảnh phóng sự địa phương" />
                     <span className={styles.cardNumber}>{String(i + 1).padStart(2, "0")}</span>
@@ -237,10 +240,10 @@ export function StoryRail() {
                     <span className={styles.cardMetaRow}>
                       <span className={styles.cardPlace}>{s.place}</span>
                       <span className={styles.cardDot} />
-                      <span className={styles.cardDate}>{s.date}</span>
+                      <span className={styles.cardDate}>{formatDateVi(s.publishedAt)}</span>
                     </span>
                     <span className={styles.cardHeadline}>{s.headline}</span>
-                    <span className={styles.cardCategory}>{s.category}</span>
+                    <span className={styles.cardCategory}>{s.category.name}</span>
                   </span>
                 </Link>
               ))}

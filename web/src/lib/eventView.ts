@@ -1,4 +1,5 @@
-import type { EventSource, EventStatus } from "@/lib/types";
+import type { Event } from "@/domain/event";
+import type { EventStatus } from "@/domain/event";
 
 function midnight(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -44,9 +45,9 @@ export interface EventView {
   ctaNote: string;
 }
 
-export function buildEventView(e: EventSource, now: Date): EventView {
-  const s = new Date(e.start);
-  const en = new Date(e.end);
+export function buildEventView(e: Event, now: Date): EventView {
+  const s = new Date(e.startAt);
+  const en = new Date(e.endAt);
   const dayDiff = Math.round((midnight(s) - midnight(now)) / 86400000);
   const seats = e.capacity != null && e.registered != null;
   const full = seats && (e.registered as number) >= (e.capacity as number);
@@ -80,7 +81,7 @@ export function buildEventView(e: EventSource, now: Date): EventView {
 
   return {
     slug: e.slug,
-    imageNeed: e.imageNeed,
+    imageNeed: e.cover?.placeholderNote ?? "",
     title: e.title,
     place: e.place,
     isLive: status === "live",

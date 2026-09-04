@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./Gallery.module.css";
 import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
 import { IconArrowLeft, IconArrowRight, IconClose, IconImageBroken, IconOffline } from "@/components/icons";
-import { gallerySource } from "@/lib/data/homepage";
+import type { Gallery as GalleryDomain } from "@/domain/media";
+import { formatDateVi } from "@/lib/formatDate";
 
-export function Gallery() {
+export function Gallery({ gallery }: { gallery: GalleryDomain }) {
+  const gallerySource = gallery.items;
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [loadingPhase, setLoadingPhase] = useState(false);
   const lbRef = useRef<HTMLDivElement>(null);
@@ -27,22 +29,22 @@ export function Gallery() {
     setTimeout(() => closeBtnRef.current?.focus(), 60);
   }
 
-  function step(dir: number) {
+  const step = useCallback((dir: number) => {
     const n = gallerySource.length;
     setOpenIndex((i) => (((i ?? 0) + dir) % n + n) % n);
     setLoadingPhase(true);
     clearTimeout(loadTimer.current);
     loadTimer.current = setTimeout(() => setLoadingPhase(false), 380);
-  }
+  }, [gallerySource.length]);
 
-  function close() {
+  const close = useCallback(() => {
     clearTimeout(loadTimer.current);
     document.body.style.overflow = "";
     document.documentElement.style.overflow = "";
     setOpenIndex(null);
     const el = returnFocusRef.current;
     if (el) setTimeout(() => { try { el.focus(); } catch {} }, 40);
-  }
+  }, []);
 
   useEffect(() => {
     if (openIndex == null) return;
@@ -63,7 +65,7 @@ export function Gallery() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openIndex]);
+  }, [openIndex, step, close]);
 
   const item = openIndex != null ? gallerySource[openIndex] : null;
 
@@ -92,11 +94,11 @@ export function Gallery() {
           data-gallery-tile
           className={`${styles.tile} ${styles.tileFeature}`}
         >
-          <MediaPlaceholder need={feature.need} />
+          <MediaPlaceholder need={feature.placeholderNote ?? ""} />
           <span aria-hidden="true" className={styles.tileScrimFeature} />
           <span className={styles.tileInfoFeature}>
             <span data-gcap className={styles.captionFeature}>{feature.caption}</span>
-            <span className={styles.metaFeature}>{[feature.place, feature.date].filter(Boolean).join(" · ")}</span>
+            <span className={styles.metaFeature}>{[feature.locationLabel, feature.capturedAt && formatDateVi(feature.capturedAt)].filter(Boolean).join(" · ")}</span>
             <span data-ghint className={styles.hintFeature}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M4 9V4h5M20 15v5h-5M20 9V4h-5M4 15v5h5" /></svg>
               Xem ảnh lớn
@@ -115,11 +117,11 @@ export function Gallery() {
               data-gallery-tile
               className={styles.tile}
             >
-              <MediaPlaceholder need={g.need} />
+              <MediaPlaceholder need={g.placeholderNote ?? ""} />
               <span aria-hidden="true" className={styles.tileScrim} />
               <span className={styles.tileInfo}>
                 <span data-gcap className={styles.caption}>{g.caption}</span>
-                <span data-ghint className={styles.hint}>{[g.place, g.date].filter(Boolean).join(" · ")}</span>
+                <span data-ghint className={styles.hint}>{[g.locationLabel, g.capturedAt && formatDateVi(g.capturedAt)].filter(Boolean).join(" · ")}</span>
               </span>
             </button>
           );
@@ -153,7 +155,7 @@ export function Gallery() {
                     <span aria-live="polite" className={styles.lbLoadingLabel}>Đang tải ảnh…</span>
                   </div>
                 ) : (
-                  <MediaPlaceholder need={item.need} />
+                  <MediaPlaceholder need={item.placeholderNote ?? ""} />
                 )}
               </div>
               <button type="button" onClick={() => step(1)} aria-label="Ảnh sau" className={styles.lbIconBtn}>
@@ -162,7 +164,7 @@ export function Gallery() {
             </div>
             <div className={styles.lbCaptionBlock}>
               <span className={styles.lbCaption}>{item.caption}</span>
-              <span className={styles.lbMeta}>{[item.place, item.date].filter(Boolean).join(" · ")}</span>
+              <span className={styles.lbMeta}>{[item.locationLabel, item.capturedAt && formatDateVi(item.capturedAt)].filter(Boolean).join(" · ")}</span>
               <span className={styles.lbMeta}>Nguồn ảnh: chưa được cung cấp</span>
             </div>
           </div>

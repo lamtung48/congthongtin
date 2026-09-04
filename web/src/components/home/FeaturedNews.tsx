@@ -3,12 +3,11 @@ import styles from "./FeaturedNews.module.css";
 import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
 import { Reveal } from "@/components/ui/Reveal";
 import { IconArrowRight } from "@/components/icons";
-import { articleHref } from "@/lib/data/news";
-import { featured } from "@/lib/data/homepage";
+import type { FeaturedNewsResult } from "@/data-access/types";
+import { formatDateVi } from "@/lib/formatDate";
 
-const MAIN_SLUG = "tuyen-duong-112-sv5t";
-
-export function FeaturedNews() {
+export function FeaturedNews({ featured }: { featured: FeaturedNewsResult }) {
+  const { main, secondary } = featured;
   return (
     <section aria-label="Tin tiêu điểm" className={styles.section}>
       <div className={styles.head}>
@@ -24,41 +23,37 @@ export function FeaturedNews() {
 
       <div data-l="feat" className={styles.grid}>
         <Reveal as="article" className={styles.main}>
-          <Link href={articleHref(MAIN_SLUG)} prefetch={false} className={styles.mainMedia}>
+          <Link href={main.url} prefetch={false} className={styles.mainMedia}>
             <div className={styles.mainMediaInner}>
-              <MediaPlaceholder need="Ảnh bài tiêu điểm" />
+              <MediaPlaceholder need={main.coverImage?.placeholderNote ?? ""} />
             </div>
           </Link>
           <div className={styles.mainBody}>
             <div className={styles.metaRow}>
-              <span className={styles.cat}>Sinh viên 5 tốt</span>
+              <span className={styles.cat}>{main.category.name}</span>
               <span className={styles.dot} />
-              <span className={styles.date}>31.08.2026</span>
+              <span className={styles.date}>{formatDateVi(main.publishedAt)}</span>
             </div>
             <h3 className={styles.mainTitle}>
-              <Link href={articleHref(MAIN_SLUG)} prefetch={false}>
-                Tuyên dương 112 “Sinh viên 5 tốt” cấp Trung ương: những chân dung học tập và cống hiến
-              </Link>
+              <Link href={main.url} prefetch={false}>{main.title}</Link>
             </h3>
-            <p className={styles.mainLead}>
-              Danh hiệu năm nay ghi nhận nhiều sinh viên vừa đạt thành tích nghiên cứu quốc tế, vừa duy trì hoạt động tình nguyện tại địa phương trong suốt bốn năm học.
-            </p>
+            <p className={styles.mainLead}>{main.lead}</p>
           </div>
         </Reveal>
 
         <div className={styles.secList}>
-          {featured.map((a) => (
+          {secondary.map((a) => (
             <Reveal key={a.slug} as="article" data-l="feat-sec" className={styles.secItem}>
               <div className={styles.secBody}>
                 <div className={styles.metaRow}>
-                  <span className={styles.secCat}>{a.category}</span>
-                  <span className={styles.secDate}>{a.date}</span>
+                  <span className={styles.secCat}>{a.category.name}</span>
+                  <span className={styles.secDate}>{formatDateVi(a.publishedAt)}</span>
                 </div>
                 <h4 className={styles.secTitle}>
-                  <Link href={articleHref(a.slug)} prefetch={false}>{a.title}</Link>
+                  <Link href={a.url} prefetch={false}>{a.title}</Link>
                 </h4>
               </div>
-              <Link href={articleHref(a.slug)} prefetch={false} aria-hidden="true" tabIndex={-1} className={styles.secMedia}>
+              <Link href={a.url} prefetch={false} aria-hidden="true" tabIndex={-1} className={styles.secMedia}>
                 <MediaPlaceholder need="Ảnh bài viết" />
               </Link>
             </Reveal>

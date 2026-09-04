@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import * as topojson from "topojson-client";
 import type { Topology } from "topojson-specification";
 import type { Feature, Geometry } from "geojson";
-import type { ActivityMapData } from "@/lib/types";
+import type { ActivityMapData } from "@/domain/activity";
+import { getActivityMap } from "@/services/homepageService";
 import { NEIGHBOURS } from "./constants";
 
 export type MapLoadState = "loading" | "loaded" | "empty" | "error" | "geo";
@@ -32,9 +33,7 @@ export function useActivityMapData(): MapDataResult {
     async function load() {
       let data: ActivityMapData;
       try {
-        const dr = await fetch("/data/activity-map.json");
-        if (!dr.ok) throw new Error("data");
-        data = (await dr.json()) as ActivityMapData;
+        data = await getActivityMap();
       } catch {
         if (!cancelled) setResult({ state: "error", data: null, vnFeature: null, nearFeatures: [] });
         return;

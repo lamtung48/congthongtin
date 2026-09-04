@@ -6,15 +6,19 @@ import styles from "./LocalNews.module.css";
 import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
 import { Reveal } from "@/components/ui/Reveal";
 import { IconArrowRight, IconOffline, IconProvince, IconSchool, IconGlobe } from "@/components/icons";
-import { localSource } from "@/lib/data/homepage";
-import { articleHref } from "@/lib/data/news";
-import type { LocalNewsLevel } from "@/lib/types";
+import type { LocalNewsEntry } from "@/data-access/types";
+import type { OrganizationLevel } from "@/domain/people";
+import { formatDateVi } from "@/lib/formatDate";
 
-const LEVELS: LocalNewsLevel[] = ["Tỉnh/thành", "Trường", "Hội ở nước ngoài"];
+const LEVELS: { value: OrganizationLevel; label: string }[] = [
+  { value: "province", label: "Tỉnh/thành" },
+  { value: "university", label: "Trường" },
+  { value: "overseas", label: "Hội ở nước ngoài" },
+];
 
-export function LocalNews() {
-  const [filter, setFilter] = useState<LocalNewsLevel>("Tỉnh/thành");
-  const rows = localSource.filter((n) => n.level === filter);
+export function LocalNews({ items }: { items: LocalNewsEntry[] }) {
+  const [filter, setFilter] = useState<OrganizationLevel>("province");
+  const rows = items.filter((n) => n.level === filter);
 
   return (
     <section aria-label="Tin từ cơ sở" className={styles.section}>
@@ -26,14 +30,14 @@ export function LocalNews() {
           </div>
           <p className={styles.desc}>Mạng lưới Hội Sinh viên tại các tỉnh, thành, nhà trường và tổ chức của sinh viên Việt Nam ở nước ngoài.</p>
           <div role="group" aria-label="Lọc theo cấp đơn vị" className={styles.filters}>
-            {LEVELS.map((label) => {
-              const count = String(localSource.filter((n) => n.level === label).length).padStart(2, "0");
-              const on = filter === label;
+            {LEVELS.map(({ value, label }) => {
+              const count = String(items.filter((n) => n.level === value).length).padStart(2, "0");
+              const on = filter === value;
               return (
                 <button
-                  key={label}
+                  key={value}
                   type="button"
-                  onClick={() => setFilter(label)}
+                  onClick={() => setFilter(value)}
                   aria-pressed={on}
                   className={on ? styles.filterBtnOn : styles.filterBtn}
                 >
@@ -43,33 +47,33 @@ export function LocalNews() {
               );
             })}
           </div>
-          <span aria-live="polite" className={styles.srOnly}>Nhóm {filter}: {rows.length} tin</span>
+          <span aria-live="polite" className={styles.srOnly}>Nhóm {LEVELS.find((l) => l.value === filter)?.label}: {rows.length} tin</span>
         </div>
 
         <div>
           {rows.length === 0 ? (
             <div className={styles.emptyBox}>
               <span className={styles.emptyTitle}>Chưa có tin ở nhóm này</span>
-              <span className={styles.emptyDesc}>Nhóm “{filter}” chưa có tin trong dữ liệu hiện có. Bạn có thể chọn nhóm khác ở cột bên.</span>
+              <span className={styles.emptyDesc}>Nhóm “{LEVELS.find((l) => l.value === filter)?.label}” chưa có tin trong dữ liệu hiện có. Bạn có thể chọn nhóm khác ở cột bên.</span>
             </div>
           ) : (
             <div className={styles.list}>
               {rows.map((n) => (
                 <Reveal key={n.slug} as="article" className={styles.row}>
                   <span aria-hidden="true" className={styles.avatar}>
-                    {n.level === "Tỉnh/thành" && <IconProvince size={20} />}
-                    {n.level === "Trường" && <IconSchool size={20} />}
-                    {n.level === "Hội ở nước ngoài" && <IconGlobe size={20} />}
+                    {n.level === "province" && <IconProvince size={20} />}
+                    {n.level === "university" && <IconSchool size={20} />}
+                    {n.level === "overseas" && <IconGlobe size={20} />}
                   </span>
                   <span className={styles.rowBody}>
                     <span className={styles.rowMeta}>
-                      <span className={styles.org}>{n.org}</span>
+                      <span className={styles.org}>{n.orgName}</span>
                       <span className={styles.dot} />
                       <span className={styles.place}>{n.place}</span>
                     </span>
-                    <Link href={articleHref(n.slug)} prefetch={false} className={styles.rowTitle}>{n.title}</Link>
+                    <Link href={n.url} prefetch={false} className={styles.rowTitle}>{n.title}</Link>
                     <span className={styles.rowFoot}>
-                      <span className={styles.date}>{n.date}</span>
+                      <span className={styles.date}>{formatDateVi(n.publishedAt)}</span>
                       {n.unitUrl ? (
                         <a href={n.unitUrl} className={styles.unitLink}>Trang đơn vị →</a>
                       ) : (
@@ -81,7 +85,7 @@ export function LocalNews() {
                     </span>
                   </span>
                   <span className={styles.thumb}>
-                    <MediaPlaceholder need={n.need} />
+                    <MediaPlaceholder need={n.media.placeholderNote ?? ""} />
                   </span>
                 </Reveal>
               ))}

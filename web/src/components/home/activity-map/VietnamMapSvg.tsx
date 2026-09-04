@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Feature, Geometry } from "geojson";
 import styles from "./VietnamMapSvg.module.css";
 import { IconClose } from "@/components/icons";
-import type { ActivityMapData, ActivityMapOverseasCountry, ActivityMapProvince } from "@/lib/types";
+import type { ActivityMapData, ActivityMapOverseasCountry, ActivityMapProvince } from "@/domain/activity";
 import type { MapLoadState } from "./useActivityMapData";
 import { mapDims, makeProjection, radiusScale } from "./mapMath";
 import { provinceValue } from "./provinceValue";

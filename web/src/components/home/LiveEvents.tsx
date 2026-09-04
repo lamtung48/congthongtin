@@ -5,7 +5,7 @@ import styles from "./LiveEvents.module.css";
 import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
 import { Reveal } from "@/components/ui/Reveal";
 import { IconArrowLeft, IconArrowRight, IconMapPin, IconOffline } from "@/components/icons";
-import { eventsSource } from "@/lib/data/homepage";
+import type { Event } from "@/domain/event";
 import { buildEventView } from "@/lib/eventView";
 
 function dd(d: Date) {
@@ -15,7 +15,7 @@ function hh(d: Date) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-export function LiveEvents() {
+export function LiveEvents({ events }: { events: Event[] }) {
   const railRef = useRef<HTMLDivElement>(null);
   const prevRef = useRef<HTMLButtonElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
@@ -35,8 +35,8 @@ export function LiveEvents() {
     setNow(new Date());
   }, []);
 
-  const events = now
-    ? eventsSource.map((e) => buildEventView(e, now)).sort((a, b) => a.order - b.order || a.sortKey - b.sortKey)
+  const eventViews = now
+    ? events.map((e) => buildEventView(e, now)).sort((a, b) => a.order - b.order || a.sortKey - b.sortKey)
     : [];
 
   function updateRail() {
@@ -129,7 +129,7 @@ export function LiveEvents() {
             </div>
           ))}
         </div>
-      ) : events.length === 0 ? (
+      ) : eventViews.length === 0 ? (
         <div className={styles.emptyBox}>
           <span className={styles.emptyTitle}>Chưa có sự kiện trong kỳ này</span>
           <span className={styles.emptyDesc}>Không có sự kiện nào đang hoặc sắp diễn ra theo dữ liệu hiện có. Mục này sẽ hiển thị lại khi hệ thống nhận được sự kiện mới.</span>
@@ -144,7 +144,7 @@ export function LiveEvents() {
             aria-label="Danh sách sự kiện — dùng mũi tên trái, phải để chuyển"
             className={`hsvRail ${styles.rail}`}
           >
-            {events.map((e) => (
+            {eventViews.map((e) => (
               <Reveal
                 key={e.slug}
                 as="article"

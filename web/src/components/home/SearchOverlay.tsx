@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import styles from "./SearchOverlay.module.css";
-import { tags, searchCorpus } from "@/lib/data/homepage";
+import type { SearchSuggestion } from "@/domain/homepage";
+import type { Topic } from "@/domain/taxonomy";
+import { formatDateVi } from "@/lib/formatDate";
 import { IconClose, IconSearch } from "@/components/icons";
 
 function norm(v: string) {
@@ -20,14 +22,18 @@ export function SearchOverlay({
   open,
   onClose,
   returnFocusRef,
+  topics,
+  corpus,
 }: {
   open: boolean;
   onClose: () => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
+  topics: Topic[];
+  corpus: SearchSuggestion[];
 }) {
   const [query, setQuery] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
-  const [results, setResults] = useState<typeof searchCorpus>([]);
+  const [results, setResults] = useState<SearchSuggestion[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -87,7 +93,7 @@ export function SearchOverlay({
     setPhase("loading");
     timerRef.current = setTimeout(() => {
       const k = norm(value.trim());
-      const hits = searchCorpus.filter((c) => norm(c.title + " " + c.category).includes(k));
+      const hits = corpus.filter((c) => norm(c.title + " " + c.category).includes(k));
       setPhase(hits.length ? "results" : "empty");
       setResults(hits.slice(0, 5));
     }, 420);
@@ -132,7 +138,7 @@ export function SearchOverlay({
           <div className={styles.body}>
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
               <span className={styles.label}>Tìm nhiều nhất</span>
-              {searchCorpus.slice(0, 4).map((s) => (
+              {corpus.slice(0, 4).map((s) => (
                 <Link
                   key={s.title}
                   href="#"
@@ -148,8 +154,8 @@ export function SearchOverlay({
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)", paddingTop: "var(--sp-5)", borderTop: "1px solid var(--border-subtle)" }}>
               <span className={styles.label}>Chủ đề sẵn có</span>
               <div className={styles.tagRow}>
-                {tags.map((t) => (
-                  <Link key={t.name} href={t.href} prefetch={false} className={styles.tagChip}>
+                {topics.map((t) => (
+                  <Link key={t.slug} href={t.url} prefetch={false} className={styles.tagChip}>
                     #{t.name}
                   </Link>
                 ))}
@@ -179,7 +185,7 @@ export function SearchOverlay({
               <Link key={r.title} href="/tin-tuc" prefetch={false} className={styles.resultLink}>
                 <span className={styles.resultMeta}>
                   <span className={styles.resultCat}>{r.category}</span>
-                  <span className={styles.resultDate}>{r.date}</span>
+                  <span className={styles.resultDate}>{formatDateVi(r.publishedAt)}</span>
                 </span>
                 <span className={styles.resultTitle}>{r.title}</span>
               </Link>

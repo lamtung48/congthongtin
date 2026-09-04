@@ -5,11 +5,10 @@ import { useEffect, useRef } from "react";
 import styles from "./Hero.module.css";
 import { MediaPlaceholder } from "@/components/ui/MediaPlaceholder";
 import { IconArrowRight, IconMapPin } from "@/components/icons";
-import { articleHref } from "@/lib/data/news";
+import type { HeroContent } from "@/domain/homepage";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
-const HERO_SLUG = "dai-hoi-xii-khai-mac";
-
-export function Hero() {
+export function Hero({ hero }: { hero: HeroContent }) {
   const mediaRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
@@ -39,48 +38,46 @@ export function Hero() {
       <div data-l="hero" className={styles.grid}>
         <div data-hero-copy className={styles.copy}>
           <div className={styles.eyebrowRow}>
-            <span className={styles.badge}>Đại hội XII</span>
-            <span className={styles.timestamp}>02.09.2026 · 07:40</span>
+            <span className={styles.badge}>{hero.eyebrow}</span>
+            <span className={styles.timestamp}>{formatDateTimeVi(hero.publishedAt)}</span>
           </div>
           <h1 className={styles.headline}>
-            Đại hội đại biểu toàn quốc Hội Sinh viên Việt Nam lần thứ XII{" "}
-            <span className={styles.headlineAccent}>khai mạc tại Hà Nội</span>
+            {hero.headline}{" "}
+            {hero.headlineAccent && <span className={styles.headlineAccent}>{hero.headlineAccent}</span>}
           </h1>
-          <p className={styles.lead}>
-            Hơn 700 đại biểu đại diện cho sinh viên cả nước và du học sinh Việt Nam ở nước ngoài thảo luận phương hướng công tác Hội nhiệm kỳ 2026 – 2031.
-          </p>
+          <p className={styles.lead}>{hero.lead}</p>
           <div className={styles.metaRow}>
-            <span>Ban Biên tập</span>
+            <span>{hero.author.name}</span>
             <span className={styles.dot} />
-            <span>6 phút đọc</span>
+            <span>{hero.readingTimeMinutes} phút đọc</span>
             <span className={styles.dot} />
-            <span>Chuyên đề Đại hội</span>
+            <span>{hero.topicLabel}</span>
           </div>
           <div className={styles.ctaRow}>
-            <Link href={articleHref(HERO_SLUG)} prefetch={false} className={styles.ctaPrimary}>
+            <Link href={hero.articleUrl} prefetch={false} className={styles.ctaPrimary}>
               Đọc bài viết
               <IconArrowRight size={17} />
             </Link>
-            <Link href="/chu-de/dai-hoi-xii" prefetch={false} className={styles.ctaSecondary}>
-              Chuyên đề Đại hội XII
+            <Link href={hero.secondaryCtaHref} prefetch={false} className={styles.ctaSecondary}>
+              {hero.secondaryCtaLabel}
             </Link>
           </div>
         </div>
 
         <Link
           data-hero-media
-          href={articleHref(HERO_SLUG)} prefetch={false}
-          aria-label="Đại hội đại biểu toàn quốc Hội Sinh viên Việt Nam lần thứ XII khai mạc tại Hà Nội"
+          href={hero.articleUrl} prefetch={false}
+          aria-label={`${hero.headline} ${hero.headlineAccent ?? ""}`.trim()}
           className={styles.mediaLink}
         >
           <span className={styles.mediaShift} ref={mediaRef}>
-            <MediaPlaceholder need="Ảnh phiên khai mạc Đại hội XII — ngang, tối thiểu 2400px" />
+            <MediaPlaceholder need={hero.media.placeholderNote ?? ""} />
           </span>
           <span className={styles.mediaVignette} />
           <span className={styles.mediaScrim} />
           <span className={styles.mediaCaption}>
             <IconMapPin size={13} />
-            Trung tâm Hội nghị Quốc gia, Hà Nội
+            {hero.media.locationLabel}
           </span>
         </Link>
       </div>

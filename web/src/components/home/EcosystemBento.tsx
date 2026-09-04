@@ -1,7 +1,8 @@
 import styles from "./EcosystemBento.module.css";
 import { Reveal } from "@/components/ui/Reveal";
 import { IconArrowRight } from "@/components/icons";
-import { conferencePlatform, dataPlatform, sv5tPlatform, trainingPlatform, volunteerPlatform } from "@/lib/data/platforms";
+import type { Platform } from "@/domain/platform";
+import { buildPlatformView } from "@/lib/view/platformView";
 
 function ConferenceIcon() {
   return (
@@ -43,12 +44,13 @@ function DataIcon() {
   );
 }
 
-export function EcosystemBento() {
-  const p1 = conferencePlatform("live");
-  const p2 = trainingPlatform();
-  const p3 = sv5tPlatform();
-  const p4 = volunteerPlatform("open");
-  const p5 = dataPlatform("soon");
+export function EcosystemBento({ platforms }: { platforms: Platform[] }) {
+  const [conference, training, sv5tot, volunteer, data] = platforms;
+  const p1 = buildPlatformView(conference);
+  const p2 = buildPlatformView(training);
+  const p3 = buildPlatformView(sv5tot);
+  const p4 = buildPlatformView(volunteer);
+  const p5 = buildPlatformView(data);
 
   return (
     <section aria-label="Hệ sinh thái số Hội Sinh viên Việt Nam" className={styles.section}>
