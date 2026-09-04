@@ -46,6 +46,22 @@ import {
  *  its own home is `/don-vi/[slug]`/`/dia-phuong/[slug]`, not `/chuyen-muc`. */
 const LOCAL_NEWS_ARTICLE_CATEGORY: Category = { id: "tin-co-so", slug: "tin-co-so", name: "Tin từ cơ sở" };
 
+/** A category and a topic that mean roughly the same editorial thing don't
+ *  always share a slug (`nghien-cuu` the category vs. `nghien-cuu-khoa-hoc`
+ *  the topic). Until every article carries explicit `Article.topics`
+ *  tagging, `getArticlesByTopic` also counts an article whose category
+ *  aliases to that topic — see `docs/LISTING_PAGES.md`. Topics with no
+ *  matching category (e.g. `chuyen-doi-so`) simply get nothing from this
+ *  side, which is correct: it's an honest gap, not a bug to paper over. */
+const CATEGORY_TOPIC_ALIAS: Record<string, string> = {
+  "nghien-cuu": "nghien-cuu-khoa-hoc",
+  "hoi-nhap": "hoi-nhap-quoc-te",
+};
+
+function byDateDesc(a: { publishedAt: string }, b: { publishedAt: string }): number {
+  return a.publishedAt < b.publishedAt ? 1 : -1;
+}
+
 function storyToArticle(s: StoryRailItem): Article {
   return { id: s.slug, slug: s.slug, url: s.url, title: s.headline, category: s.category, publishedAt: s.publishedAt, place: s.place, status: "published" };
 }
@@ -184,18 +200,22 @@ export class FixtureProvider implements ContentProvider {
     return allArticles().map((a) => a.slug);
   }
 
+  async getAllArticles(): Promise<ArticleSummary[]> {
+    return allArticles().sort(byDateDesc);
+  }
+
   async getRelatedArticles(slug: string, limit = 4): Promise<ArticleSummary[]> {
     const all = allArticles();
     const current = all.find((a) => a.slug === slug);
     if (!current) return [];
     return all
       .filter((a) => a.slug !== slug && a.category.slug === current.category.slug)
-      .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1))
+      .sort(byDateDesc)
       .slice(0, limit);
   }
 
   async getAdjacentArticles(slug: string): Promise<AdjacentArticles> {
-    const ordered = allArticles().sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
+    const ordered = allArticles().sort(byDateDesc);
     const i = ordered.findIndex((a) => a.slug === slug);
     if (i === -1) return { previous: null, next: null };
     // Sorted newest-first: an older article (published before this one) sits
@@ -219,7 +239,7 @@ export class FixtureProvider implements ContentProvider {
   }
 
   async getArticlesByCategory(slug: string): Promise<ArticleSummary[]> {
-    return LATEST_ARTICLES.filter((a) => a.category.slug === slug);
+    return allArticles().filter((a) => a.category.slug === slug).sort(byDateDesc);
   }
 
   async getTopics(): Promise<Topic[]> {
@@ -228,6 +248,12 @@ export class FixtureProvider implements ContentProvider {
 
   async getTopicBySlug(slug: string): Promise<Topic | null> {
     return topicBySlug(slug) ?? null;
+  }
+
+  async getArticlesByTopic(slug: string): Promise<ArticleSummary[]> {
+    return allArticles()
+      .filter((a) => a.topics?.some((t) => t.slug === slug) || (CATEGORY_TOPIC_ALIAS[a.category.slug] ?? a.category.slug) === slug)
+      .sort(byDateDesc);
   }
 
   async getLocalityBySlug(slug: string): Promise<LocalityProfile | null> {

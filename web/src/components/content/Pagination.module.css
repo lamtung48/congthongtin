@@ -1,0 +1,15 @@
+.nav { display: flex; align-items: center; justify-content: center; gap: var(--sp-5); padding-top: var(--sp-4); }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px;
+  border-radius: var(--radius-pill); border: 1px solid var(--border-default); background: var(--surface-page);
+  font-family: var(--font-ui); font-size: 14px; font-weight: var(--fw-medium); color: var(--text-body);
+  white-space: nowrap; transition: border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
+}
+.btn:hover { border-color: var(--border-brand); color: var(--text-brand); text-decoration: none; }
+.btnDisabled {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px;
+  border-radius: var(--radius-pill); border: 1px solid var(--border-subtle); background: var(--surface-subtle);
+  font-family: var(--font-ui); font-size: 14px; font-weight: var(--fw-medium); color: var(--text-faint);
+  white-space: nowrap;
+}
+.status { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-muted); white-space: nowrap; }

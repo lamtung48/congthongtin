@@ -1,4 +1,3 @@
-.list { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
 .chip {
   display: inline-block; padding: 7px 13px; border-radius: var(--radius-pill);
   background: var(--surface-subtle); font-family: var(--font-ui); font-size: 13px;

@@ -1,0 +1,15 @@
+.stack { display: flex; flex-direction: column; gap: var(--sp-10); }
+
+.categoryNav { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 4px 0; }
+.categoryPill {
+  display: inline-flex; align-items: center; flex-shrink: 0; white-space: nowrap;
+  padding: 9px 16px; border-radius: var(--radius-pill); border: 1px solid var(--border-default);
+  background: var(--surface-page); font-family: var(--font-ui); font-size: 13.5px; font-weight: var(--fw-medium);
+  color: var(--text-body); transition: border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
+}
+.categoryPill:hover { border-color: var(--border-brand); color: var(--text-brand); text-decoration: none; }
+
+/* Desktop default (1440/1280): 3 columns. Overridden per breakpoint in
+   `globals.css`'s `[data-l="news-grid"]` rules — a deliberately different
+   arrangement at each step, not the same grid scaled down. */
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(24px, 2.4vw, 40px) clamp(20px, 2vw, 32px); }

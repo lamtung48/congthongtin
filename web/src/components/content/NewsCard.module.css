@@ -1,0 +1,18 @@
+.card { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.media { position: relative; display: block; aspect-ratio: 4/3; border-radius: var(--radius-md); overflow: hidden; background: var(--surface-sunken); }
+.body { display: flex; flex-direction: column; gap: 8px; }
+.metaRow { display: flex; align-items: center; gap: 10px; }
+.cat { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--brand-primary); text-decoration: none; }
+.cat:hover { text-decoration: underline; }
+.date { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); }
+.title { font-family: var(--font-editorial); font-size: var(--fs-h5); line-height: 1.3; font-weight: var(--fw-medium); margin: 0; }
+.title a { color: var(--text-strong); text-decoration: none; }
+.title a:hover { color: var(--text-brand); text-decoration: none; }
+.lead { font-size: var(--fs-body-sm); line-height: 1.6; color: var(--text-muted); margin: 0; }
+
+/* `wide` breaks up an otherwise uniform grid: a bigger tile with a wider
+   image and its lead paragraph shown, dropped in every few items — see
+   `docs/LISTING_PAGES.md`. */
+.wide { grid-column: span 2; }
+.wide .media { aspect-ratio: 16/9; }
+.wide .title { font-size: var(--fs-h3); line-height: 1.22; }

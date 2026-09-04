@@ -31,3 +31,9 @@ export function eventHref(slug: string): string {
 export function searchHref(query?: string): string {
   return query ? `/tim-kiem?q=${encodeURIComponent(query)}` : "/tim-kiem";
 }
+
+/** Page 1 of a paginated listing has no `/trang/N` suffix — it IS
+ *  `basePath`. Every other page lives at `basePath/trang/N`. */
+export function pagedHref(basePath: string, page: number): string {
+  return page <= 1 ? basePath : `${basePath}/trang/${page}`;
+}

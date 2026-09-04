@@ -37,14 +37,17 @@ export interface ContentProvider {
 
   /* ---------- Route architecture — one method per dynamic route's lookup ---------- */
 
-  /** `/tin-tuc/[slug]`. Searches every known article pool (latest, featured,
-   *  story rail, local news) since there is no single "all articles" index
-   *  yet — see `docs/ROUTES.md`. */
+  /** `/tin-tuc/[slug]`. Searches the one deduplicated pool every article
+   *  method reads from (see `docs/ARTICLE_DETAIL.md`). */
   getArticleBySlug(slug: string): Promise<Article | null>;
   /** Every slug `getArticleBySlug` can resolve — `generateStaticParams()`
    *  for `/tin-tuc/[slug]` needs the full list to pre-render at build time
    *  (static export has no per-request rendering; see `docs/DEPLOYMENT.md`). */
   getArticleSlugs(): Promise<string[]>;
+  /** `/tin-tuc`'s main index — every article, most recent first. Distinct
+   *  from `getLatestArticles()` (the homepage's own curated subset) — see
+   *  `docs/LISTING_PAGES.md`. */
+  getAllArticles(): Promise<ArticleSummary[]>;
   /** `/tin-tuc/[slug]`'s "related articles" rail — same category, most
    *  recent first, current article excluded. */
   getRelatedArticles(slug: string, limit?: number): Promise<ArticleSummary[]>;
@@ -56,11 +59,17 @@ export interface ContentProvider {
   getCategories(): Promise<Category[]>;
   /** `/chuyen-muc/[slug]`. */
   getCategoryBySlug(slug: string): Promise<Category | null>;
+  /** Every article in the category, most recent first. */
   getArticlesByCategory(slug: string): Promise<ArticleSummary[]>;
 
   getTopics(): Promise<Topic[]>;
   /** `/chu-de/[slug]`. */
   getTopicBySlug(slug: string): Promise<Topic | null>;
+  /** `/chu-de/[slug]`'s article stream — an article belongs to a topic
+   *  either by explicit `Article.topics` tagging or, until every article is
+   *  tagged, by its category aliasing to that topic. See
+   *  `docs/LISTING_PAGES.md` for why both count. */
+  getArticlesByTopic(slug: string): Promise<ArticleSummary[]>;
 
   /** `/dia-phuong/[slug]` — geographic place, not reporting unit. */
   getLocalityBySlug(slug: string): Promise<LocalityProfile | null>;

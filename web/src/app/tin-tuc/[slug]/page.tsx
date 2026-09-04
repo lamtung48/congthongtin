@@ -7,13 +7,13 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { MediaImage } from "@/components/ui/MediaImage";
 import { ArticleMeta } from "@/components/article/ArticleMeta";
 import { ShareActions } from "@/components/article/ShareActions";
-import { TagList } from "@/components/article/TagList";
+import { TagList } from "@/components/content/TagList";
 import { RelatedArticles } from "@/components/article/RelatedArticles";
 import { AdjacentArticleNav } from "@/components/article/AdjacentArticleNav";
 import { ArticleBody } from "@/components/article/blocks/ArticleBody";
 import { getAdjacentArticles, getArticleBySlug, getArticleSlugs, getRelatedArticles } from "@/services/contentService";
 import { pageMetadata } from "@/lib/seo";
-import { categoryHref, articleHref } from "@/lib/routes";
+import { categoryHref, articleHref, searchHref } from "@/lib/routes";
 import { resolveImageUrl } from "@/lib/media/resolveMedia";
 import { articleCoverTransitionName } from "@/lib/viewTransition";
 
@@ -120,7 +120,10 @@ export default async function ArticlePage({ params }: Props) {
 
           {hasTags && (
             <div className={styles.tagsRow}>
-              <TagList tags={article.tags!} />
+              <TagList
+                ariaLabel="Từ khoá liên quan"
+                items={article.tags!.map((t) => ({ key: t.slug, href: searchHref(t.name), label: `#${t.name}` }))}
+              />
             </div>
           )}
         </div>

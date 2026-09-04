@@ -20,6 +20,10 @@ export function getArticleSlugs(): Promise<string[]> {
   return getContentProvider().getArticleSlugs();
 }
 
+export function getAllArticles(): Promise<ArticleSummary[]> {
+  return getContentProvider().getAllArticles();
+}
+
 export function getRelatedArticles(slug: string, limit?: number): Promise<ArticleSummary[]> {
   return getContentProvider().getRelatedArticles(slug, limit);
 }
@@ -50,6 +54,10 @@ export function getTopics(): Promise<Topic[]> {
 
 export function getTopicBySlug(slug: string): Promise<Topic | null> {
   return getContentProvider().getTopicBySlug(slug);
+}
+
+export function getArticlesByTopic(slug: string): Promise<ArticleSummary[]> {
+  return getContentProvider().getArticlesByTopic(slug);
 }
 
 export function getLocalityBySlug(slug: string): Promise<LocalityProfile | null> {

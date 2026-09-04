@@ -1,0 +1,4 @@
+/* Reuses the same `[data-l="news-grid"]` breakpoint rules as `/tin-tuc`
+   (see `globals.css`) — same grid shape, different route, one set of
+   responsive rules to maintain. */
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(24px, 2.4vw, 40px) clamp(20px, 2vw, 32px); }
