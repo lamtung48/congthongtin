@@ -16,6 +16,10 @@ export function getArticleBySlug(slug: string): Promise<Article | null> {
   return getContentProvider().getArticleBySlug(slug);
 }
 
+export function getArticleSlugs(): Promise<string[]> {
+  return getContentProvider().getArticleSlugs();
+}
+
 export function searchContent(query: string): Promise<SearchSuggestion[]> {
   return getContentProvider().searchContent(query);
 }
@@ -44,8 +48,16 @@ export function getLocalityBySlug(slug: string): Promise<LocalityProfile | null>
   return getContentProvider().getLocalityBySlug(slug);
 }
 
+export function getLocalitySlugs(): Promise<string[]> {
+  return getContentProvider().getLocalitySlugs();
+}
+
 export function getUnitBySlug(slug: string): Promise<UnitProfile | null> {
   return getContentProvider().getUnitBySlug(slug);
+}
+
+export function getUnitSlugs(): Promise<string[]> {
+  return getContentProvider().getUnitSlugs();
 }
 
 export function getProvinces(): Promise<Province[]> {

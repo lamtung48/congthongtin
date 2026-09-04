@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import listStyles from "@/components/content/ArticleList.module.css";
 import { PageShell } from "@/components/ui/PageShell";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { getUnitBySlug } from "@/services/contentService";
+import { getUnitBySlug, getUnitSlugs } from "@/services/contentService";
 import { pageMetadata } from "@/lib/seo";
 import { unitHref } from "@/lib/routes";
 import { formatDateVi } from "@/lib/formatDate";
@@ -13,6 +13,11 @@ const LEVEL_LABEL = { province: "Hội Sinh viên cấp tỉnh, thành", univers
 
 interface Props {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateStaticParams() {
+  const slugs = await getUnitSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

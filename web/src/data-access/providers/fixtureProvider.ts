@@ -11,6 +11,7 @@ import type { Province, OverseasOrganization } from "@/domain/geo";
 import type { FeaturedNewsResult, LocalNewsEntry, LocalityProfile, StoryRailItem, UnitProfile } from "../types";
 import { slugify } from "@/lib/slug";
 import { matchesQuery } from "@/lib/search";
+import { withBasePath } from "@/lib/basePath";
 
 import { CATEGORIES, TOPICS, categoryBySlug, topicBySlug } from "../fixtures/taxonomy";
 import { LATEST_ARTICLES } from "../fixtures/latestArticles";
@@ -124,7 +125,7 @@ export class FixtureProvider implements ContentProvider {
    * line for a real endpoint is the entire migration to `ApiProvider`.
    */
   async getActivityMap(): Promise<ActivityMapDataset> {
-    const res = await fetch("/data/activity-map.json");
+    const res = await fetch(withBasePath("/data/activity-map.json"));
     if (!res.ok) throw new Error(`activity-map fetch failed: ${res.status}`);
     return (await res.json()) as ActivityMapDataset;
   }
@@ -141,6 +142,17 @@ export class FixtureProvider implements ContentProvider {
     const fromLocal = LOCAL_NEWS.find((n) => n.slug === slug);
     if (fromLocal) return localNewsToArticle(fromLocal);
     return null;
+  }
+
+  async getArticleSlugs(): Promise<string[]> {
+    const slugs = [
+      ...LATEST_ARTICLES.map((a) => a.slug),
+      FEATURED_ARTICLES.main.slug,
+      ...FEATURED_ARTICLES.secondary.map((a) => a.slug),
+      ...STORY_RAIL.map((s) => s.slug),
+      ...LOCAL_NEWS.map((n) => n.slug),
+    ];
+    return [...new Set(slugs)];
   }
 
   async searchContent(query: string): Promise<SearchSuggestion[]> {
@@ -176,6 +188,15 @@ export class FixtureProvider implements ContentProvider {
     return { slug, name, province, localNews, stories };
   }
 
+  async getLocalitySlugs(): Promise<string[]> {
+    const slugs = [
+      ...PROVINCES.map((p) => p.slug),
+      ...LOCAL_NEWS.map((n) => slugify(n.place)),
+      ...STORY_RAIL.map((s) => slugify(s.place)),
+    ];
+    return [...new Set(slugs)];
+  }
+
   async getUnitBySlug(slug: string): Promise<UnitProfile | null> {
     const byOrg = LOCAL_NEWS.filter((n) => slugify(n.orgName) === slug);
     if (byOrg.length > 0) {
@@ -190,6 +211,15 @@ export class FixtureProvider implements ContentProvider {
       return { slug, name: overseas.name, level: "overseas", localNews: [], activityStats: null };
     }
     return null;
+  }
+
+  async getUnitSlugs(): Promise<string[]> {
+    const slugs = [
+      ...LOCAL_NEWS.map((n) => slugify(n.orgName)),
+      ...PROVINCES.map((p) => p.slug),
+      ...OVERSEAS_ORGANIZATIONS.map((o) => o.id),
+    ];
+    return [...new Set(slugs)];
   }
 
   async getProvinces(): Promise<Province[]> {

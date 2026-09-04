@@ -4,13 +4,18 @@ import { notFound } from "next/navigation";
 import listStyles from "@/components/content/ArticleList.module.css";
 import { PageShell } from "@/components/ui/PageShell";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { getLocalityBySlug } from "@/services/contentService";
+import { getLocalityBySlug, getLocalitySlugs } from "@/services/contentService";
 import { pageMetadata } from "@/lib/seo";
 import { localityHref } from "@/lib/routes";
 import { formatDateVi } from "@/lib/formatDate";
 
 interface Props {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateStaticParams() {
+  const slugs = await getLocalitySlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

@@ -2,12 +2,17 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/ui/PageShell";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { getTopicBySlug } from "@/services/contentService";
+import { getTopicBySlug, getTopics } from "@/services/contentService";
 import { pageMetadata } from "@/lib/seo";
 import { topicHref } from "@/lib/routes";
 
 interface Props {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateStaticParams() {
+  const topics = await getTopics();
+  return topics.map((t) => ({ slug: t.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

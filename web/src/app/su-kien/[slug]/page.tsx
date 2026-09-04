@@ -5,12 +5,18 @@ import { PageShell } from "@/components/ui/PageShell";
 import { MediaImage } from "@/components/ui/MediaImage";
 import { IconArrowRight, IconMapPin } from "@/components/icons";
 import { getEventBySlug } from "@/services/contentService";
+import { getEvents } from "@/services/homepageService";
 import { pageMetadata } from "@/lib/seo";
 import { eventHref } from "@/lib/routes";
 import { formatDateTimeVi } from "@/lib/formatDate";
 
 interface Props {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateStaticParams() {
+  const events = await getEvents();
+  return events.map((e) => ({ slug: e.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

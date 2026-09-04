@@ -6,6 +6,7 @@ import type { Topology } from "topojson-specification";
 import type { Feature, Geometry } from "geojson";
 import type { ActivityMapData } from "@/domain/activity";
 import { getActivityMap } from "@/services/homepageService";
+import { withBasePath } from "@/lib/basePath";
 import { NEIGHBOURS } from "./constants";
 
 export type MapLoadState = "loading" | "loaded" | "empty" | "error" | "geo";
@@ -41,7 +42,7 @@ export function useActivityMapData(): MapDataResult {
 
       try {
         if (!topoCache) {
-          const tr = await fetch("/data/countries-110m.json");
+          const tr = await fetch(withBasePath("/data/countries-110m.json"));
           if (!tr.ok) throw new Error("geo");
           topoCache = (await tr.json()) as Topology;
         }

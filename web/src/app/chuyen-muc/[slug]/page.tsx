@@ -3,12 +3,17 @@ import { notFound } from "next/navigation";
 import { PageShell } from "@/components/ui/PageShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ArticleList } from "@/components/content/ArticleList";
-import { getCategoryBySlug, getArticlesByCategory } from "@/services/contentService";
+import { getCategoryBySlug, getArticlesByCategory, getCategories } from "@/services/contentService";
 import { pageMetadata } from "@/lib/seo";
 import { categoryHref } from "@/lib/routes";
 
 interface Props {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateStaticParams() {
+  const categories = await getCategories();
+  return categories.map((c) => ({ slug: c.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

@@ -4,13 +4,18 @@ import styles from "./page.module.css";
 import { PageShell } from "@/components/ui/PageShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MediaImage } from "@/components/ui/MediaImage";
-import { getArticleBySlug } from "@/services/contentService";
+import { getArticleBySlug, getArticleSlugs } from "@/services/contentService";
 import { pageMetadata } from "@/lib/seo";
 import { categoryHref, articleHref } from "@/lib/routes";
 import { formatDateVi } from "@/lib/formatDate";
 
 interface Props {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateStaticParams() {
+  const slugs = await getArticleSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

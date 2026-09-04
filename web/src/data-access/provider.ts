@@ -41,6 +41,10 @@ export interface ContentProvider {
    *  story rail, local news) since there is no single "all articles" index
    *  yet — see `docs/ROUTES.md`. */
   getArticleBySlug(slug: string): Promise<Article | null>;
+  /** Every slug `getArticleBySlug` can resolve — `generateStaticParams()`
+   *  for `/tin-tuc/[slug]` needs the full list to pre-render at build time
+   *  (static export has no per-request rendering; see `docs/DEPLOYMENT.md`). */
+  getArticleSlugs(): Promise<string[]>;
   /** `/tim-kiem` and the search overlay share this — same corpus, same rule. */
   searchContent(query: string): Promise<SearchSuggestion[]>;
 
@@ -55,8 +59,12 @@ export interface ContentProvider {
 
   /** `/dia-phuong/[slug]` — geographic place, not reporting unit. */
   getLocalityBySlug(slug: string): Promise<LocalityProfile | null>;
+  /** Every slug `getLocalityBySlug` can resolve — for `generateStaticParams()`. */
+  getLocalitySlugs(): Promise<string[]>;
   /** `/don-vi/[slug]` — a specific reporting Hội unit. */
   getUnitBySlug(slug: string): Promise<UnitProfile | null>;
+  /** Every slug `getUnitBySlug` can resolve — for `generateStaticParams()`. */
+  getUnitSlugs(): Promise<string[]>;
 
   getProvinces(): Promise<Province[]>;
   getOverseasOrganizations(): Promise<OverseasOrganization[]>;
