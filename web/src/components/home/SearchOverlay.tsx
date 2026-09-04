@@ -1,16 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import styles from "./SearchOverlay.module.css";
-import type { SearchSuggestion } from "@/domain/homepage";
+import { SearchResultRow } from "@/components/content/SearchResultRow";
+import type { SearchResultItem } from "@/domain/search";
 import type { Topic } from "@/domain/taxonomy";
-import { formatDateVi } from "@/lib/formatDate";
 import { searchHref } from "@/lib/routes";
-import { matchesQuery } from "@/lib/search";
-import { IconClose, IconSearch } from "@/components/icons";
+import { searchContent } from "@/services/contentService";
+import { IconClose, IconSearch, IconWarning } from "@/components/icons";
 
-type Phase = "idle" | "loading" | "results" | "empty";
+/** Matches the task brief's five states exactly — "initial" is the empty
+ *  input / trending-suggestions state, not a loading placeholder. */
+type Phase = "initial" | "loading" | "results" | "empty" | "error";
+
+const DEBOUNCE_MS = 350;
+const OVERLAY_RESULT_LIMIT = 8;
 
 export function SearchOverlay({
   open,
@@ -23,14 +29,21 @@ export function SearchOverlay({
   onClose: () => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
   topics: Topic[];
-  corpus: SearchSuggestion[];
+  corpus: SearchResultItem[];
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [results, setResults] = useState<SearchSuggestion[]>([]);
+  const [phase, setPhase] = useState<Phase>("initial");
+  const [results, setResults] = useState<SearchResultItem[]>([]);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const requestIdRef = useRef(0);
+
+  const suggestions = corpus.slice(0, 4);
+  // The list arrow keys move through — whichever one is actually on screen.
+  const visibleItems = phase === "initial" ? suggestions : phase === "results" ? results : [];
 
   // Reset the search state when the overlay opens — computed during render
   // (not an effect) since it's state derived from the `open` prop change.
@@ -39,8 +52,9 @@ export function SearchOverlay({
     setWasOpen(open);
     if (open) {
       setQuery("");
-      setPhase("idle");
+      setPhase("initial");
       setResults([]);
+      setHighlightIndex(-1);
     }
   }
 
@@ -79,20 +93,61 @@ export function SearchOverlay({
   function runSearch(value: string) {
     clearTimeout(timerRef.current);
     setQuery(value);
+    setHighlightIndex(-1);
     if (!value.trim()) {
-      setPhase("idle");
+      setPhase("initial");
       setResults([]);
       return;
     }
     setPhase("loading");
+    const requestId = ++requestIdRef.current;
     timerRef.current = setTimeout(() => {
-      const hits = matchesQuery(corpus, value);
-      setPhase(hits.length ? "results" : "empty");
-      setResults(hits.slice(0, 5));
-    }, 420);
+      searchContent(value, OVERLAY_RESULT_LIMIT)
+        .then((hits) => {
+          if (requestId !== requestIdRef.current) return; // a newer keystroke has already superseded this request
+          setPhase(hits.length ? "results" : "empty");
+          setResults(hits);
+        })
+        .catch(() => {
+          if (requestId !== requestIdRef.current) return;
+          setPhase("error");
+          setResults([]);
+        });
+    }, DEBOUNCE_MS);
+  }
+
+  function closeAndReturnFocus() {
+    onClose();
+    setTimeout(() => returnFocusRef.current?.focus(), 0);
+  }
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const picked = highlightIndex >= 0 ? visibleItems[highlightIndex] : undefined;
+    if (picked) {
+      router.push(picked.url);
+      closeAndReturnFocus();
+      return;
+    }
+    if (!query.trim()) return;
+    router.push(searchHref(query));
+    closeAndReturnFocus();
+  }
+
+  function onInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!visibleItems.length) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightIndex((i) => (i + 1) % visibleItems.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightIndex((i) => (i <= 0 ? visibleItems.length - 1 : i - 1));
+    }
   }
 
   if (!open) return null;
+
+  const activeId = highlightIndex >= 0 ? `search-option-${highlightIndex}` : undefined;
 
   return (
     <div
@@ -100,10 +155,7 @@ export function SearchOverlay({
       role="dialog"
       aria-modal="true"
       aria-label="Tìm kiếm trên cổng thông tin"
-      onClick={() => {
-        onClose();
-        setTimeout(() => returnFocusRef.current?.focus(), 0);
-      }}
+      onClick={closeAndReturnFocus}
     >
       <div className={styles.panel} ref={panelRef} onClick={(e) => e.stopPropagation()}>
         <div className={styles.head}>
@@ -112,7 +164,7 @@ export function SearchOverlay({
             <IconClose size={17} />
           </button>
         </div>
-        <div className={styles.inputRow}>
+        <form onSubmit={onSubmit} className={styles.inputRow}>
           <span style={{ color: "var(--text-muted)", display: "flex" }}>
             <IconSearch size={19} />
           </span>
@@ -120,22 +172,26 @@ export function SearchOverlay({
             ref={inputRef}
             value={query}
             onChange={(e) => runSearch(e.target.value)}
+            onKeyDown={onInputKeyDown}
+            role="combobox"
+            aria-expanded={visibleItems.length > 0}
+            aria-controls="search-listbox"
+            aria-activedescendant={activeId}
+            aria-autocomplete="list"
             aria-label="Từ khoá tìm kiếm"
-            placeholder="Tìm tin tức, phong trào, văn bản…"
+            placeholder="Tìm bài viết, chuyên mục, đơn vị, địa phương…"
+            autoComplete="off"
             className={styles.input}
           />
           <span className={styles.escHint}>ESC để đóng</span>
-        </div>
+        </form>
 
-        {phase === "idle" && (
+        {phase === "initial" && (
           <div className={styles.body}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
+            <div id="search-listbox" role="listbox" aria-label="Tìm nhiều nhất" style={{ display: "flex", flexDirection: "column", gap: "var(--sp-1)" }}>
               <span className={styles.label}>Tìm nhiều nhất</span>
-              {corpus.slice(0, 4).map((s) => (
-                <Link key={s.slug} href={s.url} className={styles.suggestLink}>
-                  <span style={{ fontFamily: "var(--font-ui)", fontSize: 14.5 }}>{s.title}</span>
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{s.category}</span>
-                </Link>
+              {suggestions.map((s, i) => (
+                <SearchResultRow key={s.id} item={s} id={`search-option-${i}`} highlighted={i === highlightIndex} />
               ))}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)", paddingTop: "var(--sp-5)", borderTop: "1px solid var(--border-subtle)" }}>
@@ -164,20 +220,14 @@ export function SearchOverlay({
         )}
 
         {phase === "results" && (
-          <div className={styles.resultsList} aria-live="polite">
+          <div id="search-listbox" role="listbox" aria-label="Kết quả tìm kiếm" className={styles.resultsList} aria-live="polite">
             <span className={styles.label} style={{ padding: "8px var(--sp-3) var(--sp-3)" }}>
               {results.length} kết quả
             </span>
-            {results.map((r) => (
-              <Link key={r.slug} href={r.url} className={styles.resultLink}>
-                <span className={styles.resultMeta}>
-                  <span className={styles.resultCat}>{r.category}</span>
-                  <span className={styles.resultDate}>{formatDateVi(r.publishedAt)}</span>
-                </span>
-                <span className={styles.resultTitle}>{r.title}</span>
-              </Link>
+            {results.map((r, i) => (
+              <SearchResultRow key={r.id} item={r} id={`search-option-${i}`} highlighted={i === highlightIndex} />
             ))}
-            <Link href={searchHref(query)} className={styles.allResults}>
+            <Link href={searchHref(query)} onClick={onClose} className={styles.allResults}>
               Xem tất cả kết quả
             </Link>
           </div>
@@ -193,6 +243,21 @@ export function SearchOverlay({
             </span>
             <button type="button" onClick={() => runSearch("")} className={styles.retryBtn}>
               Xoá từ khoá
+            </button>
+          </div>
+        )}
+
+        {phase === "error" && (
+          <div className={styles.centered} role="alert">
+            <IconWarning size={26} className={styles.errorIcon} />
+            <span style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--fs-h5)", color: "var(--text-strong)" }}>
+              Không thể tải kết quả tìm kiếm
+            </span>
+            <span style={{ fontSize: "var(--fs-body-sm)", lineHeight: 1.6, color: "var(--text-muted)", maxWidth: "46ch" }}>
+              Đã có lỗi khi kết nối tới dịch vụ tìm kiếm. Vui lòng thử lại.
+            </span>
+            <button type="button" onClick={() => runSearch(query)} className={styles.retryBtn}>
+              Thử lại
             </button>
           </div>
         )}

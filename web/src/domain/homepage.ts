@@ -1,6 +1,7 @@
 import type { Topic } from "./taxonomy";
 import type { Author } from "./people";
 import type { MediaAsset } from "./media";
+import type { SearchResultItem } from "./search";
 
 export interface NavItem {
   label: string;
@@ -45,19 +46,13 @@ export interface FooterConfiguration {
   governingBodyLine: string;
 }
 
-/** A search-corpus entry as shown in the search overlay and `/tim-kiem`.
- *  `url` is precomputed (same convention as `ArticleSummary.url`) so callers
- *  never build the route themselves. */
-export interface SearchSuggestion {
-  slug: string;
-  url: string;
-  title: string;
-  category: string;
-  publishedAt: string;
-}
-
+/** A small, editorially-curated set of quick suggestions shown in the
+ *  search overlay's idle state (before the visitor types anything) — not
+ *  the search index itself. Real search queries go through
+ *  `searchContent()` (`docs/SEARCH_ARCHITECTURE.md`), which covers every
+ *  `SearchResultType`, not just this handful of highlighted articles. */
 export interface SearchConfiguration {
-  corpus: SearchSuggestion[];
+  corpus: SearchResultItem[];
 }
 
 /** CMS-managed structural content for the homepage — everything that isn't

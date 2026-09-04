@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import styles from "./Header.module.css";
-import type { NavItem, SearchSuggestion } from "@/domain/homepage";
+import type { NavItem } from "@/domain/homepage";
+import type { SearchResultItem } from "@/domain/search";
 import type { Topic } from "@/domain/taxonomy";
 import { useViewport } from "@/lib/hooks/useViewport";
 import { IconChevronDown, IconMenu, IconSearch, IconUser } from "@/components/icons";
@@ -18,7 +19,7 @@ export function Header({
 }: {
   nav: NavItem[];
   searchTopics: Topic[];
-  searchCorpus: SearchSuggestion[];
+  searchCorpus: SearchResultItem[];
 }) {
   const { navMode, narrow, mobile } = useViewport();
   const pathname = usePathname();

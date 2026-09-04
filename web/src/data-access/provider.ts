@@ -2,7 +2,8 @@ import type { Article, ArticleSummary } from "@/domain/article";
 import type { Video } from "@/domain/video";
 import type { Event } from "@/domain/event";
 import type { Platform } from "@/domain/platform";
-import type { HomepageConfiguration, SearchSuggestion } from "@/domain/homepage";
+import type { HomepageConfiguration } from "@/domain/homepage";
+import type { SearchResultItem } from "@/domain/search";
 import type { ActivityMapDataset } from "@/domain/activity";
 import type { Gallery } from "@/domain/media";
 import type { Category, Topic } from "@/domain/taxonomy";
@@ -53,8 +54,10 @@ export interface ContentProvider {
   getRelatedArticles(slug: string, limit?: number): Promise<ArticleSummary[]>;
   /** `/tin-tuc/[slug]`'s prev/next nav, ordered by `publishedAt`. */
   getAdjacentArticles(slug: string): Promise<AdjacentArticles>;
-  /** `/tim-kiem` and the search overlay share this — same corpus, same rule. */
-  searchContent(query: string): Promise<SearchSuggestion[]>;
+  /** `/tim-kiem` and the search overlay share this — same index, same
+   *  matching/ranking rule, capped at `limit` (default 30). Covers every
+   *  `SearchResultType` — see `docs/SEARCH_ARCHITECTURE.md`. */
+  searchContent(query: string, limit?: number): Promise<SearchResultItem[]>;
 
   getCategories(): Promise<Category[]>;
   /** `/chuyen-muc/[slug]`. */

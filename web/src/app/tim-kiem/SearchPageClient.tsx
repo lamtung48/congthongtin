@@ -1,70 +1,159 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import styles from "./page.module.css";
 import { PageShell } from "@/components/ui/PageShell";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ArticleList } from "@/components/content/ArticleList";
+import { SearchResultRow } from "@/components/content/SearchResultRow";
+import { IconSearch, IconWarning } from "@/components/icons";
 import { searchContent } from "@/services/contentService";
-import type { ArticleSummary } from "@/domain/article";
-import type { SearchSuggestion } from "@/domain/homepage";
+import { searchHref } from "@/lib/routes";
+import type { SearchResultItem } from "@/domain/search";
+
+type Phase = "initial" | "loading" | "results" | "empty" | "error";
+
+const PAGE_RESULT_LIMIT = 40;
 
 /**
- * Static export has no per-request rendering, so `searchParams` can't be read
- * server-side (see `docs/DEPLOYMENT.md`) — this reads `?q=` client-side
- * instead. The page's `<title>` is therefore the static "Tìm kiếm" from
- * `page.tsx`'s `metadata`, not query-aware like it was as a Server Component.
+ * Static export has no per-request rendering, so `searchParams` can't be
+ * read server-side (see `docs/DEPLOYMENT.md`) — this reads/writes `?q=`
+ * client-side instead. Unlike the header's `SearchOverlay`, this page has
+ * its own editable query input (item 3 of the brief's flow diagram: "query
+ * input" is either the overlay or this page, not only the overlay) and
+ * renders every state — initial/loading/results/empty/error — the same
+ * five the overlay does. See `docs/SEARCH_ARCHITECTURE.md`.
  */
 export function SearchPageClient() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const query = searchParams.get("q")?.trim() ?? "";
-  const [rawResults, setResults] = useState<SearchSuggestion[]>([]);
+  const q = searchParams.get("q")?.trim() ?? "";
+
+  const [inputValue, setInputValue] = useState(q);
+  const [rawPhase, setPhase] = useState<Phase>(q ? "loading" : "initial");
+  const [rawResults, setResults] = useState<SearchResultItem[]>([]);
+  const [retryTick, setRetryTick] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const requestIdRef = useRef(0);
+
+  // Keep the input in sync when `?q=` changes from elsewhere (a header
+  // search, a tag chip link, browser back/forward) — computed during
+  // render, not an effect, since it's state derived from a prop change.
+  const [prevQ, setPrevQ] = useState(q);
+  if (q !== prevQ) {
+    setPrevQ(q);
+    setInputValue(q);
+  }
 
   useEffect(() => {
-    if (!query) return;
+    if (!q) return;
     let cancelled = false;
-    searchContent(query).then((r) => {
-      if (!cancelled) setResults(r);
-    });
+    // `q` comes from the URL (an external source), so kicking off a new
+    // fetch and flagging it as loading is a legitimate effect — not state
+    // React itself already had a way to derive.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPhase("loading");
+    const requestId = ++requestIdRef.current;
+    searchContent(q, PAGE_RESULT_LIMIT)
+      .then((hits) => {
+        if (cancelled || requestId !== requestIdRef.current) return;
+        setPhase(hits.length ? "results" : "empty");
+        setResults(hits);
+      })
+      .catch(() => {
+        if (cancelled || requestId !== requestIdRef.current) return;
+        setPhase("error");
+        setResults([]);
+      });
     return () => {
       cancelled = true;
     };
-  }, [query]);
+  }, [q, retryTick]);
 
-  // No query -> no results, regardless of what a previous query left behind.
-  const results = query ? rawResults : [];
+  // No query -> always "initial", regardless of what a previous query left behind.
+  const phase: Phase = q ? rawPhase : "initial";
+  const results = q ? rawResults : [];
 
-  // `SearchSuggestion` already carries the fields `ArticleList` needs
-  // (title/category/publishedAt/url/slug) except `category` is a plain
-  // string here (search doesn't resolve a full `Category` object), so it's
-  // wrapped into the shape `ArticleList` expects rather than duplicating
-  // the list markup for one extra field's type.
-  const asArticles: ArticleSummary[] = results.map((r) => ({
-    id: r.slug,
-    slug: r.slug,
-    url: r.url,
-    title: r.title,
-    category: { id: r.category, slug: r.category, name: r.category },
-    publishedAt: r.publishedAt,
-  }));
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    router.push(searchHref(inputValue));
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Escape") {
+      setInputValue("");
+      router.push(searchHref());
+      inputRef.current?.blur();
+    }
+  }
 
   return (
     <PageShell
       breadcrumb={[{ label: "Trang chủ", href: "/" }, { label: "Tìm kiếm" }]}
       eyebrow="Tìm kiếm"
-      title={query ? `Kết quả cho “${query}”` : "Tìm kiếm"}
-      description={query ? `${results.length} kết quả phù hợp.` : "Nhập từ khoá ở ô tìm kiếm trên thanh điều hướng để bắt đầu."}
+      title={q ? `Kết quả cho "${q}"` : "Tìm kiếm"}
+      description={
+        phase === "results"
+          ? `${results.length} kết quả phù hợp.`
+          : "Tìm bài viết, chuyên mục, chủ đề, đơn vị, địa phương và sự kiện trên cổng thông tin."
+      }
     >
-      {!query ? (
-        <EmptyState title="Chưa có từ khoá tìm kiếm" description="Mở ô tìm kiếm ở đầu trang và nhập từ khoá để xem kết quả tại đây." />
-      ) : results.length === 0 ? (
+      <form onSubmit={onSubmit} role="search" aria-label="Tìm kiếm trên cổng thông tin" className={styles.searchForm}>
+        <span className={styles.searchIcon}>
+          <IconSearch size={19} />
+        </span>
+        <input
+          ref={inputRef}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={onKeyDown}
+          type="search"
+          placeholder="Nhập từ khoá…"
+          aria-label="Từ khoá tìm kiếm"
+          autoComplete="off"
+          className={styles.searchInput}
+        />
+        <button type="submit" className={styles.searchSubmit}>Tìm kiếm</button>
+      </form>
+
+      {phase === "initial" && (
+        <EmptyState title="Chưa có từ khoá tìm kiếm" description="Nhập từ khoá ở ô tìm kiếm phía trên để bắt đầu." />
+      )}
+
+      {phase === "loading" && (
+        <div aria-live="polite" aria-busy="true" className={styles.skeletonList}>
+          {[0, 1, 2, 3].map((k) => (
+            <div key={k} className={styles.skeletonRow}>
+              <div className={styles.skelLabel} />
+              <div className={styles.skelLine} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {phase === "results" && (
+        <div role="list" aria-label="Kết quả tìm kiếm" aria-live="polite" className={styles.resultsList}>
+          {results.map((r) => (
+            <SearchResultRow key={r.id} item={r} full />
+          ))}
+        </div>
+      )}
+
+      {phase === "empty" && (
         <EmptyState
-          title={`Không tìm thấy kết quả cho “${query}”`}
+          title={`Không tìm thấy kết quả cho "${q}"`}
           description="Thử một từ khoá khác, hoặc xem toàn bộ tin tức."
           action={{ label: "Xem tất cả tin tức", href: "/tin-tuc" }}
         />
-      ) : (
-        <ArticleList articles={asArticles} />
+      )}
+
+      {phase === "error" && (
+        <div className={styles.errorBox} role="alert">
+          <IconWarning size={28} className={styles.errorIcon} />
+          <span className={styles.errorTitle}>Không thể tải kết quả tìm kiếm</span>
+          <p className={styles.errorDesc}>Đã có lỗi khi kết nối tới dịch vụ tìm kiếm. Vui lòng thử lại.</p>
+          <button type="button" onClick={() => setRetryTick((t) => t + 1)} className={styles.retryBtn}>Thử lại</button>
+        </div>
       )}
     </PageShell>
   );

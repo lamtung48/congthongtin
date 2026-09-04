@@ -4,16 +4,18 @@ import type { Video } from "@/domain/video";
 import type { Event } from "@/domain/event";
 import type { Organization } from "@/domain/people";
 import type { Platform } from "@/domain/platform";
-import type { HomepageConfiguration, SearchSuggestion } from "@/domain/homepage";
+import type { HomepageConfiguration } from "@/domain/homepage";
+import type { SearchResultItem } from "@/domain/search";
 import type { ActivityMapDataset, ActivityMapProvince, ProvinceActivityProfile } from "@/domain/activity";
 import type { Gallery, MediaAsset } from "@/domain/media";
 import type { Category, Topic } from "@/domain/taxonomy";
 import type { Province, OverseasOrganization } from "@/domain/geo";
 import type { AdjacentArticles, FeaturedNewsResult, LocalNewsEntry, LocalityProfile, StoryRailItem, UnitProfile } from "../types";
 import { slugify } from "@/lib/slug";
-import { matchesQuery } from "@/lib/search";
+import { matchesSearchQuery } from "@/lib/search";
 import { withBasePath } from "@/lib/basePath";
-import { unitHref } from "@/lib/routes";
+import { categoryHref, eventHref, localityHref, unitHref } from "@/lib/routes";
+import { ORGANIZATION_LEVEL_LABEL } from "@/lib/orgLevel";
 import ACTIVITY_MAP_JSON from "../../../public/data/activity-map.json";
 
 import { CATEGORIES, TOPICS, categoryByName, categoryBySlug, topicBySlug } from "../fixtures/taxonomy";
@@ -125,6 +127,86 @@ function allArticles(): Article[] {
   return pool
     .filter((a) => (seen.has(a.slug) ? false : (seen.add(a.slug), true)))
     .map((a) => (ARTICLE_CONTENT[a.slug] ? { ...a, ...ARTICLE_CONTENT[a.slug] } : a));
+}
+
+/**
+ * Every searchable entity, projected into the one shared `SearchResultItem`
+ * shape — the entire "index" `searchContent()` queries. Rebuilt on every
+ * call (fixture data is small and synchronous); a real backend replaces
+ * this whole function with one HTTP call and nothing downstream of
+ * `ContentProvider.searchContent()` has to change. See
+ * `docs/SEARCH_ARCHITECTURE.md`.
+ */
+function buildSearchIndex(): SearchResultItem[] {
+  const articles: SearchResultItem[] = allArticles().map((a) => ({
+    id: `article:${a.slug}`,
+    type: "article",
+    title: a.title,
+    category: a.category.name,
+    image: a.coverImage,
+    excerpt: a.lead,
+    publishedAt: a.publishedAt,
+    url: a.url,
+  }));
+
+  const categories: SearchResultItem[] = CATEGORIES.map((c) => ({
+    id: `category:${c.slug}`,
+    type: "category",
+    title: c.name,
+    category: "Chuyên mục",
+    excerpt: `Tin tức thuộc chuyên mục ${c.name}`,
+    url: categoryHref(c.slug),
+  }));
+
+  const topics: SearchResultItem[] = TOPICS.map((t) => ({
+    id: `topic:${t.slug}`,
+    type: "topic",
+    title: t.name,
+    category: "Chủ đề",
+    excerpt: `${t.articleCount} bài viết`,
+    url: t.url,
+  }));
+
+  // Same three sources `getUnitSlugs()` unions, so every organization here
+  // resolves to a real `/don-vi/[slug]` page.
+  const orgIndex = new Map<string, SearchResultItem>();
+  for (const n of LOCAL_NEWS) {
+    const id = slugify(n.orgName);
+    if (!orgIndex.has(id)) {
+      orgIndex.set(id, { id: `organization:${id}`, type: "organization", title: n.orgName, category: ORGANIZATION_LEVEL_LABEL[n.level], url: unitHref(id) });
+    }
+  }
+  for (const p of PROVINCES) {
+    if (!orgIndex.has(p.slug)) {
+      orgIndex.set(p.slug, { id: `organization:${p.slug}`, type: "organization", title: p.name, category: ORGANIZATION_LEVEL_LABEL.province, url: unitHref(p.slug) });
+    }
+  }
+  for (const o of OVERSEAS_ORGANIZATIONS) {
+    if (!orgIndex.has(o.id)) {
+      orgIndex.set(o.id, { id: `organization:${o.id}`, type: "organization", title: o.name, category: ORGANIZATION_LEVEL_LABEL.overseas, url: unitHref(o.id) });
+    }
+  }
+
+  const provinces: SearchResultItem[] = PROVINCES.map((p) => ({
+    id: `province:${p.slug}`,
+    type: "province",
+    title: p.name,
+    category: "Địa phương",
+    url: localityHref(p.slug),
+  }));
+
+  const events: SearchResultItem[] = EVENTS.map((e) => ({
+    id: `event:${e.slug}`,
+    type: "event",
+    title: e.title,
+    category: "Sự kiện",
+    image: e.cover,
+    excerpt: e.place,
+    publishedAt: e.startAt,
+    url: e.url || eventHref(e.slug),
+  }));
+
+  return [...articles, ...categories, ...topics, ...orgIndex.values(), ...provinces, ...events];
 }
 
 /** Distinct organizations (from `LocalNewsEntry.orgName`) that have
@@ -295,8 +377,8 @@ export class FixtureProvider implements ContentProvider {
     };
   }
 
-  async searchContent(query: string): Promise<SearchSuggestion[]> {
-    return matchesQuery(SEARCH_CORPUS, query);
+  async searchContent(query: string, limit = 30): Promise<SearchResultItem[]> {
+    return matchesSearchQuery(buildSearchIndex(), query, limit);
   }
 
   async getCategories(): Promise<Category[]> {

@@ -1,0 +1,38 @@
+.searchForm {
+  display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-8);
+  padding: 4px 4px 4px var(--sp-4); border: 1px solid var(--border-default); border-radius: var(--radius-pill);
+  background: var(--surface-page); transition: border-color var(--dur-fast) var(--ease-standard);
+}
+.searchForm:focus-within { border-color: var(--border-brand); }
+.searchIcon { display: flex; color: var(--text-muted); flex-shrink: 0; }
+.searchInput {
+  flex: 1; min-width: 0; border: 0; outline: none; background: transparent;
+  font-family: var(--font-ui); font-size: 16px; color: var(--text-strong); height: 44px;
+}
+.searchSubmit {
+  flex-shrink: 0; height: 44px; padding: 0 22px; border: 0; border-radius: var(--radius-pill);
+  background: var(--brand-primary); color: var(--text-invert); font-family: var(--font-ui);
+  font-size: 14px; font-weight: var(--fw-semibold); cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-standard);
+}
+.searchSubmit:hover { background: var(--brand-primary-hover); }
+
+.resultsList { display: flex; flex-direction: column; }
+
+.skeletonList { display: flex; flex-direction: column; gap: var(--sp-6); }
+.skeletonRow { display: flex; flex-direction: column; gap: 10px; }
+.skelLabel { height: 10px; width: 22%; border-radius: var(--radius-xs); background: var(--ink-150); }
+.skelLine { height: 16px; width: 70%; border-radius: var(--radius-xs); background: linear-gradient(90deg, var(--ink-100) 25%, var(--ink-150) 37%, var(--ink-100) 63%); background-size: 280% 100%; animation: hsvShimmer 1.4s linear infinite; }
+
+.errorBox {
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-16) var(--sp-6); text-align: center;
+}
+.errorIcon { color: var(--status-warning); }
+.errorTitle { font-family: var(--font-editorial); font-size: var(--fs-h5); color: var(--text-strong); }
+.errorDesc { font-size: var(--fs-body-sm); line-height: 1.6; color: var(--text-muted); max-width: 46ch; margin: 0; }
+.retryBtn {
+  margin-top: 8px; height: 44px; padding: 0 22px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border-brand); background: var(--surface-page); color: var(--text-brand);
+  font-family: var(--font-ui); font-size: 14px; font-weight: var(--fw-semibold); cursor: pointer;
+}

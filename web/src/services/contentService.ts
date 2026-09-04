@@ -3,7 +3,7 @@ import type { Article, ArticleSummary } from "@/domain/article";
 import type { Event } from "@/domain/event";
 import type { Category, Topic } from "@/domain/taxonomy";
 import type { Province, OverseasOrganization } from "@/domain/geo";
-import type { SearchSuggestion } from "@/domain/homepage";
+import type { SearchResultItem } from "@/domain/search";
 import type { AdjacentArticles, LocalityProfile, UnitProfile } from "@/data-access/types";
 
 /**
@@ -32,8 +32,8 @@ export function getAdjacentArticles(slug: string): Promise<AdjacentArticles> {
   return getContentProvider().getAdjacentArticles(slug);
 }
 
-export function searchContent(query: string): Promise<SearchSuggestion[]> {
-  return getContentProvider().searchContent(query);
+export function searchContent(query: string, limit?: number): Promise<SearchResultItem[]> {
+  return getContentProvider().searchContent(query, limit);
 }
 
 export function getCategories(): Promise<Category[]> {

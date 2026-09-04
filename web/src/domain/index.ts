@@ -9,4 +9,5 @@ export * from "./video";
 export * from "./event";
 export * from "./platform";
 export * from "./activity";
+export * from "./search";
 export * from "./homepage";

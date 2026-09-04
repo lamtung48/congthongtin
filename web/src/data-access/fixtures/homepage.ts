@@ -1,4 +1,5 @@
-import type { NavItem, FooterColumn, FooterLink, HeroContent, SearchSuggestion } from "@/domain/homepage";
+import type { NavItem, FooterColumn, FooterLink, HeroContent } from "@/domain/homepage";
+import type { SearchResultItem } from "@/domain/search";
 import { articleHref } from "@/lib/routes";
 
 export const NAV: NavItem[] = [
@@ -67,9 +68,12 @@ interface RawSearchCorpusItem {
   date: string;
 }
 
-/** Every entry here mirrors a real article slug from another fixture pool
- *  (latest/featured articles) — kept in sync by hand since there's no single
- *  "all articles" index yet (see `getArticleBySlug` in `fixtureProvider.ts`). */
+/** Small, editorially-curated "Tìm nhiều nhất" suggestions for the search
+ *  overlay's idle state — not the search index itself. Real queries go
+ *  through `searchContent()`, whose index (`buildSearchIndex()` in
+ *  `fixtureProvider.ts`) covers every `SearchResultType`, built fresh from
+ *  the actual fixture pools rather than a hand-picked slug list like this
+ *  one. See `docs/SEARCH_ARCHITECTURE.md`. */
 const RAW_SEARCH_CORPUS: RawSearchCorpusItem[] = [
   { slug: "dai-hoi-xii-khai-mac", title: "Đại hội đại biểu toàn quốc Hội Sinh viên Việt Nam lần thứ XII khai mạc tại Hà Nội", category: "Đại hội XII", date: "2026-09-02" },
   { slug: "tuyen-duong-112-sv5t", title: "Tuyên dương 112 “Sinh viên 5 tốt” cấp Trung ương", category: "Sinh viên 5 tốt", date: "2026-08-31" },
@@ -79,8 +83,9 @@ const RAW_SEARCH_CORPUS: RawSearchCorpusItem[] = [
   { slug: "tram-quan-trac-khong-khi", title: "Trạm quan trắc không khí do sinh viên chế tạo đặt tại 12 trường phổ thông", category: "Nghiên cứu", date: "2026-09-01" },
 ];
 
-export const SEARCH_CORPUS: SearchSuggestion[] = RAW_SEARCH_CORPUS.map((r) => ({
-  slug: r.slug,
+export const SEARCH_CORPUS: SearchResultItem[] = RAW_SEARCH_CORPUS.map((r) => ({
+  id: `article:${r.slug}`,
+  type: "article",
   url: articleHref(r.slug),
   title: r.title,
   category: r.category,
