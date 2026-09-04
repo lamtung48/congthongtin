@@ -1,8 +1,10 @@
 import type { ArticleSummary } from "@/domain/article";
+import type { Event } from "@/domain/event";
 import type { Category } from "@/domain/taxonomy";
 import type { MediaAsset } from "@/domain/media";
-import type { OrganizationLevel } from "@/domain/people";
+import type { Organization, OrganizationLevel } from "@/domain/people";
 import type { Province } from "@/domain/geo";
+import type { ProvinceActivityProfile } from "@/domain/activity";
 
 /**
  * Section-specific read models returned by `ContentProvider` / the service
@@ -45,11 +47,13 @@ export interface LocalNewsEntry {
 /**
  * `getUnitBySlug()` result for `/don-vi/[slug]` — a specific reporting Hội
  * unit (a province chapter, a university chapter, or an overseas chapter).
- * `activityStats` is always `null` today: the activity map's numbers are
- * fetched client-side only (see `docs/DATA_ACCESS.md`), so a unit page
- * cannot safely read them at request time without a server-side data path
- * that doesn't exist yet — the page renders an empty state for that slot
- * instead of guessing.
+ * `activityStats` is always `null` today: nothing wires a unit to one
+ * `ActivityMapProvince`/`ProvinceActivityProfile` record yet (a "Trường"-level
+ * unit isn't a province in the first place). `/dia-phuong/[slug]` now reads
+ * `ProvinceActivityProfile` at build time (see `LocalityProfile.activity`
+ * below and `docs/LOCALITY_PAGE.md`) — the same mechanism could back a
+ * province-level unit's stats too, but that's unbuilt; the page renders an
+ * empty state for this slot instead of guessing.
  */
 export interface UnitProfile {
   slug: string;
@@ -68,6 +72,22 @@ export interface LocalityProfile {
   province?: Province;
   localNews: LocalNewsEntry[];
   stories: StoryRailItem[];
+  /** `null` when `slug` isn't one of the 34 reporting provinces at all
+   *  (e.g. an overseas city name reached through `LocalNewsEntry.place`) —
+   *  a fundamentally different empty state from "reported: false" (a real
+   *  province that just hasn't sent this period's numbers yet). See
+   *  `docs/LOCALITY_PAGE.md`. */
+  activity: ProvinceActivityProfile | null;
+  /** Most recent `Event` whose `place` names this locality — independent of
+   *  `activity` (works for any place, not only the 34 tracked provinces).
+   *  `null` when none match. */
+  latestActivity: Event | null;
+  /** Hội units known to operate here, derived from `LocalNewsEntry.orgName`
+   *  — empty, not fabricated, when none do. */
+  organizations: Organization[];
+  /** Gallery items whose `metadata.locationLabel` names this place —
+   *  empty, not fabricated, when none do. */
+  relatedMedia: MediaAsset[];
 }
 
 /** `getAdjacentArticles()` result for `/tin-tuc/[slug]`'s prev/next nav —

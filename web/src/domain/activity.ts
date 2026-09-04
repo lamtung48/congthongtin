@@ -93,3 +93,37 @@ export interface ActivityMapData {
 
 /** Return type of `getActivityMap()` — named for the service boundary. */
 export type ActivityMapDataset = ActivityMapData;
+
+/**
+ * The data contract shared between the Homepage's `ActivityMap` and
+ * `/dia-phuong/[slug]` — both read the same per-province record
+ * (`ActivityMapProvince`, above); this is its camelCase, page-shaped
+ * projection, field-for-field the same set the map itself renders. A
+ * province the reporting cycle hasn't received data from yet still gets
+ * one of these — `reported` is `false` and the numeric/content fields are
+ * `null` — never a fabricated `0` or an empty string standing in for "not
+ * reported". `LocalityProfile` (in `data-access/types.ts`) embeds this as
+ * `activity`, alongside `latestActivity`/`organizations` — content the map
+ * doesn't need and that isn't limited to the 34 tracked provinces, so it
+ * lives at the `LocalityProfile` level instead of in here. See
+ * `docs/LOCALITY_PAGE.md`.
+ */
+export interface ProvinceActivityProfile {
+  provinceId: string;
+  provinceName: string;
+  slug: string;
+  reported: boolean;
+  period: string;
+  /** When the whole dataset was last compiled — not per-province (the
+   *  source report doesn't break it down further than this). */
+  updatedAt: ISODateTime;
+  articleCount: number | null;
+  activityCount: number | null;
+  studentCount: number | null;
+  /** Resolved against the map dataset's own `categories` labels at the
+   *  data-access layer, so the page never has to hardcode a slug→label
+   *  mapping itself. `null`, not `[]`, when the province hasn't reported —
+   *  an empty array would look identical to "reported zero everything". */
+  categoryDistribution: { slug: string; label: string; count: number }[] | null;
+  latestArticle: { title: string; publishedAt: string } | null;
+}

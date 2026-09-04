@@ -8,8 +8,7 @@ import { getUnitBySlug, getUnitSlugs } from "@/services/contentService";
 import { pageMetadata } from "@/lib/seo";
 import { unitHref } from "@/lib/routes";
 import { formatDateVi } from "@/lib/formatDate";
-
-const LEVEL_LABEL = { province: "Hội Sinh viên cấp tỉnh, thành", university: "Hội Sinh viên cấp trường", overseas: "Hội Sinh viên ở nước ngoài" } as const;
+import { ORGANIZATION_LEVEL_LABEL } from "@/lib/orgLevel";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -37,7 +36,7 @@ export default async function UnitPage({ params }: Props) {
   return (
     <PageShell
       breadcrumb={[{ label: "Trang chủ", href: "/" }, { label: "Đơn vị" }, { label: unit.name }]}
-      eyebrow={LEVEL_LABEL[unit.level]}
+      eyebrow={ORGANIZATION_LEVEL_LABEL[unit.level]}
       title={unit.name}
       description="Hồ sơ đơn vị, số liệu báo cáo phong trào và tin bài liên quan."
     >

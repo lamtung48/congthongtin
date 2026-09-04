@@ -2,16 +2,19 @@ import type { ContentProvider } from "../provider";
 import type { Article, ArticleSummary } from "@/domain/article";
 import type { Video } from "@/domain/video";
 import type { Event } from "@/domain/event";
+import type { Organization } from "@/domain/people";
 import type { Platform } from "@/domain/platform";
 import type { HomepageConfiguration, SearchSuggestion } from "@/domain/homepage";
-import type { ActivityMapDataset } from "@/domain/activity";
-import type { Gallery } from "@/domain/media";
+import type { ActivityMapDataset, ActivityMapProvince, ProvinceActivityProfile } from "@/domain/activity";
+import type { Gallery, MediaAsset } from "@/domain/media";
 import type { Category, Topic } from "@/domain/taxonomy";
 import type { Province, OverseasOrganization } from "@/domain/geo";
 import type { AdjacentArticles, FeaturedNewsResult, LocalNewsEntry, LocalityProfile, StoryRailItem, UnitProfile } from "../types";
 import { slugify } from "@/lib/slug";
 import { matchesQuery } from "@/lib/search";
 import { withBasePath } from "@/lib/basePath";
+import { unitHref } from "@/lib/routes";
+import ACTIVITY_MAP_JSON from "../../../public/data/activity-map.json";
 
 import { CATEGORIES, TOPICS, categoryByName, categoryBySlug, topicBySlug } from "../fixtures/taxonomy";
 import { LATEST_ARTICLES } from "../fixtures/latestArticles";
@@ -40,6 +43,18 @@ import {
   FOOTER_GOVERNING_BODY_LINE,
   SEARCH_CORPUS,
 } from "../fixtures/homepage";
+
+/**
+ * Same underlying file `getActivityMap()` fetches client-side, imported
+ * directly here instead. A server component rendered at build time (every
+ * `/dia-phuong/[slug]` page) has no running HTTP server to `fetch()` a
+ * relative URL against — a plain JSON import is resolved at build time
+ * instead, so `getLocalityBySlug` (a server-only code path — see
+ * `docs/LOCALITY_PAGE.md`) can read the exact same per-province numbers
+ * the map renders without duplicating them into a second hand-authored
+ * fixture that could drift from the map's own data.
+ */
+const ACTIVITY_MAP_DATA = ACTIVITY_MAP_JSON as unknown as ActivityMapDataset;
 
 /** Fallback category for local-news items resolved as standalone articles
  *  (`/tin-tuc/[slug]`) — `LocalNewsEntry` itself carries no category, since
@@ -110,6 +125,60 @@ function allArticles(): Article[] {
   return pool
     .filter((a) => (seen.has(a.slug) ? false : (seen.add(a.slug), true)))
     .map((a) => (ARTICLE_CONTENT[a.slug] ? { ...a, ...ARTICLE_CONTENT[a.slug] } : a));
+}
+
+/** Distinct organizations (from `LocalNewsEntry.orgName`) that have
+ *  published local news placed here — the closest thing the fixtures have
+ *  to a roster of units operating in this locality. Each links to the same
+ *  `/don-vi/[slug]` `getUnitBySlug` would resolve for that org name. Works
+ *  for any locality, not only the 34 tracked provinces. */
+function organizationsForPlace(localNews: LocalNewsEntry[]): Organization[] {
+  const seen = new Map<string, Organization>();
+  for (const n of localNews) {
+    const id = slugify(n.orgName);
+    if (!seen.has(id)) seen.set(id, { id, name: n.orgName, level: n.level, url: unitHref(id) });
+  }
+  return [...seen.values()];
+}
+
+/** Most recent `Event` held in this locality, independent of
+ *  `latestArticle` (a news story). `Event.place` is a venue string ("Đại
+ *  học Đà Nẵng"), not a bare place name, so this matches by substring
+ *  rather than equality — unlike `LocalNewsEntry`/`StoryRailItem.place`,
+ *  which already are bare names and match by exact `slugify()` equality
+ *  elsewhere in this file. */
+function latestActivityForPlace(placeName: string): Event | null {
+  return (
+    EVENTS.filter((e) => e.place.includes(placeName))
+      .slice()
+      .sort((a, b) => (a.startAt < b.startAt ? 1 : -1))[0] ?? null
+  );
+}
+
+/**
+ * Projects one `ActivityMapProvince` record (the map's own wire shape)
+ * into the shared `ProvinceActivityProfile` contract. `null` fields stay
+ * `null` — never coerced into a fake `0` or empty string.
+ */
+function toProvinceActivityProfile(p: ActivityMapProvince): ProvinceActivityProfile {
+  const categoryLabel = new Map(ACTIVITY_MAP_DATA.categories.map((c) => [c.slug, c.label]));
+  const categoryDistribution = p.category_distribution
+    ? Object.entries(p.category_distribution).map(([slug, count]) => ({ slug, label: categoryLabel.get(slug) ?? slug, count }))
+    : null;
+
+  return {
+    provinceId: p.province_id,
+    provinceName: p.province_name,
+    slug: p.slug,
+    reported: p.reported,
+    period: p.period,
+    updatedAt: ACTIVITY_MAP_DATA.updated_at,
+    articleCount: p.article_count,
+    activityCount: p.activity_count,
+    studentCount: p.student_count,
+    categoryDistribution,
+    latestArticle: p.latest_article ? { title: p.latest_article.title, publishedAt: p.latest_article.published_at } : null,
+  };
 }
 
 /**
@@ -262,7 +331,29 @@ export class FixtureProvider implements ContentProvider {
     const stories = STORY_RAIL.filter((s) => slugify(s.place) === slug);
     if (!province && localNews.length === 0 && stories.length === 0) return null;
     const name = province?.name ?? localNews[0]?.place ?? stories[0]?.place ?? slug;
-    return { slug, name, province, localNews, stories };
+
+    // Only one of the 34 reporting provinces has a `ProvinceActivityProfile`
+    // at all — a place reached only through `LocalNewsEntry`/`StoryRailItem`
+    // (e.g. an overseas city) isn't a province, so `activity` stays `null`
+    // rather than a record of all-null numbers. See `docs/LOCALITY_PAGE.md`.
+    const mapEntry = province ? ACTIVITY_MAP_DATA.provinces.find((p) => p.slug === slug) : undefined;
+    const activity = mapEntry ? toProvinceActivityProfile(mapEntry) : null;
+
+    const relatedMedia: MediaAsset[] = province
+      ? HOMEPAGE_GALLERY.items.filter((m) => m.metadata?.locationLabel === province.name)
+      : [];
+
+    return {
+      slug,
+      name,
+      province,
+      localNews,
+      stories,
+      activity,
+      latestActivity: latestActivityForPlace(name),
+      organizations: organizationsForPlace(localNews),
+      relatedMedia,
+    };
   }
 
   async getLocalitySlugs(): Promise<string[]> {
