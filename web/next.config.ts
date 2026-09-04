@@ -10,8 +10,19 @@ import type { NextConfig } from "next";
  * `npm run dev`/`npm run build` are unaffected.
  */
 const isGithubActions = process.env.GITHUB_ACTIONS === "true";
-const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1];
+const [repoOwner, repoName] = (process.env.GITHUB_REPOSITORY ?? "").split("/");
 const basePath = isGithubActions && repoName ? `/${repoName}` : "";
+/**
+ * The site's real public URL, computed once here (see `src/lib/siteConfig.ts`
+ * for why every canonical/OG/sitemap URL goes through this instead of a
+ * hand-built string). `NEXT_PUBLIC_SITE_URL` set in the environment always
+ * wins — the escape hatch for a future custom domain (a GitHub Pages CNAME),
+ * where the derived `github.io/<repo>` URL would be wrong. Otherwise it's
+ * derived from `GITHUB_REPOSITORY` in CI, the same source `basePath` already
+ * uses; outside CI (local dev) it's `localhost`, which has no path segment.
+ */
+const inferredSiteUrl = isGithubActions && repoOwner && repoName ? `https://${repoOwner}.github.io/${repoName}` : undefined;
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? inferredSiteUrl ?? "http://localhost:3000";
 
 const nextConfig: NextConfig = {
   // Static export: GitHub Pages only serves static files, no Node.js server —
@@ -26,6 +37,7 @@ const nextConfig: NextConfig = {
   },
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,
+    NEXT_PUBLIC_SITE_URL: siteUrl,
   },
 };
 

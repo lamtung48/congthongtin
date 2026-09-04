@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Hero } from "@/components/home/Hero";
 import { TrendingTopics } from "@/components/home/TrendingTopics";
 import { FeaturedNews } from "@/components/home/FeaturedNews";
@@ -20,6 +21,17 @@ import {
   getLocalNews,
   getGallery,
 } from "@/services/homepageService";
+import { pageMetadata } from "@/lib/seo";
+import { SITE_DEFAULT_DESCRIPTION } from "@/lib/siteConfig";
+
+// The only route that doesn't get its title from `pageMetadata()`'s normal
+// templating — see `titleIsAbsolute` in `lib/seo.ts`.
+export const metadata: Metadata = pageMetadata({
+  title: "Cổng thông tin số — Hội Sinh viên Việt Nam",
+  description: SITE_DEFAULT_DESCRIPTION,
+  path: "/",
+  titleIsAbsolute: true,
+});
 
 /** Header/Footer render once in `app/layout.tsx` — this page is only its own
  *  13 sections. See `docs/ROUTES.md` on why layout isn't duplicated per route. */

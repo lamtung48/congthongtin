@@ -4,7 +4,8 @@ import "./globals.css";
 import { Header } from "@/components/home/Header";
 import { Footer } from "@/components/home/Footer";
 import { getHomepage } from "@/services/homepageService";
-import { SITE_NAME } from "@/lib/seo";
+import { organizationJsonLd } from "@/lib/structuredData";
+import { SITE_DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/siteConfig";
 
 const beVietnamPro = Be_Vietnam_Pro({
   variable: "--font-be-vietnam-pro",
@@ -30,13 +31,16 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  // Kept as a Next.js safety net (some internal resolution paths expect it),
+  // but every page's own canonical/OpenGraph/image URL is built explicitly
+  // via `absoluteUrl()` (`src/lib/siteConfig.ts`) rather than relying on
+  // this to resolve a relative path — see that file for why.
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Cổng thông tin số — Hội Sinh viên Việt Nam",
     template: `%s · ${SITE_NAME}`,
   },
-  description:
-    "Tin tức, phong trào, Sinh viên 5 tốt, hoạt động sinh viên toàn quốc và hệ sinh thái nền tảng số của Hội Sinh viên Việt Nam.",
+  description: SITE_DEFAULT_DESCRIPTION,
 };
 
 /**
@@ -47,6 +51,7 @@ export const metadata: Metadata = {
  */
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const homepage = await getHomepage();
+  const orgJsonLd = organizationJsonLd(homepage.footer);
 
   return (
     <html
@@ -59,6 +64,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <main>{children}</main>
           <Footer footer={homepage.footer} />
         </div>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
       </body>
     </html>
   );

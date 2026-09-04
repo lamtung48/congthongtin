@@ -12,10 +12,13 @@ import { RelatedArticles } from "@/components/article/RelatedArticles";
 import { AdjacentArticleNav } from "@/components/article/AdjacentArticleNav";
 import { ArticleBody } from "@/components/article/blocks/ArticleBody";
 import { getAdjacentArticles, getArticleBySlug, getArticleSlugs, getRelatedArticles } from "@/services/contentService";
+import { getHomepage } from "@/services/homepageService";
 import { pageMetadata } from "@/lib/seo";
 import { categoryHref, articleHref, searchHref } from "@/lib/routes";
 import { resolveImageUrl } from "@/lib/media/resolveMedia";
 import { articleCoverTransitionName } from "@/lib/viewTransition";
+import { absoluteAssetUrl, absoluteUrl } from "@/lib/siteConfig";
+import { publisherRef } from "@/lib/structuredData";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -60,15 +63,25 @@ export default async function ArticlePage({ params }: Props) {
   const hasTags = !!article.tags && article.tags.length > 0;
   const imageUrl = article.coverImage ? resolveImageUrl(article.coverImage) : undefined;
 
+  // `getHomepage()` is `cache()`-wrapped (`services/homepageService.ts`) and
+  // already called once for this request by the root layout — this doesn't
+  // re-fetch, just reads the org name for `publisher` from the same real
+  // source the site's `Organization` schema uses, instead of a second
+  // hard-coded copy of it.
+  const homepage = await getHomepage();
+  const articleUrl = absoluteUrl(article.url);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
     headline: article.title,
     description: article.lead,
+    url: articleUrl,
+    mainEntityOfPage: { "@type": "WebPage", "@id": articleUrl },
     datePublished: article.publishedAt,
     dateModified: article.updatedAt ?? article.publishedAt,
+    publisher: publisherRef(homepage.footer.orgName),
     ...(article.author ? { author: { "@type": "Person", name: article.author.name } } : {}),
-    ...(imageUrl ? { image: [imageUrl] } : {}),
+    ...(imageUrl ? { image: [absoluteAssetUrl(imageUrl)] } : {}),
   };
 
   return (

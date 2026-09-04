@@ -1,5 +1,6 @@
 import Link from "next/link";
 import styles from "./Breadcrumb.module.css";
+import { absoluteUrl } from "@/lib/siteConfig";
 
 export interface BreadcrumbItem {
   label: string;
@@ -22,7 +23,7 @@ export function Breadcrumb({ items }: { items: BreadcrumbItem[] }) {
       "@type": "ListItem",
       position: i + 1,
       name: item.label,
-      ...(item.href ? { item: item.href } : {}),
+      ...(item.href ? { item: absoluteUrl(item.href) } : {}),
     })),
   };
 
