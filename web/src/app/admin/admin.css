@@ -481,3 +481,206 @@ table.adminTable {
   margin-bottom: 16px;
   font-size: 13px;
 }
+
+/*
+ * Rich-text article body editor (`ArticleContentEditor.tsx`, TipTap) — a
+ * single visual surface where text is typed directly and images/galleries/
+ * video/quotes/tables/embeds render as real inline cards, replacing the old
+ * block-list-of-forms editor.
+ */
+
+.richToolbar {
+  background: var(--admin-surface);
+  padding: 8px 0;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.richToolbarDivider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--admin-border);
+  margin: 2px 2px;
+}
+
+.richLinkPopover {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.richEditorContent {
+  padding-top: 14px;
+}
+
+.richEditorContent .ProseMirror {
+  min-height: 260px;
+  outline: none;
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--admin-text);
+}
+
+.richEditorContent .ProseMirror p {
+  margin: 0 0 12px;
+}
+
+.richEditorContent .ProseMirror h2 {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 20px 0 10px;
+}
+
+.richEditorContent .ProseMirror h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 16px 0 8px;
+}
+
+.richEditorContent .ProseMirror a {
+  color: var(--admin-brand);
+  text-decoration: underline;
+}
+
+.richEditorContent .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--admin-text-faint);
+  pointer-events: none;
+}
+
+.richNode {
+  position: relative;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  padding: 10px 12px 12px;
+  margin: 4px 0 16px;
+  background: var(--admin-bg);
+}
+
+.richNodeToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.richNodeLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-text-faint);
+}
+
+.richNodeActions {
+  display: flex;
+  gap: 4px;
+}
+
+.richImagePreview {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+  width: auto;
+  border-radius: var(--admin-radius);
+  border: 1px solid var(--admin-border);
+  object-fit: contain;
+  background: var(--admin-surface);
+}
+
+.richImagePlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  border: 1px dashed var(--admin-border);
+  border-radius: var(--admin-radius);
+  color: var(--admin-text-faint);
+  font-size: 12.5px;
+  background: var(--admin-surface);
+  padding: 10px;
+  text-align: center;
+}
+
+.richGalleryStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.richGalleryItem {
+  position: relative;
+  width: 96px;
+}
+
+.richGalleryItem img {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: var(--admin-radius);
+  border: 1px solid var(--admin-border);
+  display: block;
+}
+
+.richGalleryPlaceholder {
+  width: 96px;
+  height: 96px;
+  min-height: 0;
+  font-size: 10.5px;
+}
+
+.richGalleryRemove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  color: var(--admin-danger);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.richVideoBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--admin-radius);
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  font-size: 13px;
+  width: fit-content;
+}
+
+.richQuoteNode {
+  margin: 4px 0 16px;
+}
+
+.richQuote {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--admin-brand);
+  background: var(--admin-bg);
+  border-radius: 0 var(--admin-radius) var(--admin-radius) 0;
+}
+
+.richQuoteText {
+  font-size: 15px;
+  font-style: italic;
+  outline: none;
+  min-height: 1.5em;
+}
+
+.richQuoteText p {
+  margin: 0;
+}

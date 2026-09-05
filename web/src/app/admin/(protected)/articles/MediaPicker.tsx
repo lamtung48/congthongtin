@@ -8,6 +8,12 @@ export interface MediaOption {
   id: string;
   label: string;
   type: "IMAGE" | "VIDEO";
+  /** Set only for a `GOOGLE_DRIVE`+`READY` asset — the `/api/media/[id]`
+   *  delivery URL a caller can drop straight into an `<img>` for a real
+   *  thumbnail (brief: "embed ảnh ... trong cùng một khung"). `undefined`
+   *  for anything else (YouTube, a placeholder, or a Drive asset still
+   *  missing its file) — callers fall back to a label-only placeholder. */
+  previewUrl?: string;
 }
 
 function uploadedMediaLabel(media: UploadedMedia): string {
@@ -15,10 +21,11 @@ function uploadedMediaLabel(media: UploadedMedia): string {
 }
 
 /**
- * Controlled media picker shared by the cover-image field and every
- * image/gallery/youtube block editor (brief section 5's block editor,
- * `BlockEditor.tsx`) — one selection UI, not one per call site. `accept`
- * narrows the dropdown to the relevant `MediaType`.
+ * Controlled media picker shared by the cover-image/OG-image fields
+ * (`ArticleEditor.tsx`) and every image/gallery/youtube node view embedded
+ * in the rich-text body editor (`tiptap/nodes.tsx`) — one selection UI, not
+ * one per call site. `accept` narrows the dropdown to the relevant
+ * `MediaType`.
  *
  * For `accept === "IMAGE"` the primary way to add a new option is a real
  * upload through `MediaUploader` (brief section 4) — every role that can
@@ -31,6 +38,15 @@ function uploadedMediaLabel(media: UploadedMedia): string {
  * `accept === "VIDEO"` there is no upload path at all (a YouTube video isn't
  * a file this app hosts), so that same form is the *only* way to add one and
  * stays open to anyone who can reach this picker.
+ *
+ * `onChange`'s second argument carries the freshly created/uploaded
+ * option's full metadata (never present for a plain pick from the existing
+ * dropdown, which the caller can already resolve from its own `options`) —
+ * the rich-text editor's node views (`tiptap/nodes.tsx`) use it to register
+ * a brand-new upload into the shared cross-node media registry so every
+ * other embedded picker in the same document sees it immediately, without
+ * which each `MediaPicker` instance's own upload would only ever be visible
+ * to itself for the rest of the session.
  */
 export function MediaPicker({
   label,
@@ -43,7 +59,7 @@ export function MediaPicker({
   label: string;
   accept: "IMAGE" | "VIDEO" | "ANY";
   value: string | null;
-  onChange: (mediaId: string | null) => void;
+  onChange: (mediaId: string | null, option?: MediaOption) => void;
   options: MediaOption[];
   canManageAny?: boolean;
 }) {
@@ -52,13 +68,33 @@ export function MediaPicker({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  // Keeps this dropdown in sync with options registered elsewhere (another
+  // `MediaPicker` instance's upload, relayed back down through the parent's
+  // `options` prop) — `useState(options)` above only seeds the *initial*
+  // value, so without this a sibling picker's upload would never appear
+  // here. React's documented "adjusting state when a prop changes" pattern
+  // (setState during render, gated on the prop's identity actually
+  // changing) rather than an effect — an effect's setState would commit one
+  // extra render behind, and this codebase's lint rules disallow it anyway.
+  const [prevOptions, setPrevOptions] = useState(options);
+  if (options !== prevOptions) {
+    setPrevOptions(options);
+    setLocalOptions(options);
+  }
+
   const filtered = accept === "ANY" ? localOptions : localOptions.filter((o) => o.type === accept);
   const showUploader = accept === "IMAGE" || accept === "ANY";
   const showManualLinkToggle = accept === "VIDEO" || canManageAny;
 
   function handleUploaded(media: UploadedMedia) {
-    setLocalOptions((prev) => [{ id: media.id, label: uploadedMediaLabel(media), type: media.type }, ...prev]);
-    onChange(media.id);
+    const option: MediaOption = {
+      id: media.id,
+      label: uploadedMediaLabel(media),
+      type: media.type,
+      previewUrl: `/api/media/${media.id}`, // registerUpload always creates a GOOGLE_DRIVE + READY asset
+    };
+    setLocalOptions((prev) => [option, ...prev]);
+    onChange(media.id, option);
   }
 
   function handleManualLink(formData: FormData) {
@@ -69,8 +105,9 @@ export function MediaPicker({
         setError(result.error);
         return;
       }
-      setLocalOptions((prev) => [{ id: result.id, label: result.label, type: result.type }, ...prev]);
-      onChange(result.id);
+      const option: MediaOption = { id: result.id, label: result.label, type: result.type, previewUrl: result.previewUrl };
+      setLocalOptions((prev) => [option, ...prev]);
+      onChange(result.id, option);
       setShowManualLink(false);
     });
   }

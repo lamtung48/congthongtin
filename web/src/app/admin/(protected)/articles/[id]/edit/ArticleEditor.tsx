@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BlockEditor, type EditorBlock } from "./BlockEditor";
+import { ArticleContentEditor, type EditorBlock } from "./ArticleContentEditor";
 import { MediaPicker, type MediaOption } from "../../MediaPicker";
 import { autosaveAction, saveAction, restoreRevisionAction, type EditorFormPayload } from "./actions";
 import {
@@ -297,7 +297,7 @@ export function ArticleEditor({
 
           <div className="adminCard adminCardPad" style={{ marginBottom: 16 }}>
             <h2 className="adminLabel" style={{ marginBottom: 10, fontSize: 13 }}>Nội dung</h2>
-            <BlockEditor blocks={blocks} onChange={locked ? () => {} : setBlocks} mediaOptions={options.media} canManageMediaAny={permissions.canManageMediaAny} />
+            <ArticleContentEditor blocks={blocks} onChange={setBlocks} mediaOptions={options.media} canManageMediaAny={permissions.canManageMediaAny} editable={!locked} />
           </div>
 
           <div className="adminCard adminCardPad">

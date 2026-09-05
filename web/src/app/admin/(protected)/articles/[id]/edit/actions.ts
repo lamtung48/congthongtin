@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/server/auth/session";
 import { articleService, type ArticleFieldsInput, type ArticleBlockInput } from "@/server/services/articleService";
-import type { EditorBlock } from "./BlockEditor";
+import type { EditorBlock } from "./ArticleContentEditor";
 
 /** `EditorBlock[]` (client state, order = array index) -> `ArticleBlockInput[]`
  *  (what `articleService` expects) — the one place that conversion happens,

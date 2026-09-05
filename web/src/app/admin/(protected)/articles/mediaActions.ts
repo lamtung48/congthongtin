@@ -28,6 +28,11 @@ export interface LinkMediaResult {
   id: string;
   label: string;
   type: "IMAGE" | "VIDEO";
+  /** Set only when the manually-linked asset is a `GOOGLE_DRIVE` file that's
+   *  actually `READY` — see `MediaOption.previewUrl`'s own comment. A
+   *  `LOCAL_PLACEHOLDER`/`YOUTUBE` link, or a Drive link left without a file
+   *  id (`status: MISSING`), has nothing this delivery route could serve. */
+  previewUrl?: string;
   error?: string;
 }
 
@@ -46,7 +51,12 @@ export async function linkMediaAction(formData: FormData): Promise<LinkMediaResu
 
   try {
     const asset = await mediaService.registerManualLink(actor, parsed.data);
-    return { id: asset.id, label: asset.alt || asset.caption || asset.providerFileId || asset.id, type: asset.type };
+    return {
+      id: asset.id,
+      label: asset.alt || asset.caption || asset.providerFileId || asset.id,
+      type: asset.type,
+      previewUrl: asset.provider === "GOOGLE_DRIVE" && asset.status === "READY" ? `/api/media/${asset.id}` : undefined,
+    };
   } catch (err) {
     return { id: "", label: "", type: parsed.data.type, error: err instanceof Error ? err.message : "Không thể thêm media." };
   }

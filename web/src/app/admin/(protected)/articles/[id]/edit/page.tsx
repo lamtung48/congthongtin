@@ -9,7 +9,7 @@ import { provinceRepository } from "@/server/repositories/provinceRepository";
 import { authorProfileRepository } from "@/server/repositories/authorProfileRepository";
 import { hasPermission } from "@/server/auth/permissions";
 import { ArticleEditor } from "./ArticleEditor";
-import type { EditorBlock } from "./BlockEditor";
+import type { EditorBlock } from "./ArticleContentEditor";
 
 export const metadata: Metadata = { title: "Chỉnh sửa bài viết" };
 
@@ -66,7 +66,12 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
         organizations: organizations.map((o) => ({ id: o.id, name: o.name })),
         provinces: provinces.map((p) => ({ id: p.id, name: p.name })),
         authors: authors.map((a) => ({ id: a.id, name: a.displayName })),
-        media: mediaRows.map((m) => ({ id: m.id, label: m.alt || m.caption || m.providerFileId || m.id, type: m.type })),
+        media: mediaRows.map((m) => ({
+          id: m.id,
+          label: m.alt || m.caption || m.providerFileId || m.id,
+          type: m.type,
+          previewUrl: m.provider === "GOOGLE_DRIVE" && m.status === "READY" ? `/api/media/${m.id}` : undefined,
+        })),
       }}
       permissions={{
         canEditNow: articleService.canEdit(session, article),
