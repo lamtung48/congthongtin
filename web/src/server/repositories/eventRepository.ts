@@ -18,6 +18,13 @@ export const eventRepository = {
     return prisma.event.findMany({ orderBy: { startAt: "asc" }, include: eventWithRelations });
   },
 
+  /** Dashboard task, brief section 5: Manager's "sự kiện cần xử lý" —
+   *  UPCOMING events are the ones still needing prep/monitoring before they
+   *  go LIVE; LIVE/COMPLETED/CANCELLED need no further editorial action. */
+  countByStatus(status: EventStatus) {
+    return prisma.event.count({ where: { status } });
+  },
+
   listByProvince(provinceId: string) {
     return prisma.event.findMany({
       where: { provinceId, status: { not: "CANCELLED" } },

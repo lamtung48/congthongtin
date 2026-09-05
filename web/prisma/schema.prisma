@@ -260,6 +260,17 @@ enum AuditAction {
   DISCONNECT_YOUTUBE
 }
 
+/// Editorial workflow task, brief section 9: the exact 4 events that must
+/// notify someone. Not a generic "activity feed" type list — each value
+/// maps to exactly one trigger point in `articleService.ts` and one
+/// Vietnamese message template in `notificationService.ts`.
+enum NotificationType {
+  ARTICLE_SUBMITTED
+  ARTICLE_RETURNED
+  ARTICLE_APPROVED
+  ARTICLE_PUBLISHED
+}
+
 // ============================================================
 // Identity & access
 // ============================================================
@@ -298,10 +309,12 @@ model User {
   createdArticles            Article[]               @relation("ArticleCreatedBy")
   updatedArticles            Article[]               @relation("ArticleUpdatedBy")
   articleRevisions           ArticleRevision[]
+  articleNotes               ArticleNote[]
   uploadedMedia              MediaAsset[]            @relation("MediaCreatedBy")
   auditLogs                  AuditLog[]
   homepageConfigurationEdits HomepageConfiguration[]
   youtubeConnections         YoutubeConnection[]
+  notifications              Notification[]
 
   @@index([role])
 }
@@ -712,6 +725,7 @@ model Article {
   topics      ArticleTopic[]
   tags        ArticleTag[]
   slugHistory ArticleSlugHistory[]
+  notes       ArticleNote[]
 
   activityStatisticsAsLatest ActivityStatistic[] @relation("ActivityStatisticLatestArticle")
 
@@ -777,6 +791,52 @@ model ArticleRevision {
   changedBy User?   @relation(fields: [changedById], references: [id])
 
   @@unique([articleId, version])
+}
+
+/// Editorial workflow task, brief section 8: "Cho phép ghi chú nội bộ.
+/// Không public." Distinct from `Article.returnNote` — that field is the
+/// one mandatory note attached to a single Return action and gets cleared
+/// on the next resubmit; this is a free-form, append-only discussion
+/// thread (a Manager flagging something for a Contributor mid-review, a
+/// Contributor explaining a source, ...) that persists across the whole
+/// life of the article regardless of how many times it's returned. Never
+/// rendered by any public route — only `/admin/articles/[id]/edit`. Anyone
+/// who can view the article (`articleService.canView`) can read and add to
+/// it, matching the same visibility rule as the article itself rather than
+/// introducing a fourth permission tier.
+model ArticleNote {
+  id        String   @id @default(cuid())
+  articleId String
+  authorId  String?
+  body      String
+  createdAt DateTime @default(now())
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author  User?   @relation(fields: [authorId], references: [id])
+
+  @@index([articleId, createdAt])
+}
+
+/// Editorial workflow task, brief section 9/10: in-app notifications only
+/// (no email/push) — `entityType`/`entityId` is the same loose-reference
+/// pattern as `AuditLog`/`MediaUsage`, since every current `NotificationType`
+/// points at an `Article` but a future type might not. `message` is a
+/// fully-rendered Vietnamese string decided once at write time by
+/// `notificationService`, not re-derived from `type` at read time — so
+/// changing a message template later never rewrites history.
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  type       NotificationType
+  entityType String
+  entityId   String
+  message    String
+  isRead     Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
 }
 
 // ============================================================

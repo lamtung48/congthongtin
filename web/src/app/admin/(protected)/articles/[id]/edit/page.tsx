@@ -33,6 +33,7 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
     authorProfileRepository.findByUserId(session.id),
     articleService.listRevisions(session, article),
   ]);
+  const notes = await articleService.listNotes(session, article);
 
   const blocks: EditorBlock[] = article.blocks.map((b) => ({ key: b.id, type: b.type, data: b.data as Record<string, unknown> }));
 
@@ -101,6 +102,12 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
         changedByName: r.changedBy?.displayName ?? "Hệ thống",
         createdAt: r.createdAt.toISOString(),
         note: r.note,
+      }))}
+      notes={notes.map((n) => ({
+        id: n.id,
+        authorName: n.author?.displayName ?? "Hệ thống",
+        body: n.body,
+        createdAt: n.createdAt.toISOString(),
       }))}
     />
   );

@@ -1,5 +1,6 @@
 import { requireSession } from "@/server/auth/session";
 import { hasPermission } from "@/server/auth/permissions";
+import { notificationService } from "@/server/services/notificationService";
 import { AdminShell } from "./AdminShell";
 
 /**
@@ -18,11 +19,12 @@ import { AdminShell } from "./AdminShell";
  */
 export default async function ProtectedAdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
+  const unreadCount = await notificationService.countUnread(session);
 
   const nav = [
     { href: "/admin/dashboard", label: "Dashboard", show: true },
     { href: "/admin/articles", label: session.role === "CONTRIBUTOR" ? "Bài viết của tôi" : "Bài viết", show: true },
-    { href: "/admin/articles?status=IN_REVIEW", label: "Duyệt bài", show: hasPermission(session.role, "article.approve") },
+    { href: "/admin/review", label: "Duyệt bài", show: hasPermission(session.role, "article.approve") },
     {
       href: "/admin/media",
       label: "Media",
@@ -40,6 +42,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
     { href: "/admin/events", label: "Sự kiện", show: hasPermission(session.role, "event.manage") },
     { href: "/admin/homepage", label: "Homepage", show: hasPermission(session.role, "homepage.manage") },
     { href: "/admin/users", label: "Users", show: hasPermission(session.role, "user.manage") },
+    { href: "/admin/notifications", label: unreadCount > 0 ? `Thông báo (${unreadCount})` : "Thông báo", show: true },
     { href: "/admin/profile", label: "Hồ sơ cá nhân", show: true },
   ].filter((item) => item.show);
 

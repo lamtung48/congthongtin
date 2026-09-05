@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArticleContentEditor, type EditorBlock } from "./ArticleContentEditor";
 import { MediaPicker, type MediaOption } from "../../MediaPicker";
 import type { VideoOption } from "../../VideoPicker";
-import { autosaveAction, saveAction, restoreRevisionAction, type EditorFormPayload } from "./actions";
+import { autosaveAction, saveAction, restoreRevisionAction, addNoteAction, type EditorFormPayload } from "./actions";
 import {
   submitForReviewAction,
   approveAction,
@@ -65,6 +65,13 @@ interface RevisionRow {
   changedByName: string;
   createdAt: string;
   note: string | null;
+}
+
+interface NoteRow {
+  id: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
 }
 
 const STATUS_LABELS: Record<ArticleStatus, string> = {
@@ -139,12 +146,14 @@ export function ArticleEditor({
   options,
   permissions,
   revisions,
+  notes,
 }: {
   articleId: string;
   initial: InitialData;
   options: { categories: Option[]; topics: Option[]; tags: Option[]; organizations: Option[]; provinces: Option[]; authors: Option[]; media: MediaOption[]; video: VideoOption[] };
   permissions: Permissions;
   revisions: RevisionRow[];
+  notes: NoteRow[];
 }) {
   const router = useRouter();
   const locked = !permissions.canEditNow;
@@ -381,6 +390,25 @@ export function ArticleEditor({
               </div>
             </div>
           )}
+
+          <div className="adminCard adminCardPad" style={{ marginTop: 16 }}>
+            <h2 className="adminLabel" style={{ marginBottom: 10, fontSize: 13 }}>Ghi chú nội bộ</h2>
+            <p className="adminHint" style={{ marginTop: 0, marginBottom: 10 }}>Chỉ hiển thị trong CMS — không public.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 220, overflowY: "auto", marginBottom: 10 }}>
+              {notes.length === 0 && <span className="adminHint">Chưa có ghi chú nào.</span>}
+              {notes.map((n) => (
+                <div key={n.id} style={{ fontSize: 12, borderBottom: "1px solid var(--admin-border)", paddingBottom: 6 }}>
+                  <div><strong>{n.authorName}</strong> <span className="adminHint">· {new Date(n.createdAt).toLocaleString("vi-VN")}</span></div>
+                  <div style={{ marginTop: 2, whiteSpace: "pre-wrap" }}>{n.body}</div>
+                </div>
+              ))}
+            </div>
+            <form action={addNoteAction} style={{ display: "flex", gap: 6 }}>
+              <input type="hidden" name="articleId" value={articleId} />
+              <input type="text" name="body" required placeholder="Thêm ghi chú nội bộ…" className="adminInput" style={{ flex: 1 }} />
+              <button type="submit" className="adminButton adminButtonSmall">Gửi</button>
+            </form>
+          </div>
         </div>
       </div>
 

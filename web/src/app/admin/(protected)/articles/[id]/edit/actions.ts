@@ -70,3 +70,12 @@ export async function restoreRevisionAction(formData: FormData): Promise<void> {
   await articleService.restoreRevision(actor, article, version);
   revalidatePath(`/admin/articles/${article.id}/edit`);
 }
+
+/** Brief section 8: internal notes — visibility is the same `canView` rule
+ *  as the article itself, re-checked inside `articleService.addNote`. */
+export async function addNoteAction(formData: FormData): Promise<void> {
+  const actor = await requireSession();
+  const article = await loadOr404(String(formData.get("articleId")));
+  await articleService.addNote(actor, article, String(formData.get("body")));
+  revalidatePath(`/admin/articles/${article.id}/edit`);
+}

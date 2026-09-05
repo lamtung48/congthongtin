@@ -31,6 +31,8 @@ function withDerivedStatus<T extends Pick<EventWithRelations, "startAt" | "endAt
 }
 
 export const eventService = {
+  countByStatus: eventRepository.countByStatus,
+
   async listAll() {
     const now = new Date();
     return (await eventRepository.listAll()).map((e) => withDerivedStatus(e, now));

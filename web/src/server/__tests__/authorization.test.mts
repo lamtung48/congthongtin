@@ -154,6 +154,7 @@ const { mediaService, MediaInUseError } = await import("@/server/services/mediaS
 const { youtubeService } = await import("@/server/services/youtubeService");
 const { hashPassword } = await import("@/server/auth/password");
 const { articleRepository } = await import("@/server/repositories/articleRepository");
+const { notificationService } = await import("@/server/services/notificationService");
 const { DatabaseProvider } = await import("@/data-access/providers/databaseProvider");
 const databaseProvider = new DatabaseProvider();
 
@@ -168,6 +169,13 @@ let contributorAAuthorProfileId: string;
 let otherAuthorProfileId: string;
 const testUserIds: string[] = [];
 const testArticleIds: string[] = [];
+/** Every article id this suite ever created, even ones later spliced out of
+ *  `testArticleIds` after a test deletes them directly (see "Manager must
+ *  unpublish... before deleting it" below). `Notification.entityId` is a
+ *  loose reference with no FK/cascade back to `Article` — a deleted
+ *  article's notifications would otherwise never be cleaned up, since by
+ *  the time `after()` runs, its id is no longer in `testArticleIds` at all. */
+const allArticleIdsEverCreated: string[] = [];
 const testAuthorProfileIds: string[] = [];
 const testMediaIds: string[] = [];
 const testGalleryIds: string[] = [];
@@ -213,6 +221,7 @@ async function makeArticle(actor: Actor, title: string, blocks: ArticleBlockInpu
   });
   if (!article) throw new Error("articleService.create returned null unexpectedly");
   testArticleIds.push(article.id);
+  allArticleIdsEverCreated.push(article.id);
   return article;
 }
 
@@ -242,6 +251,16 @@ after(async () => {
   delete process.env.YOUTUBE_ALLOW_CONTRIBUTOR_UPLOAD;
   await prisma.youtubeConnection.deleteMany({ where: { id: "default" } });
   await prisma.auditLog.deleteMany({ where: { actorId: { in: testUserIds } } });
+  // `Notification.userId` cascades on User delete, which covers the four
+  // throwaway actors below — but `notifyRoles(["ADMIN","MANAGER"])`
+  // (`notificationService.ts`, called from `articleService.submitForReview`)
+  // fans out to *every* active Manager/Admin, including the real seeded
+  // `manager@hoisinhvien.vn`/`admin@hoisinhvien.vn` accounts this suite never
+  // deletes. Without this, every test run would permanently litter those
+  // real accounts' Notification Center with throwaway test messages —
+  // cleaned up here by `entityId` (every one of this suite's notifications
+  // points at a `testArticleIds` row) rather than by recipient.
+  await prisma.notification.deleteMany({ where: { entityType: "Article", entityId: { in: allArticleIdsEverCreated } } });
   await prisma.articleSlugHistory.deleteMany({ where: { articleId: { in: testArticleIds } } });
   // Articles first — this clears any Article.coverMediaId/ogMediaId FK
   // pointing at a test MediaAsset before that asset is deleted below.
@@ -898,5 +917,118 @@ describe("Preview CMS — 3 role (nhiệm vụ kết nối database, brief mục
     assert.equal(articleService.canView(contributorB, inReview), false);
     assert.equal(articleService.canView(manager, inReview), true);
     assert.equal(articleService.canView(admin, inReview), true);
+  });
+});
+
+describe("Review Queue /admin/review — chỉ ADMIN/MANAGER (nhiệm vụ workflow biên tập, brief mục 6 & 12)", () => {
+  test('route guard dùng permission "article.approve" — đúng ranh giới 2 role, không vô tình cấp cho Contributor', () => {
+    assert.equal(hasPermission("ADMIN", "article.approve"), true);
+    assert.equal(hasPermission("MANAGER", "article.approve"), true);
+    assert.equal(hasPermission("CONTRIBUTOR", "article.approve"), false);
+  });
+
+  test("listForAdmin({ statusIn }) trả đúng bài IN_REVIEW + APPROVED, không lẫn DRAFT/PUBLISHED", async () => {
+    const draft = await makeArticle(contributorA, "Review queue: DRAFT không được liệt kê");
+    const inReview = await makeArticle(contributorA, "Review queue: IN_REVIEW");
+    await articleService.submitForReview(contributorA, await reload(inReview!.id));
+    const approved = await makeArticle(contributorA, "Review queue: APPROVED");
+    await articleService.submitForReview(contributorA, await reload(approved!.id));
+    await articleService.approve(manager, await reload(approved!.id));
+
+    const queue = await articleService.listForAdmin(manager, { statusIn: ["IN_REVIEW", "APPROVED"] });
+    const ids = queue.map((a) => a.id);
+    assert.ok(ids.includes(inReview!.id), "phải chứa bài IN_REVIEW");
+    assert.ok(ids.includes(approved!.id), "phải chứa bài APPROVED");
+    assert.ok(!ids.includes(draft!.id), "không được chứa bài DRAFT");
+  });
+});
+
+describe("Notification — thông báo nội bộ theo workflow (nhiệm vụ workflow biên tập, brief mục 9 & 10)", () => {
+  test("Gửi duyệt: notify mọi Manager/Admin đang hoạt động, không tự notify Contributor vừa gửi", async () => {
+    const article = await makeArticle(contributorA, "Notify khi gửi duyệt");
+    await articleService.submitForReview(contributorA, article!);
+
+    const managerNotifs = await notificationService.listForUser(manager, { take: 20 });
+    const adminNotifs = await notificationService.listForUser(admin, { take: 20 });
+    const contributorNotifs = await notificationService.listForUser(contributorA, { take: 20 });
+
+    assert.ok(managerNotifs.some((n) => n.entityId === article!.id && n.type === "ARTICLE_SUBMITTED"));
+    assert.ok(adminNotifs.some((n) => n.entityId === article!.id && n.type === "ARTICLE_SUBMITTED"));
+    assert.ok(!contributorNotifs.some((n) => n.entityId === article!.id && n.type === "ARTICLE_SUBMITTED"));
+  });
+
+  test("Trả bài: notify đúng Contributor là tác giả, kèm nội dung ghi chú — không lộ cho Contributor khác", async () => {
+    const article = await makeArticle(contributorA, "Notify khi bị trả");
+    await articleService.submitForReview(contributorA, await reload(article!.id));
+    await articleService.returnForRevision(manager, await reload(article!.id), "Thiếu ảnh minh hoạ.");
+
+    const notifs = await notificationService.listForUser(contributorA, { take: 20 });
+    const match = notifs.find((n) => n.entityId === article!.id && n.type === "ARTICLE_RETURNED");
+    assert.ok(match, "Contributor phải nhận thông báo khi bài bị trả");
+    assert.ok(match!.message.includes("Thiếu ảnh minh hoạ."));
+
+    const otherNotifs = await notificationService.listForUser(contributorB, { take: 20 });
+    assert.ok(!otherNotifs.some((n) => n.entityId === article!.id));
+  });
+
+  test("Duyệt và xuất bản: notify đúng Contributor là tác giả", async () => {
+    const article = await makeArticle(contributorA, "Notify khi duyệt và xuất bản");
+    await articleService.submitForReview(contributorA, await reload(article!.id));
+    await articleService.approve(manager, await reload(article!.id));
+    const afterApprove = await notificationService.listForUser(contributorA, { take: 20 });
+    assert.ok(afterApprove.some((n) => n.entityId === article!.id && n.type === "ARTICLE_APPROVED"));
+
+    await articleService.publish(admin, await reload(article!.id));
+    const afterPublish = await notificationService.listForUser(contributorA, { take: 20 });
+    assert.ok(afterPublish.some((n) => n.entityId === article!.id && n.type === "ARTICLE_PUBLISHED"));
+  });
+
+  test("markRead chỉ cho phép người nhận đánh dấu thông báo của chính mình", async () => {
+    const article = await makeArticle(contributorA, "Notify markRead ownership");
+    await articleService.submitForReview(contributorA, await reload(article!.id));
+    const target = (await notificationService.listForUser(manager, { take: 20 })).find((n) => n.entityId === article!.id);
+    assert.ok(target);
+
+    // Admin (không phải người nhận của thông báo này) cố đánh dấu đã đọc —
+    // `notificationRepository.markRead` where theo cả id lẫn userId nên phải
+    // là no-op, không throw nhưng cũng không đổi trạng thái của Manager.
+    await notificationService.markRead(admin, target!.id);
+    const stillUnread = (await notificationService.listForUser(manager, { take: 20 })).find((n) => n.id === target!.id);
+    assert.equal(stillUnread?.isRead, false, "markRead của người khác không được phép đổi trạng thái đọc");
+
+    await notificationService.markRead(manager, target!.id);
+    const nowRead = (await notificationService.listForUser(manager, { take: 20 })).find((n) => n.id === target!.id);
+    assert.equal(nowRead?.isRead, true);
+  });
+});
+
+describe("Ghi chú nội bộ (ArticleNote) — không public, theo quyền canView (nhiệm vụ workflow biên tập, brief mục 8)", () => {
+  test("Contributor ghi chú và xem được ghi chú trên bài của chính mình", async () => {
+    const article = await makeArticle(contributorA, "Ghi chú nội bộ trên bài của Contributor A");
+    await articleService.addNote(contributorA, article!, "Đã bổ sung số liệu theo yêu cầu.");
+    const notes = await articleService.listNotes(contributorA, article!);
+    assert.equal(notes.length, 1);
+    assert.equal(notes[0].body, "Đã bổ sung số liệu theo yêu cầu.");
+    assert.equal(notes[0].authorId, contributorA.id);
+  });
+
+  test("Contributor khác không được ghi chú hay xem ghi chú trên bài không phải của mình", async () => {
+    const article = await makeArticle(contributorA, "Ghi chú nội bộ — chặn Contributor khác");
+    await assert.rejects(() => articleService.addNote(contributorB, article!, "Cố ghi chú trái phép"));
+    await assert.rejects(() => articleService.listNotes(contributorB, article!));
+  });
+
+  test("Manager/Admin ghi chú được trên bất kỳ bài nào; ghi chú không làm đổi trạng thái workflow", async () => {
+    const article = await makeArticle(contributorA, "Ghi chú nội bộ từ Manager/Admin");
+    await articleService.addNote(manager, article!, "Kiểm tra lại nguồn trích dẫn.");
+    await articleService.addNote(admin, await reload(article!.id), "Đã kiểm tra, ổn.");
+    const notes = await articleService.listNotes(contributorA, await reload(article!.id));
+    assert.equal(notes.length, 2);
+    assert.equal((await reload(article!.id)).status, "DRAFT", "ghi chú nội bộ không được làm đổi trạng thái bài viết");
+  });
+
+  test("Ghi chú trống bị từ chối", async () => {
+    const article = await makeArticle(contributorA, "Ghi chú nội bộ rỗng bị từ chối");
+    await assert.rejects(() => articleService.addNote(contributorA, article!, "   "));
   });
 });

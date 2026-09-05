@@ -89,4 +89,14 @@ export const userRepository = {
   touchLastLogin(id: string) {
     return prisma.user.update({ where: { id }, data: { lastLoginAt: new Date() } });
   },
+
+  /** Editorial workflow task, brief section 9: "Cộng tác viên → gửi duyệt:
+   *  notify Manager/Admin phù hợp" — every active Manager and Admin, not a
+   *  single assignee (this CMS has no per-article reviewer assignment). */
+  listActiveByRoles(roles: AdminRole[]) {
+    return prisma.user.findMany({
+      where: { role: { in: roles }, status: "ACTIVE" },
+      select: publicUserSelect,
+    });
+  },
 };

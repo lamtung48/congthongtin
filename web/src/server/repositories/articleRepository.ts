@@ -27,6 +27,14 @@ export type ArticleWithRelations = Prisma.ArticleGetPayload<{ include: typeof ar
 
 export interface ArticleAdminFilter {
   status?: ArticleStatus;
+  /** Review Queue (editorial workflow task, brief section 6): needs both
+   *  IN_REVIEW (awaiting Approve/Return) and APPROVED (awaiting Publish/
+   *  Schedule) rows in one list — a single `status` value can't express
+   *  that, so this is a separate, independent filter rather than widening
+   *  `status` itself to an array (every existing caller only ever passes
+   *  one status, and keeping that the common case simpler was worth the
+   *  one extra field). */
+  statusIn?: ArticleStatus[];
   createdById?: string;
   categoryId?: string;
   topicId?: string;
@@ -54,6 +62,7 @@ export interface ArticleAdminFilter {
 async function buildAdminWhere(params: ArticleAdminFilter): Promise<Prisma.ArticleWhereInput> {
   const where: Prisma.ArticleWhereInput = {
     status: params.status,
+    ...(params.statusIn ? { status: { in: params.statusIn } } : {}),
     createdById: params.createdById,
     categoryId: params.categoryId,
     authorId: params.authorId,
@@ -138,6 +147,21 @@ export const articleRepository = {
    *  which only ever need one status's count, not the full filter set. */
   countByStatus(status?: ArticleStatus, createdById?: string) {
     return prisma.article.count({ where: { status, createdById } });
+  },
+
+  /** Dashboard task, brief section 5: Manager's "bài xuất bản hôm nay" — a
+   *  day boundary computed in Asia/Ho_Chi_Minh wall-clock time (UTC+7, no
+   *  DST), the same fixed-offset convention `articles/actions.ts`'s
+   *  `parseScheduledAtVietnamTime` already uses, so "today" means the same
+   *  calendar day an editor sitting in Vietnam would expect regardless of
+   *  what timezone this Node process itself happens to run in. */
+  countPublishedToday() {
+    const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
+    const nowVn = new Date(Date.now() + VN_OFFSET_MS);
+    const startOfTodayVn = Date.UTC(nowVn.getUTCFullYear(), nowVn.getUTCMonth(), nowVn.getUTCDate());
+    const startUtc = new Date(startOfTodayVn - VN_OFFSET_MS);
+    const endUtc = new Date(startUtc.getTime() + 24 * 60 * 60 * 1000);
+    return prisma.article.count({ where: { status: "PUBLISHED", publishedAt: { gte: startUtc, lt: endUtc } } });
   },
 
   listPublished(params: { skip?: number; take?: number } = {}) {

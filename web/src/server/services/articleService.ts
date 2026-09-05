@@ -3,6 +3,8 @@ import { articleRepository, type ArticleWithRelations, type ArticleAdminFilter }
 import { authorProfileRepository } from "@/server/repositories/authorProfileRepository";
 import { mediaRepository } from "@/server/repositories/mediaRepository";
 import { auditLogRepository } from "@/server/repositories/auditLogRepository";
+import { articleNoteRepository } from "@/server/repositories/articleNoteRepository";
+import { notificationService } from "@/server/services/notificationService";
 import { parseArticleBlockData, collectMediaIdsFromBlocks, type ArticleBlockType } from "@/server/validation/articleBlocks";
 import { hasPermission } from "@/server/auth/permissions";
 import type { SessionUser } from "@/server/auth/session";
@@ -239,6 +241,7 @@ export const articleService = {
   listPublishedByProvince: articleRepository.listPublishedByProvince,
   listSlugs: articleRepository.listSlugs,
   countByStatus: articleRepository.countByStatus,
+  countPublishedToday: articleRepository.countPublishedToday,
   canView: canViewArticle,
   canEdit(actor: SessionUser, article: Pick<ArticleWithRelations, "createdById" | "status">): boolean {
     try {
@@ -359,6 +362,16 @@ export const articleService = {
     assertTransitionAllowed(article.status, "IN_REVIEW");
     const updated = await articleRepository.update(article.id, { status: "IN_REVIEW", returnNote: null });
     await auditLogRepository.record({ actorId: actor.id, action: "SUBMIT_REVIEW", entityType: "Article", entityId: article.id });
+    // Brief section 9: "Cộng tác viên → gửi duyệt: notify Manager/Admin
+    // phù hợp" — every active Manager and Admin, since no single reviewer
+    // is assigned per article.
+    await notificationService.notifyRoles(
+      ["ADMIN", "MANAGER"],
+      "ARTICLE_SUBMITTED",
+      "Article",
+      article.id,
+      `${actor.displayName} vừa gửi duyệt bài viết "${article.title}".`,
+    );
     return updated;
   },
 
@@ -368,6 +381,14 @@ export const articleService = {
     assertTransitionAllowed(article.status, "APPROVED");
     const updated = await articleRepository.update(article.id, { status: "APPROVED" });
     await auditLogRepository.record({ actorId: actor.id, action: "APPROVE_ARTICLE", entityType: "Article", entityId: article.id });
+    // Brief section 9: "Quản trị viên/Admin → duyệt/publish: notify Contributor."
+    await notificationService.notifyUser(
+      article.createdById,
+      "ARTICLE_APPROVED",
+      "Article",
+      article.id,
+      `Bài viết "${article.title}" của bạn đã được duyệt.`,
+    );
     return updated;
   },
 
@@ -382,6 +403,14 @@ export const articleService = {
     assertTransitionAllowed(article.status, "DRAFT");
     const updated = await articleRepository.update(article.id, { status: "DRAFT", returnNote: note });
     await auditLogRepository.record({ actorId: actor.id, action: "RETURN_ARTICLE", entityType: "Article", entityId: article.id, metadata: { note } });
+    // Brief section 9: "Quản trị viên → trả bài: notify Contributor."
+    await notificationService.notifyUser(
+      article.createdById,
+      "ARTICLE_RETURNED",
+      "Article",
+      article.id,
+      `Bài viết "${article.title}" đã bị trả lại: ${note}`,
+    );
     return updated;
   },
 
@@ -393,6 +422,14 @@ export const articleService = {
     assertTransitionAllowed(article.status, "PUBLISHED");
     const updated = await articleRepository.updateStatus(article.id, "PUBLISHED", article.publishedAt ? {} : { publishedAt: new Date() });
     await auditLogRepository.record({ actorId: actor.id, action: "PUBLISH_ARTICLE", entityType: "Article", entityId: article.id });
+    // Brief section 9: "Quản trị viên/Admin → duyệt/publish: notify Contributor."
+    await notificationService.notifyUser(
+      article.createdById,
+      "ARTICLE_PUBLISHED",
+      "Article",
+      article.id,
+      `Bài viết "${article.title}" của bạn đã được xuất bản.`,
+    );
     revalidatePublicSite();
     return updated;
   },
@@ -412,6 +449,16 @@ export const articleService = {
     assertTransitionAllowed(article.status, "SCHEDULED");
     const updated = await articleRepository.updateStatus(article.id, "SCHEDULED", { scheduledAt });
     await auditLogRepository.record({ actorId: actor.id, action: "SCHEDULE_ARTICLE", entityType: "Article", entityId: article.id, metadata: { scheduledAt: scheduledAt.toISOString() } });
+    // Not one of the brief's 3 named triggers by name, but grouped with
+    // "duyệt/publish" in spirit — a Contributor should know their article
+    // now has a firm publish date, not just silence until it appears live.
+    await notificationService.notifyUser(
+      article.createdById,
+      "ARTICLE_PUBLISHED",
+      "Article",
+      article.id,
+      `Bài viết "${article.title}" của bạn đã được hẹn giờ xuất bản.`,
+    );
     return updated;
   },
 
@@ -509,6 +556,27 @@ export const articleService = {
       throw new Error("Not authorized to view this article's revisions.");
     }
     return articleRepository.listRevisions(article.id);
+  },
+
+  /** Brief section 8: "Cho phép ghi chú nội bộ. Không public." Same
+   *  visibility rule as the article itself (`canView`) — an Admin/Manager
+   *  can note on anything, a Contributor only on their own article — rather
+   *  than a fourth, note-specific permission tier the brief never asks for. */
+  async listNotes(actor: SessionUser, article: ArticleWithRelations) {
+    if (!canViewArticle(actor, article)) {
+      throw new Error("Not authorized to view this article's notes.");
+    }
+    return articleNoteRepository.listForArticle(article.id);
+  },
+
+  async addNote(actor: SessionUser, article: ArticleWithRelations, body: string) {
+    if (!canViewArticle(actor, article)) {
+      throw new Error("Not authorized to note on this article.");
+    }
+    if (!body.trim()) {
+      throw new Error("Ghi chú không được để trống.");
+    }
+    return articleNoteRepository.create(article.id, actor.id, body.trim());
   },
 
   /** Brief section 2: Manager may delete "nếu policy cho phép" — the
