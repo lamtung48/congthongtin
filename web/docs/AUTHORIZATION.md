@@ -187,17 +187,19 @@ control. Every mutation in this codebase enforces this the same way:
   decision has exactly one enforcement point, and it's the one furthest
   from being accidentally skipped.
 
-## Article workflow (brief section 9)
+## Article workflow (CMS brief sections 7 & 9)
 
 ```
-DRAFT --submit(Contributor/Manager/Admin, own or any)--> IN_REVIEW
+DRAFT --submit(Contributor own DRAFT, Manager/Admin any)--> IN_REVIEW
 IN_REVIEW --approve(Manager/Admin)--> APPROVED
-IN_REVIEW --return(Manager/Admin)--> DRAFT (Article.returnNote set)
-APPROVED --return(Manager/Admin)--> DRAFT
-APPROVED --publish(Manager/Admin)--> PUBLISHED
-APPROVED --schedule(Manager/Admin)--> SCHEDULED
-SCHEDULED --publish(Manager/Admin)--> PUBLISHED
+IN_REVIEW --return(Manager/Admin, note required)--> DRAFT (Article.returnNote set)
+APPROVED --return(Manager/Admin, note required)--> DRAFT
+APPROVED --publish(Manager/Admin, publish-ready only)--> PUBLISHED
+APPROVED --schedule(Manager/Admin, publish-ready + future UTC instant)--> SCHEDULED
+SCHEDULED --publish(Manager/Admin, publish-ready only)--> PUBLISHED
 PUBLISHED --unpublish(Manager/Admin)--> ARCHIVED
+DRAFT/IN_REVIEW/APPROVED/SCHEDULED --archive(Manager/Admin)--> ARCHIVED
+ARCHIVED --restoreFromArchive(Manager/Admin)--> DRAFT
 ```
 
 `ALLOWED_TRANSITIONS` in `articleService.ts` is the single source of truth
@@ -206,7 +208,94 @@ checked in addition to the permission check, so even an Admin can't jump
 `DRAFT` straight to `PUBLISHED` by calling the wrong method with a crafted
 request. No separate "Trưởng Ban Biên tập" role or step exists — Admin
 already has every Manager permission by construction and can intervene at
-any step, exactly as the brief specifies, without a fourth role.
+any step, exactly as the brief specifies, without a fourth role. The CMS
+brief's diagram labels the return step's destination "RETURNED" — this is
+not a fifth `ArticleStatus` value; a returned article is `DRAFT` again with
+`Article.returnNote` set (cleared automatically the next time it's
+resubmitted), so `submitForReview`'s existing "DRAFT -> IN_REVIEW" path
+already covers "CONTRIBUTOR chỉnh sửa → SUBMIT REVIEW lại" without a
+separate status or method.
+
+**"Lưu trữ" vs. "Gỡ bài" — two audit actions, one destination status.**
+`archive()` (any non-`PUBLISHED` status -> `ARCHIVED`, `ARCHIVE_ARTICLE` in
+the audit log) and `unpublish()` (`PUBLISHED` -> `ARCHIVED`,
+`UNPUBLISH_ARTICLE`) share a permission (`article.unpublish`) and a
+destination status, but each refuses the other's starting status —
+`unpublish` on a `DRAFT` and `archive` on a `PUBLISHED` article both throw.
+They're kept separate because they're different real-world events ("gỡ một
+bài đang sống" vs. "dọn một bản nháp cũ") that an auditor reading
+`AuditLog` later should be able to tell apart, even though the resulting
+`Article.status` is identical either way. `restoreFromArchive()` (the
+`ARCHIVED -> DRAFT` edge `ALLOWED_TRANSITIONS` already permitted) is the
+inverse of both, logged as `RESTORE_ARTICLE`.
+
+**Editing is locked, not just hidden, once a Contributor's article leaves
+DRAFT.** Brief: "Cộng tác viên không được tự ý sửa nếu workflow đang khóa
+bài, trừ khi bài được trả lại." `assertCanEdit` (used by `update`,
+`autosaveDraft`, and the submit step itself) rejects a Contributor's edit
+attempt on their own article whenever its status isn't `DRAFT` — including
+mid-review, mid-schedule, or after publishing. Manager/Admin's
+`article.edit.any` is not status-gated: they're the ones performing
+review-workflow actions on non-DRAFT articles, and touching content while
+doing so (fixing a typo before publishing) is expected, not a bypass.
+`/admin/articles/[id]/edit` reflects this by disabling every field and
+autosave when `articleService.canEdit()` returns false for the viewing
+Contributor — a UI courtesy on top of the server-enforced rejection, not
+the actual guard.
+
+**Publish-readiness (brief section 14).** `assertPublishReady` — checked
+inside `publish()` and `schedule()`, not just at the form layer — refuses a
+missing title, category, or empty block list, reading the live `Article`
+row (not whatever the last save's in-memory state happened to be).
+
+**Slugs (brief section 12).** `articleService`'s `handleSlugChange` runs on
+every `update()`/`autosaveDraft()` call that touches `slug`: it rejects a
+slug already used by another article (`Article.slug` is `@unique`, but this
+throws a specific message instead of surfacing Postgres's raw constraint
+error), and — "Nếu bài đã public và slug thay đổi: thiết kế redirect
+history" — if the article being renamed has ever gone live (`publishedAt`
+set), the old slug is snapshotted into `ArticleSlugHistory` before the
+rename. `articleRepository.findByOldSlug()` exists for the public
+`/tin-tuc/[slug]` route to 301 an old bookmarked/indexed URL to the
+article's current slug on a lookup miss — see that route for how it's
+wired in. Slug editability in the UI follows `canEdit` exactly (Admin/
+Manager always, Contributor only while DRAFT) — no separate policy check
+was needed since "can edit this article's content at all" already answers
+"can edit its slug."
+
+**Revisions (brief section 13).** Every `create`/`update`/`restoreRevision`
+call snapshots the full post-write `Article` (fields + blocks) into
+`ArticleRevision`, versioned per-article. `articleService.listRevisions`
+gates viewing behind the same ownership/permission check as editing
+(`canView`: `article.edit.any`, or `article.edit.own` + ownership) — a
+Contributor sees only their own article's history. `restoreRevision` is
+gated behind `article.edit.any` specifically (Manager/Admin only, per the
+brief: "CONTRIBUTOR chỉ xem revision bài mình") and restores only the
+editorial content fields (title/subtitle/excerpt/SEO fields/blocks) from
+the snapshot — deliberately not category/author/organization/province/
+cover/slug/status, since those are relations and workflow state a revision
+snapshot shouldn't blindly reconnect (a taxonomy row the snapshot points at
+may have since been renamed or removed). Restoring itself creates a new
+revision and an audit entry (`RESTORE_REVISION`), so restoring is a normal
+tracked edit, not a hidden rewrite of history.
+
+**Author selection (brief section 4).** `assertAuthorAllowed` restricts a
+Contributor to setting `Article.authorId` to their own linked
+`AuthorProfile` (found via `authorProfileRepository.findByUserId`) or
+leaving it unset — never another author's profile. Manager/Admin
+(`article.edit.any`) may set any author. This is the one CMS field
+`create`/`update` treat as sensitive; category/topic/tag/organization/
+province carry no such restriction.
+
+**Autosave (brief section 6).** `autosaveDraft` is a separate, lighter
+method from `update`: DRAFT-only (rejects otherwise, same as `assertCanEdit`
+would for a Contributor, but checked explicitly since Manager/Admin could
+otherwise autosave a non-DRAFT article they're allowed to edit), and
+deliberately creates no `ArticleRevision` snapshot and no `AuditLog` entry
+— a debounced background save firing every few seconds would otherwise
+flood both with noise neither is meant to hold. The explicit "Lưu" button
+always goes through `update()` instead, which does create a revision and an
+audit entry.
 
 ## User management (brief section 7)
 
@@ -276,35 +365,69 @@ Server Action calls — not through HTTP or the rendered UI:
   another account, with the returned object confirmed to carry no
   `passwordHash` field (the `PublicUser` DTO).
 
-Fixtures (throwaway users/articles/category, `test-authz-*`-prefixed) are
-created in `before()` and deleted in `after()` — a full test run leaves the
-database exactly as it found it, confirmed by querying for leftover
-`test-authz-*` rows after a run.
+The CMS task's own `describe` block extends this with the workflow rules
+that only matter once a real content-editing UI exists: a Contributor
+locked out of editing their own article once it's `IN_REVIEW`, and able to
+edit again after it's returned; `autosaveDraft` succeeding on a DRAFT and
+rejecting once submitted; `publish`/`schedule` refusing a block-less
+article; a slug collision rejected and an old slug of a since-published
+article recorded in `ArticleSlugHistory`; `archive()`/`unpublish()`
+refusing each other's starting status; `restoreRevision` rejected for a
+Contributor but working for a Manager (restoring the pre-edit title);
+`assertAuthorAllowed` rejecting a Contributor claiming someone else's
+`AuthorProfile` while allowing their own, and allowing a Manager to claim
+any; and `listForAdmin` ignoring a Contributor-supplied `createdById` that
+tries to point at someone else's articles.
 
-Manual Playwright verification (route guard 403s, generic login errors,
-session invalidation on disable, real-browser navigation) is documented in
-`docs/AUTHENTICATION.md`, "Testing" — that surface isn't duplicated here
-since it's about authentication rather than permission boundaries.
+Fixtures (throwaway users/articles/category/author-profiles,
+`test-authz-*`-prefixed) are created in `before()` and deleted in `after()`
+— a full test run leaves the database exactly as it found it, confirmed by
+querying for leftover `test-authz-*` rows after a run.
+
+Manual Playwright verification covered both tasks' surfaces: the
+authentication-foundation task's route guard 403s, generic login errors,
+and session invalidation on disable (`docs/AUTHENTICATION.md`, "Testing");
+this CMS task's own real-browser run drove the full lifecycle end to end —
+Contributor creates a draft via `/admin/articles/new`, adds a paragraph
+block, watches autosave report "Đã lưu", submits for review, is locked out
+of editing and sees no Duyệt/Xuất bản buttons; Manager sees it under the
+"Chờ duyệt" tab, returns it with a note; Contributor sees the note banner,
+edits, resubmits; Manager approves and publishes; the production
+`ArticleDetailView` renders correctly at `/preview/articles/[id]` with the
+"Đang xem trước" banner and the actual block content; the route guard on
+an unrelated permission (`/admin/users`) is still intact after all these
+changes; and Admin deletes the article — plus a second run exercising
+search/tab filtering on `/admin/articles` and a Manager restoring an
+older `ArticleRevision` through the UI.
 
 ## Remaining work for a future CMS task
 
-Everything below is explicitly out of this task's scope (foundation:
-authentication + authorization + the article workflow's state machine),
-not an oversight:
+Everything below is explicitly out of scope for the two CMS tasks
+completed so far (authentication/authorization foundation, then the
+`/admin/articles` workflow CMS), not an oversight:
 
 - **Full CRUD UI for Organizations, Events, and Homepage placements** —
-  `/admin/organizations`, `/admin/events`, `/admin/homepage` are read-only,
-  permission-gated listing pages today. `/admin/categories`,
-  `/admin/topics`, `/admin/tags` do have a working create form (their
-  underlying `taxonomyService` already needed create methods for the
-  article-creation category dropdown), but no edit/delete/reorder yet.
-- **Rich content editing** for articles — `CreateArticleForm` collects only
-  title/category/excerpt; there is no block editor for `ArticleBlock`
-  content in the admin UI yet (the data model and validation
-  already exist from the prior backend-foundation task).
-- **Real media upload** — `/admin/media` lists existing `MediaAsset` rows;
-  there's no upload pipeline (Google Drive/YouTube integration) wired to
-  the admin UI.
+  `/admin/organizations`, `/admin/events`, `/admin/homepage` are still
+  read-only, permission-gated listing pages. `/admin/categories`,
+  `/admin/topics`, `/admin/tags` have a working create form but no
+  edit/delete/reorder.
+- **Real media upload** — `/admin/media` and the CMS's `MediaPicker`
+  (used for cover images and every image/gallery/youtube block) both work
+  against `MediaAsset` metadata rows only; a media asset is registered by
+  typing in a Drive file id/YouTube video id/placeholder, not by uploading
+  a real file. There's no upload pipeline (Google Drive/YouTube
+  integration) wired to the admin UI yet — see `mediaActions.ts`'s header
+  comment.
+- **A drag-and-drop block editor** — `BlockEditor.tsx` supports add/
+  delete/duplicate/reorder (via up/down buttons, not drag handles) for all
+  8 block types; a future task could add pointer-based reordering without
+  changing the underlying `blocks` array contract.
+- **Rich inline text formatting in the paragraph block** — the editor
+  applies bold/italic to an entire paragraph, not to an arbitrary
+  selection within it (the domain's `TextRun[]` model supports multiple
+  runs with independent formatting; the current editor UI only ever
+  produces one run per paragraph). Links inside paragraph text (`TextRun.href`)
+  aren't editable from the block editor UI yet either.
 - **`system.configure`'s actual settings page** — the permission exists;
   no `/admin/settings` UI does yet.
 - **A distributed rate-limit store** and **email delivery for password

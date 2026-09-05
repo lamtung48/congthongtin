@@ -208,6 +208,22 @@ enum AuditAction {
   PUBLISH_ARTICLE
   UNPUBLISH_ARTICLE
   SCHEDULE_ARTICLE
+  /// Non-PUBLISHED -> ARCHIVED (e.g. shelving a stale DRAFT/IN_REVIEW
+  /// article) — distinct from UNPUBLISH_ARTICLE (PUBLISHED -> ARCHIVED,
+  /// "gỡ bài"), because the CMS brief tracks them as separate actions with
+  /// separate UI entry points even though both land on the same status.
+  /// See docs/AUTHORIZATION.md, "Article workflow".
+  ARCHIVE_ARTICLE
+  /// ARCHIVED -> DRAFT, the inverse of ARCHIVE_ARTICLE/UNPUBLISH_ARTICLE.
+  /// Not requested by name in either CMS brief, added because a status
+  /// transition without any action to trigger or log it would be dead code
+  /// (`ALLOWED_TRANSITIONS.ARCHIVED` already permitted DRAFT).
+  RESTORE_ARTICLE
+  /// Reverting an article's editable fields + blocks to a past
+  /// `ArticleRevision` snapshot. Not in either brief's minimum AuditLog
+  /// list, added for the same reason as RESTORE_ARTICLE — restoring content
+  /// is a real write that needs an audit trail like any other.
+  RESTORE_REVISION
 }
 
 // ============================================================
@@ -607,10 +623,11 @@ model Article {
   createdBy    User?          @relation("ArticleCreatedBy", fields: [createdById], references: [id])
   updatedBy    User?          @relation("ArticleUpdatedBy", fields: [updatedById], references: [id])
 
-  blocks    ArticleBlock[]
-  revisions ArticleRevision[]
-  topics    ArticleTopic[]
-  tags      ArticleTag[]
+  blocks      ArticleBlock[]
+  revisions   ArticleRevision[]
+  topics      ArticleTopic[]
+  tags        ArticleTag[]
+  slugHistory ArticleSlugHistory[]
 
   activityStatisticsAsLatest ActivityStatistic[] @relation("ActivityStatisticLatestArticle")
 
@@ -618,6 +635,25 @@ model Article {
   @@index([categoryId])
   @@index([provinceId])
   @@index([organizationId])
+}
+
+/// A slug this Article used to have while it was (or had ever been)
+/// PUBLISHED — CMS brief section 12: "Nếu bài đã public và slug thay đổi:
+/// thiết kế redirect history." Only written when the article being renamed
+/// has a non-null `publishedAt` (a DRAFT that never went live has no public
+/// URL anyone could have bookmarked or indexed, so renaming it needs no
+/// history). The public `/tin-tuc/[slug]` route checks this table when a
+/// slug lookup misses, so an old bookmarked/indexed URL 301s to the
+/// article's current slug instead of 404ing.
+model ArticleSlugHistory {
+  id        String   @id @default(cuid())
+  articleId String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([articleId])
 }
 
 /// One row per content block, ordered within its article. `data` is a

@@ -48,8 +48,11 @@ let admin: Actor;
 let manager: Actor;
 let contributorA: Actor;
 let contributorB: Actor;
+let contributorAAuthorProfileId: string;
+let otherAuthorProfileId: string;
 const testUserIds: string[] = [];
 const testArticleIds: string[] = [];
+const testAuthorProfileIds: string[] = [];
 
 async function makeUser(role: Actor["role"], label: string): Promise<Actor> {
   const passwordHash = await hashPassword(`throwaway-${label}-${Math.random()}`);
@@ -80,10 +83,14 @@ async function reload(id: string) {
   return article;
 }
 
-async function makeArticle(actor: Actor, title: string) {
+/** Includes one PARAGRAPH block by default — most tests below need a
+ *  publish-ready article (`assertPublishReady` in `articleService.ts`
+ *  requires at least one block), and only the test specifically about that
+ *  validation constructs a body-less article itself. */
+async function makeArticle(actor: Actor, title: string, blocks: { type: "PARAGRAPH"; order: number; data: unknown }[] = [{ type: "PARAGRAPH", order: 0, data: { runs: [{ text: "Nội dung mẫu." }] } }]) {
   const article = await articleService.create(actor, {
-    data: { slug: `test-authz-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title, category: { connect: { id: categoryId } } },
-    blocks: [],
+    fields: { slug: `test-authz-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title, categoryId },
+    blocks,
   });
   if (!article) throw new Error("articleService.create returned null unexpectedly");
   testArticleIds.push(article.id);
@@ -100,11 +107,23 @@ before(async () => {
   manager = await makeUser("MANAGER", "manager");
   contributorA = await makeUser("CONTRIBUTOR", "contributor-a");
   contributorB = await makeUser("CONTRIBUTOR", "contributor-b");
+
+  const ownProfile = await prisma.authorProfile.create({
+    data: { userId: contributorA.id, displayName: "Bút danh của Contributor A" },
+  });
+  contributorAAuthorProfileId = ownProfile.id;
+  testAuthorProfileIds.push(ownProfile.id);
+
+  const otherProfile = await prisma.authorProfile.create({ data: { displayName: "Bút danh của người khác" } });
+  otherAuthorProfileId = otherProfile.id;
+  testAuthorProfileIds.push(otherProfile.id);
 });
 
 after(async () => {
   await prisma.auditLog.deleteMany({ where: { actorId: { in: testUserIds } } });
+  await prisma.articleSlugHistory.deleteMany({ where: { articleId: { in: testArticleIds } } });
   await prisma.article.deleteMany({ where: { id: { in: testArticleIds } } });
+  await prisma.authorProfile.deleteMany({ where: { id: { in: testAuthorProfileIds } } });
   await prisma.user.deleteMany({ where: { id: { in: testUserIds } } });
   await prisma.category.delete({ where: { id: categoryId } });
   await prisma.$disconnect();
@@ -186,7 +205,7 @@ describe("Article workflow — server-side enforcement (brief sections 9 & 15)",
   test("Contributor cannot edit another Contributor's article", async () => {
     const articleOfB = await makeArticle(contributorB, "Belongs to contributor B");
     await assert.rejects(() =>
-      articleService.update(contributorA, articleOfB!, { data: { title: "Hijacked" } }),
+      articleService.update(contributorA, articleOfB!, { fields: { title: "Hijacked" } }),
     );
   });
 
@@ -268,5 +287,120 @@ describe("User management — Admin only (brief sections 7 & 15)", () => {
 
     const reEnabled = await userService.setStatus(admin, created.id, "ACTIVE");
     assert.equal(reEnabled.status, "ACTIVE");
+  });
+});
+
+describe("CMS bài viết — workflow nâng cao (nhiệm vụ CMS)", () => {
+  test("Contributor bị khoá không thể sửa bài đã gửi duyệt, nhưng sửa được sau khi bị trả lại", async () => {
+    const article = await makeArticle(contributorA, "Khoá bài khi đang duyệt");
+    await articleService.submitForReview(contributorA, article!);
+    const inReview = await reload(article!.id);
+
+    await assert.rejects(() => articleService.update(contributorA, inReview, { fields: { title: "Sửa lén" } }));
+    await assert.rejects(() => articleService.autosaveDraft(contributorA, inReview, { fields: { title: "Autosave lén" } }));
+
+    const returned = await articleService.returnForRevision(manager, inReview, "Cần chỉnh sửa thêm.");
+    assert.equal(returned.status, "DRAFT");
+    const editedAfterReturn = await articleService.update(contributorA, await reload(article!.id), { fields: { title: "Đã sửa sau khi bị trả lại" } });
+    assert.equal(editedAfterReturn?.title, "Đã sửa sau khi bị trả lại");
+  });
+
+  test("autosaveDraft chỉ hoạt động khi bài đang DRAFT", async () => {
+    const article = await makeArticle(contributorA, "Autosave hợp lệ khi DRAFT");
+    const saved = await articleService.autosaveDraft(contributorA, article!, { fields: { subtitle: "Sapo tự động lưu" } });
+    assert.equal(saved?.subtitle, "Sapo tự động lưu");
+
+    await articleService.submitForReview(contributorA, await reload(article!.id));
+    const inReview = await reload(article!.id);
+    await assert.rejects(() => articleService.autosaveDraft(contributorA, inReview, { fields: { subtitle: "Không được nữa" } }));
+  });
+
+  test("Không thể xuất bản hoặc hẹn giờ bài thiếu nội dung", async () => {
+    const article = await makeArticle(contributorA, "Bài rỗng không có block", []);
+    await articleService.submitForReview(contributorA, article!);
+    const approved = await articleService.approve(manager, await reload(article!.id));
+
+    await assert.rejects(() => articleService.publish(manager, approved));
+    await assert.rejects(() => articleService.schedule(manager, approved, new Date(Date.now() + 3600_000)));
+  });
+
+  test("Slug trùng bị từ chối; đổi slug của bài đã từng xuất bản lưu lại lịch sử", async () => {
+    const articleA = await makeArticle(contributorA, "Bài A giữ slug gốc");
+    const articleB = await makeArticle(contributorA, "Bài B thử đổi slug trùng");
+
+    const reloadedB = await reload(articleB!.id);
+    await assert.rejects(() => articleService.update(contributorA, reloadedB, { fields: { slug: articleA!.slug } }));
+
+    // Publish articleA first so its next rename must be tracked in history.
+    await articleService.submitForReview(contributorA, await reload(articleA!.id));
+    const approvedA = await articleService.approve(manager, await reload(articleA!.id));
+    await articleService.publish(manager, approvedA);
+
+    const oldSlug = articleA!.slug;
+    const newSlug = `${oldSlug}-renamed`;
+    await articleService.update(manager, await reload(articleA!.id), { fields: { slug: newSlug } });
+
+    const historyEntry = await prisma.articleSlugHistory.findUnique({ where: { slug: oldSlug } });
+    assert.ok(historyEntry, "expected the old slug to be recorded in ArticleSlugHistory");
+    assert.equal(historyEntry?.articleId, articleA!.id);
+  });
+
+  test("archive() và unpublish() là hai hành động khác nhau", async () => {
+    const draftArticle = await makeArticle(contributorA, "Lưu trữ một bản nháp cũ");
+    await assert.rejects(() => articleService.unpublish(manager, draftArticle!), "unpublish must refuse a non-PUBLISHED article");
+
+    const archived = await articleService.archive(manager, draftArticle!);
+    assert.equal(archived.status, "ARCHIVED");
+
+    const restored = await articleService.restoreFromArchive(manager, await reload(archived.id));
+    assert.equal(restored.status, "DRAFT");
+
+    const publishedArticle = await makeArticle(contributorA, "Xuất bản rồi gỡ bài");
+    await articleService.submitForReview(contributorA, publishedArticle!);
+    const approvedPub = await articleService.approve(manager, await reload(publishedArticle!.id));
+    await articleService.publish(manager, approvedPub);
+    const published = await reload(publishedArticle!.id);
+    await assert.rejects(() => articleService.archive(manager, published), "archive must refuse a PUBLISHED article");
+    const unpublished = await articleService.unpublish(manager, published);
+    assert.equal(unpublished.status, "ARCHIVED");
+  });
+
+  test("Chỉ Manager/Admin được khôi phục phiên bản; Contributor bị từ chối", async () => {
+    const article = await makeArticle(contributorA, "Bản gốc trước khi sửa");
+    const v1Title = article!.title;
+    const updated = await articleService.update(contributorA, article!, { fields: { title: "Đã đổi tiêu đề" } });
+    assert.equal(updated?.title, "Đã đổi tiêu đề");
+
+    await assert.rejects(() => articleService.restoreRevision(contributorA, updated!, 1));
+
+    const restored = await articleService.restoreRevision(manager, updated!, 1);
+    assert.equal(restored?.title, v1Title);
+  });
+
+  test("Contributor chỉ được chọn chính mình làm tác giả; Manager chọn tự do", async () => {
+    await assert.rejects(() =>
+      articleService.create(contributorA, {
+        fields: { slug: `test-authz-${Date.now()}-badauthor`, title: "Mạo danh tác giả khác", categoryId, authorId: otherAuthorProfileId },
+      }),
+    );
+
+    const ownAuthorArticle = await articleService.create(contributorA, {
+      fields: { slug: `test-authz-${Date.now()}-ownauthor`, title: "Tự nhận đúng bút danh của mình", categoryId, authorId: contributorAAuthorProfileId },
+    });
+    testArticleIds.push(ownAuthorArticle!.id);
+    assert.equal(ownAuthorArticle?.authorId, contributorAAuthorProfileId);
+
+    const managerCreated = await articleService.create(manager, {
+      fields: { slug: `test-authz-${Date.now()}-managerpicks`, title: "Manager chọn tác giả bất kỳ", categoryId, authorId: otherAuthorProfileId },
+    });
+    testArticleIds.push(managerCreated!.id);
+    assert.equal(managerCreated?.authorId, otherAuthorProfileId);
+  });
+
+  test("listForAdmin luôn ép createdById theo Contributor, bỏ qua giá trị truyền vào", async () => {
+    const ownArticle = await makeArticle(contributorA, "Bài của Contributor A cho test listForAdmin");
+    const results = await articleService.listForAdmin(contributorA, { createdById: manager.id });
+    assert.ok(results.every((a) => a.createdById === contributorA.id), "Contributor's list must never include another user's articles");
+    assert.ok(results.some((a) => a.id === ownArticle!.id));
   });
 });

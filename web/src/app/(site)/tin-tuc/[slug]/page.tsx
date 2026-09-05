@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import styles from "./page.module.css";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { MediaImage } from "@/components/ui/MediaImage";
-import { ArticleMeta } from "@/components/article/ArticleMeta";
 import { ShareActions } from "@/components/article/ShareActions";
-import { TagList } from "@/components/content/TagList";
 import { RelatedArticles } from "@/components/article/RelatedArticles";
 import { AdjacentArticleNav } from "@/components/article/AdjacentArticleNav";
-import { ArticleBody } from "@/components/article/blocks/ArticleBody";
+import { ArticleDetailView } from "@/components/article/ArticleDetailView";
 import { getAdjacentArticles, getArticleBySlug, getArticleSlugs, getRelatedArticles } from "@/services/contentService";
 import { getHomepage } from "@/services/homepageService";
 import { pageMetadata } from "@/lib/seo";
@@ -59,7 +53,6 @@ export default async function ArticlePage({ params }: Props) {
     getAdjacentArticles(article.slug),
   ]);
 
-  const hasBody = !!article.body && article.body.length > 0;
   const hasTags = !!article.tags && article.tags.length > 0;
   const imageUrl = article.coverImage ? resolveImageUrl(article.coverImage) : undefined;
 
@@ -94,58 +87,27 @@ export default async function ArticlePage({ params }: Props) {
           { label: article.title },
         ]}
       />
-      <article className={styles.wrap}>
-        <header className={styles.head}>
-          <Link href={categoryHref(article.category.slug)} className={styles.category}>
-            {article.category.name}
-          </Link>
-          <h1 className={styles.headline}>{article.title}</h1>
-          {article.lead && <p className={styles.sapo}>{article.lead}</p>}
-          <ArticleMeta
-            author={article.author}
-            publishedAt={article.publishedAt}
-            updatedAt={article.updatedAt}
-            readingTimeMinutes={article.readingTimeMinutes}
-          />
-        </header>
-
-        {article.coverImage && (
-          <figure className={styles.coverWrap}>
-            <div className={styles.cover} style={{ viewTransitionName: articleCoverTransitionName(article.url) }}>
-              <MediaImage media={article.coverImage} />
-            </div>
-            {article.coverImage.caption && <figcaption className={styles.coverCaption}>{article.coverImage.caption}</figcaption>}
-          </figure>
-        )}
-
-        <div className={styles.section}>
-          {hasBody ? (
-            <ArticleBody blocks={article.body!} />
-          ) : (
-            <EmptyState
-              title="Nội dung bài viết đang được biên tập"
-              description="Bản đầy đủ của bài viết chưa có trong dữ liệu mẫu — trang này sẽ hiển thị nội dung thật khi kết nối với hệ thống quản trị nội dung."
-              action={{ label: "Xem tất cả tin tức", href: "/tin-tuc" }}
-            />
-          )}
-
-          <ShareActions title={article.title} />
-
-          {hasTags && (
-            <div className={styles.tagsRow}>
-              <TagList
-                ariaLabel="Từ khoá liên quan"
-                items={article.tags!.map((t) => ({ key: t.slug, href: searchHref(t.name), label: `#${t.name}` }))}
-              />
-            </div>
-          )}
-        </div>
-
-        <div className={styles.bottomSection}>
-          <RelatedArticles articles={related} />
-          <AdjacentArticleNav previous={adjacent.previous} next={adjacent.next} />
-        </div>
-      </article>
+      <ArticleDetailView
+        categoryName={article.category.name}
+        categoryHref={categoryHref(article.category.slug)}
+        title={article.title}
+        lead={article.lead}
+        author={article.author}
+        publishedAt={article.publishedAt}
+        updatedAt={article.updatedAt}
+        readingTimeMinutes={article.readingTimeMinutes}
+        coverImage={article.coverImage}
+        body={article.body}
+        tags={hasTags ? article.tags!.map((t) => ({ key: t.slug, href: searchHref(t.name), label: `#${t.name}` })) : undefined}
+        coverViewTransitionName={articleCoverTransitionName(article.url)}
+        afterBody={<ShareActions title={article.title} />}
+        bottom={
+          <>
+            <RelatedArticles articles={related} />
+            <AdjacentArticleNav previous={adjacent.previous} next={adjacent.next} />
+          </>
+        }
+      />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
     </>
   );

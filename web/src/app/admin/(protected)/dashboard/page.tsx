@@ -73,7 +73,7 @@ export default async function AdminDashboardPage() {
   // dedicated status for it, so it's derived by filtering the DRAFT list
   // rather than a separate count query.
   const [drafts, inReview, published] = await Promise.all([
-    articleService.listForAdmin({ status: "DRAFT", createdById: session.id }),
+    articleService.listForAdmin(session, { status: "DRAFT" as const }),
     articleService.countByStatus("IN_REVIEW", session.id),
     articleService.countByStatus("PUBLISHED", session.id),
   ]);
