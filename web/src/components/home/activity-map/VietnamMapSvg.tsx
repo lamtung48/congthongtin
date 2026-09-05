@@ -234,7 +234,7 @@ export function VietnamMapSvg({
                     <>
                       <text x={tx.toFixed(1)} y={(c[1] + 33).toFixed(1)} textAnchor={anchor}>{a.name}</text>
                       {showSub && (
-                        <text className="sub" x={tx.toFixed(1)} y={(c[1] + 44).toFixed(1)} textAnchor={anchor}>{a.administered_by}</text>
+                        <text className={styles.sub} x={tx.toFixed(1)} y={(c[1] + 44).toFixed(1)} textAnchor={anchor}>{a.administered_by}</text>
                       )}
                     </>
                   );
@@ -263,7 +263,7 @@ export function VietnamMapSvg({
                 }
               }}
             >
-              <circle className="sphere" cx={gcx} cy={gcy} r={gr} fill="var(--blue-500)" fillOpacity={0.08} stroke="var(--blue-400)" strokeWidth={1.1} />
+              <circle className={styles.sphere} cx={gcx} cy={gcy} r={gr} fill="var(--blue-500)" fillOpacity={0.08} stroke="var(--blue-400)" strokeWidth={1.1} />
               {[0.34, 0.68].map((f) => (
                 <ellipse key={f} cx={gcx} cy={gcy} rx={gr * f} ry={gr} fill="none" stroke="var(--blue-300)" strokeWidth={0.9} />
               ))}
@@ -314,12 +314,12 @@ export function VietnamMapSvg({
                   }
                 }}
               >
-                <circle className="ring" r={rad + 5.5} fill="none" stroke="var(--blue-700)" strokeWidth={sel ? 1.8 : 0} opacity={sel ? 1 : 0} />
+                <circle className={styles.ring} r={rad + 5.5} fill="none" stroke="var(--blue-700)" strokeWidth={sel ? 1.8 : 0} opacity={sel ? 1 : 0} />
                 {none ? (
-                  <circle className="dot" r={rad} fill="var(--white)" fillOpacity={0.9} stroke="var(--ink-400)" strokeWidth={1.3} strokeDasharray="2.6 2.2" />
+                  <circle className={styles.dot} r={rad} fill="var(--white)" fillOpacity={0.9} stroke="var(--ink-400)" strokeWidth={1.3} strokeDasharray="2.6 2.2" />
                 ) : (
                   <circle
-                    className="dot"
+                    className={styles.dot}
                     r={rad}
                     fill={sel ? "var(--blue-700)" : "var(--blue-500)"}
                     fillOpacity={sel ? 1 : 0.32 + 0.5 * ((v ?? 0) / max)}
@@ -327,7 +327,7 @@ export function VietnamMapSvg({
                     strokeWidth={1}
                   />
                 )}
-                <circle className="hit" r={Math.max(rad + 9, 16)} />
+                <circle className={styles.hit} r={Math.max(rad + 9, 16)} />
               </g>
             );
           })}
