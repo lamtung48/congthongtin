@@ -1,0 +1,776 @@
+// Prisma schema — production foundation for Cổng thông tin số Hội Sinh viên
+// Việt Nam. See docs/DATABASE_SCHEMA.md for the full ERD and the reasoning
+// behind every non-obvious modeling decision referenced in the comments
+// below (search that doc for the same all-caps keyword, e.g. "ACTIVITY-STAT
+// SHAPE", to find the matching explanation).
+//
+// Connection URLs live in `prisma.config.ts` (read from `.env`), not here —
+// Prisma 7's `datasource` block only declares the provider. See
+// docs/ENVIRONMENT.md.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// Enums
+// ============================================================
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  PENDING
+}
+
+/// DRAFT -> IN_REVIEW -> APPROVED -> (SCHEDULED ->) PUBLISHED -> ARCHIVED.
+/// SCHEDULED and PUBLISHED are kept distinct so "will go live at scheduledAt"
+/// and "is live now" are never conflated by a single boolean — see
+/// docs/DATABASE_SCHEMA.md, "ARTICLE STATUS".
+enum ArticleStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ArticleBlockType {
+  PARAGRAPH
+  HEADING
+  IMAGE
+  GALLERY
+  YOUTUBE
+  QUOTE
+  TABLE
+  EMBED
+}
+
+/// CENTRAL = Trung ương Hội. PROVINCE/UNIVERSITY/OVERSEAS mirror the three
+/// reporting-unit levels the frontend already models
+/// (`OrganizationLevel` in `src/domain/people.ts`). OTHER covers anything
+/// that doesn't fit those four (a sponsor, a partner body, etc).
+enum OrganizationType {
+  CENTRAL
+  PROVINCE
+  UNIVERSITY
+  OVERSEAS
+  OTHER
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  INACTIVE
+}
+
+/// MERGED covers a province absorbed into another under an administrative
+/// boundary change without deleting its historical row (articles/events tied
+/// to it must keep resolving) — see docs/DATABASE_SCHEMA.md, "PROVINCE STATUS".
+enum ProvinceStatus {
+  ACTIVE
+  MERGED
+  INACTIVE
+}
+
+/// Matches `MediaProvider` in `src/domain/media.ts` one-for-one
+/// (`"drive"` -> GOOGLE_DRIVE, `"youtube"` -> YOUTUBE,
+/// `"local-placeholder"` -> LOCAL_PLACEHOLDER).
+enum MediaProvider {
+  GOOGLE_DRIVE
+  YOUTUBE
+  LOCAL_PLACEHOLDER
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum MediaStatus {
+  READY
+  MISSING
+  REMOVED
+  PROCESSING
+}
+
+/// What kind of content record a `MediaUsage` row's `referenceId` points
+/// into — see that model's comment for why this isn't a typed foreign key.
+enum MediaUsageType {
+  ARTICLE_COVER
+  ARTICLE_OG
+  ARTICLE_BLOCK
+  GALLERY_ITEM
+  EVENT_COVER
+  VIDEO_SOURCE
+  ORGANIZATION_LOGO
+  AUTHOR_AVATAR
+  USER_AVATAR
+  HOMEPAGE_HERO
+}
+
+enum EventStatus {
+  UPCOMING
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum PlatformCategory {
+  CONFERENCE
+  TRAINING
+  SV5TOT
+  VOLUNTEER
+  DATA
+}
+
+enum PlatformStatus {
+  LIVE
+  ACTIVE
+  MAINTENANCE
+  OPEN
+  UNAVAILABLE
+  SOON
+}
+
+/// One entry per homepage section the frontend already renders
+/// (`src/app/page.tsx`) — adding a ninth section means adding a ninth value
+/// here, not a new table.
+enum HomepageSectionKey {
+  HERO
+  FEATURED_ARTICLES
+  STORY_RAIL
+  VIDEO_FEATURE
+  PLATFORM_CARDS
+  EVENTS
+  GALLERY
+  LOCAL_NEWS
+}
+
+/// What a `HomepagePlacement.contentId` points at — same loose-reference
+/// pattern as `MediaUsage`/`ActivityStatistic`; see docs/DATABASE_SCHEMA.md.
+enum HomepageContentType {
+  ARTICLE
+  VIDEO
+  EVENT
+  PLATFORM
+  GALLERY
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  PUBLISH
+  UNPUBLISH
+  APPROVE
+  LOGIN
+}
+
+// ============================================================
+// Identity & access
+// ============================================================
+
+/// A system account (can log in). Distinct from `AuthorProfile` — a byline
+/// ("who wrote this") is not always a person with a login, and a person with
+/// a login is not always credited as a byline. See `AuthorProfile` below.
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  passwordHash  String?
+  displayName   String
+  avatarMediaId String?
+  status        UserStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  avatarMedia   MediaAsset?    @relation("UserAvatar", fields: [avatarMediaId], references: [id])
+  roles         UserRole[]
+  authorProfile AuthorProfile?
+
+  createdArticles            Article[]               @relation("ArticleCreatedBy")
+  updatedArticles            Article[]               @relation("ArticleUpdatedBy")
+  articleRevisions           ArticleRevision[]
+  uploadedMedia              MediaAsset[]            @relation("MediaCreatedBy")
+  auditLogs                  AuditLog[]
+  homepageConfigurationEdits HomepageConfiguration[]
+}
+
+/// A named permission bundle ("admin", "editor", "author",
+/// "province_reporter", ...). Deliberately just a name + description at this
+/// stage — see docs/BACKEND_ARCHITECTURE.md, "Authorization" for why a full
+/// permission-matrix table isn't built yet (no CMS UI to enforce it against
+/// in this task; see brief item 18).
+model Role {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+
+  users UserRole[]
+}
+
+model UserRole {
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+/// The public byline identity a reader sees on an article — matches
+/// `Author` in `src/domain/people.ts` (id/name/title/avatar). `userId` is
+/// nullable on purpose: many bylines in a student-press context are
+/// contributors who submit copy without ever getting a CMS login.
+model AuthorProfile {
+  id            String   @id @default(cuid())
+  userId        String?  @unique
+  displayName   String
+  title         String?
+  avatarMediaId String?
+  bio           String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user        User?       @relation(fields: [userId], references: [id])
+  avatarMedia MediaAsset? @relation("AuthorAvatar", fields: [avatarMediaId], references: [id])
+  articles    Article[]
+}
+
+// ============================================================
+// Taxonomy (section 6 — three distinct tables on purpose)
+// ============================================================
+
+/// Primary classification — exactly one per article (enforced by
+/// `Article.categoryId` being required, not a join table). Also doubles as
+/// the Activity Map's category filter dimension (`ActivityStatistic.categoryId`)
+/// — the fixture's map filter chips ("Tình nguyện", "Nghiên cứu khoa học", ...)
+/// are literally the same Vietnamese labels as the article categories, so
+/// this is one table serving both, not a coincidence to re-model separately.
+model Category {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  articles           Article[]
+  videos             Video[]
+  activityStatistics ActivityStatistic[]
+}
+
+/// A curated editorial theme with its own landing page (e.g. "Đại hội XII").
+/// Many-to-many with Article — one topic page pulls from several articles,
+/// and (per `docs/LISTING_PAGES.md`) an article can genuinely belong to more
+/// than one topic.
+model Topic {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  description  String?
+  coverMediaId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  coverMedia MediaAsset?    @relation("TopicCover", fields: [coverMediaId], references: [id])
+  articles   ArticleTopic[]
+}
+
+model ArticleTopic {
+  articleId String
+  topicId   String
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  topic   Topic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, topicId])
+}
+
+/// Freeform keyword, many per article, no landing page — kept as its own
+/// table (not folded into Category/Topic) because it has neither Category's
+/// "exactly one, drives the primary URL" role nor Topic's "has a landing
+/// page" role. See brief section 6: "Không nhập Category/Topic/Tag thành
+/// cùng một bảng nếu chức năng thực tế khác nhau."
+model Tag {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+
+  articles ArticleTag[]
+}
+
+model ArticleTag {
+  articleId String
+  tagId     String
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+}
+
+// ============================================================
+// Geography & organizations (sections 7-8)
+// ============================================================
+
+/// One of Vietnam's provinces/centrally-run cities. `mapCode` is the
+/// 2-digit code the Activity Map's topojson/fixture keys off
+/// (`ActivityMapProvince.province_id`, e.g. "01" for Hà Nội) — kept distinct
+/// from `code` (a longer-form official administrative code) because the two
+/// numbering schemes are not guaranteed to be the same value, only the same
+/// province.
+model Province {
+  id        String         @id @default(cuid())
+  code      String         @unique
+  mapCode   String         @unique
+  slug      String         @unique
+  name      String
+  lat       Float
+  lon       Float
+  status    ProvinceStatus @default(ACTIVE)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  organizations      Organization[]
+  articles           Article[]
+  events             Event[]
+  activityStatistics ActivityStatistic[]
+}
+
+/// The Activity Map's overseas globe panel — one row per country chapter
+/// (Hội Sinh viên Việt Nam tại Australia, tại Pháp, ...). `activityCount` is
+/// a deliberately denormalized running total, not a `province`-style
+/// per-period/per-category `ActivityStatistic` history: the current
+/// UI/fixture only ever needs one number per country (no category
+/// breakdown, no history), so a mirrored statistics table would be built
+/// speculatively. See docs/DATABASE_SCHEMA.md, "OVERSEAS ACTIVITY — SCOPE".
+model OverseasOrganization {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String   @unique
+  countryCode    String?
+  activityCount  Int      @default(0)
+  organizationId String?  @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+}
+
+/// Trung ương Hội, Hội Sinh viên tỉnh/thành, Hội Sinh viên trường, Hội Sinh
+/// viên Việt Nam ở nước ngoài, hoặc đơn vị khác. `parentId` gives the
+/// hierarchy the brief asks for (a university chapter reports up to its
+/// province chapter, which reports up to Trung ương) without a separate
+/// hierarchy table.
+model Organization {
+  id          String             @id @default(cuid())
+  name        String
+  shortName   String?
+  slug        String             @unique
+  type        OrganizationType
+  logoMediaId String?
+  provinceId  String?
+  countryCode String?
+  website     String?
+  facebook    String?
+  youtube     String?
+  status      OrganizationStatus @default(ACTIVE)
+  parentId    String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  parent    Organization?  @relation("OrganizationHierarchy", fields: [parentId], references: [id])
+  children  Organization[] @relation("OrganizationHierarchy")
+  province  Province?      @relation(fields: [provinceId], references: [id])
+  logoMedia MediaAsset?    @relation("OrganizationLogo", fields: [logoMediaId], references: [id])
+
+  articles             Article[]
+  events               Event[]
+  overseasOrganization OverseasOrganization?
+}
+
+// ============================================================
+// Media metadata (section 10 — no binary storage)
+// ============================================================
+
+/// Metadata only — the actual file lives with its provider (Google Drive,
+/// YouTube) or, for LOCAL_PLACEHOLDER, doesn't exist at all yet. Binary
+/// upload/storage handling is explicitly out of scope for this task (brief
+/// item 18) — this table exists so every other model has something to point
+/// a `*MediaId` foreign key at today, ready for a real upload pipeline later
+/// without a schema change.
+model MediaAsset {
+  id             String        @id @default(cuid())
+  provider       MediaProvider
+  providerFileId String?
+  type           MediaType
+  mimeType       String?
+  filename       String?
+  width          Int?
+  height         Int?
+  size           Int?
+  alt            String?
+  caption        String?
+  status         MediaStatus   @default(MISSING)
+  createdById    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  createdBy User? @relation("MediaCreatedBy", fields: [createdById], references: [id])
+
+  usages MediaUsage[]
+
+  usedAsUserAvatar   User[]          @relation("UserAvatar")
+  usedAsAuthorAvatar AuthorProfile[] @relation("AuthorAvatar")
+  usedAsOrgLogo      Organization[]  @relation("OrganizationLogo")
+  usedAsTopicCover   Topic[]         @relation("TopicCover")
+  usedAsArticleCover Article[]       @relation("ArticleCover")
+  usedAsArticleOg    Article[]       @relation("ArticleOg")
+  usedAsEventCover   Event[]         @relation("EventCover")
+  galleryItems       GalleryItem[]
+  videos             Video[]
+
+  @@index([provider, providerFileId])
+}
+
+/// Explicit "where is this asset actually used" index, separate from the
+/// direct `*MediaId` foreign keys above. Those FKs answer "what does this
+/// article's cover point to"; this table answers the reverse question — "if
+/// I delete/replace this asset, what breaks" — across every content type in
+/// one place, including uses a typed FK can't reach (e.g. one image
+/// referenced from inside an `ArticleBlock.data` JSON gallery block).
+/// `referenceId` is intentionally untyped (see `HomepagePlacement.contentId`
+/// for the same pattern) since it can point at rows in several different
+/// tables depending on `usageType`.
+model MediaUsage {
+  id          String         @id @default(cuid())
+  mediaId     String
+  usageType   MediaUsageType
+  referenceId String
+  createdAt   DateTime       @default(now())
+
+  media MediaAsset @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@index([usageType, referenceId])
+  @@index([mediaId])
+}
+
+model Gallery {
+  id          String   @id @default(cuid())
+  slug        String?  @unique
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items GalleryItem[]
+}
+
+model GalleryItem {
+  id        String  @id @default(cuid())
+  galleryId String
+  mediaId   String
+  order     Int
+  caption   String?
+
+  gallery Gallery    @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  media   MediaAsset @relation(fields: [mediaId], references: [id])
+
+  @@unique([galleryId, order])
+}
+
+/// The homepage's standalone video/reportage feature — distinct from an
+/// article's inline `YoutubeBlock` (`ArticleBlock` with type YOUTUBE): this
+/// is its own playlist-style entity with a title/description/category of
+/// its own, not scoped to one article's body.
+model Video {
+  id              String    @id @default(cuid())
+  slug            String?   @unique
+  title           String
+  description     String
+  categoryId      String
+  durationSeconds Int?
+  mediaId         String
+  publishedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  category Category   @relation(fields: [categoryId], references: [id])
+  media    MediaAsset @relation(fields: [mediaId], references: [id])
+}
+
+// ============================================================
+// Article (sections 3-5)
+// ============================================================
+
+model Article {
+  id             String        @id @default(cuid())
+  slug           String        @unique
+  title          String
+  subtitle       String?
+  excerpt        String?
+  status         ArticleStatus @default(DRAFT)
+  coverMediaId   String?
+  categoryId     String
+  authorId       String?
+  organizationId String?
+  provinceId     String?
+  publishedAt    DateTime?
+  scheduledAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  createdById    String?
+  updatedById    String?
+
+  // SEO
+  seoTitle       String?
+  seoDescription String?
+  canonicalUrl   String?
+  ogMediaId      String?
+
+  category     Category       @relation(fields: [categoryId], references: [id])
+  author       AuthorProfile? @relation(fields: [authorId], references: [id])
+  organization Organization?  @relation(fields: [organizationId], references: [id])
+  province     Province?      @relation(fields: [provinceId], references: [id])
+  coverMedia   MediaAsset?    @relation("ArticleCover", fields: [coverMediaId], references: [id])
+  ogMedia      MediaAsset?    @relation("ArticleOg", fields: [ogMediaId], references: [id])
+  createdBy    User?          @relation("ArticleCreatedBy", fields: [createdById], references: [id])
+  updatedBy    User?          @relation("ArticleUpdatedBy", fields: [updatedById], references: [id])
+
+  blocks    ArticleBlock[]
+  revisions ArticleRevision[]
+  topics    ArticleTopic[]
+  tags      ArticleTag[]
+
+  activityStatisticsAsLatest ActivityStatistic[] @relation("ActivityStatisticLatestArticle")
+
+  @@index([status, publishedAt])
+  @@index([categoryId])
+  @@index([provinceId])
+  @@index([organizationId])
+}
+
+/// One row per content block, ordered within its article. `data` is a
+/// per-`type` JSON payload shaped exactly like the matching frontend variant
+/// in `src/domain/articleContent.ts` (`ParagraphBlock`, `ImageBlock`, ...) —
+/// see docs/BACKEND_ARCHITECTURE.md, "Article block validation" for where
+/// that per-type shape is actually enforced (the application/service layer,
+/// via a discriminated Zod schema — Postgres `jsonb` has no per-row schema
+/// of its own).
+model ArticleBlock {
+  id        String           @id @default(cuid())
+  articleId String
+  type      ArticleBlockType
+  order     Int
+  data      Json
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, order])
+}
+
+/// A full snapshot of an article's editable fields + blocks at one point in
+/// time, taken on every production edit. `version` is a simple
+/// per-article incrementing counter (1, 2, 3, ...), not a global sequence.
+/// No revision-restore/diff UI is built in this task (brief section 5: "Không
+/// cần làm UI revision") — this table only has to exist and be written to.
+model ArticleRevision {
+  id          String   @id @default(cuid())
+  articleId   String
+  version     Int
+  snapshot    Json
+  changedById String?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  changedBy User?   @relation(fields: [changedById], references: [id])
+
+  @@unique([articleId, version])
+}
+
+// ============================================================
+// Events (section 9)
+// ============================================================
+
+model Event {
+  id               String      @id @default(cuid())
+  slug             String      @unique
+  title            String
+  summary          String?
+  coverMediaId     String?
+  startAt          DateTime
+  endAt            DateTime
+  location         String?
+  provinceId       String?
+  organizationId   String
+  status           EventStatus @default(UPCOMING)
+  externalUrl      String?
+  participantCount Int?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  province     Province?    @relation(fields: [provinceId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  coverMedia   MediaAsset?  @relation("EventCover", fields: [coverMediaId], references: [id])
+
+  @@index([status, startAt])
+  @@index([provinceId])
+}
+
+// ============================================================
+// Platforms
+// ============================================================
+
+model Platform {
+  id               String           @id @default(cuid())
+  slug             String           @unique
+  name             String
+  url              String
+  description      String
+  category         PlatformCategory
+  status           PlatformStatus
+  accessLevel      String
+  metric           String?
+  liveActivityNote String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+// ============================================================
+// Activity Map statistics (section 8)
+// ============================================================
+
+/// One row per (province, category, period). `categoryId = null` is the
+/// "all categories" aggregate row for that province+period — the same
+/// numbers the fixture stores at the top level of a province entry
+/// (`activity_count`, `article_count`, ...); a row *with* `categoryId` set
+/// is one entry of that same fixture's `category_distribution` map. This
+/// lets one table serve both shapes the frontend already reads, matching
+/// the brief's literal field list (`categoryId optional`) instead of a
+/// separate breakdown table. See docs/DATABASE_SCHEMA.md, "ACTIVITY-STAT
+/// SHAPE".
+///
+/// `latestArticleId` replaces the fixture's denormalized
+/// `{ title, published_at }` snapshot with a real foreign key — a join
+/// against `Article` can never drift from the article it names, which a
+/// hand-copied title/date pair could.
+model ActivityStatistic {
+  id                String   @id @default(cuid())
+  provinceId        String
+  categoryId        String?
+  period            String
+  activityCount     Int?
+  articleCount      Int?
+  organizationCount Int?
+  participantCount  Int?
+  latestArticleId   String?
+  reported          Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+
+  province      Province  @relation(fields: [provinceId], references: [id])
+  category      Category? @relation(fields: [categoryId], references: [id])
+  latestArticle Article?  @relation("ActivityStatisticLatestArticle", fields: [latestArticleId], references: [id])
+
+  @@unique([provinceId, categoryId, period])
+  @@index([period])
+}
+
+// ============================================================
+// Homepage configuration (section 11)
+// ============================================================
+
+/// A named, versionable set of homepage section settings. `isActive` marks
+/// which one the public site currently reads — exactly one row should carry
+/// `isActive: true`, enforced at the service layer (`HomepageService`), not
+/// by a DB constraint, so a future "preview a draft configuration" admin
+/// feature can keep multiple inactive rows around without fighting a
+/// uniqueness rule.
+model HomepageConfiguration {
+  id          String   @id @default(cuid())
+  name        String   @default("default")
+  isActive    Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  updatedBy User?             @relation(fields: [updatedById], references: [id])
+  sections  HomepageSection[]
+}
+
+/// One configured slot (Hero, FeaturedArticles, ...) within a configuration.
+/// Deleting/disabling every `HomepagePlacement` under a section does not
+/// remove the section itself — see `HomepagePlacement` for the fallback
+/// this is designed around.
+model HomepageSection {
+  id              String             @id @default(cuid())
+  configurationId String
+  key             HomepageSectionKey
+  order           Int
+  isEnabled       Boolean            @default(true)
+
+  configuration HomepageConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  placements    HomepagePlacement[]
+
+  @@unique([configurationId, key])
+}
+
+/// One curated piece of content inside a section (e.g. "this Article is the
+/// Hero" or "these five Articles are Featured, in this order"). `contentId`
+/// is untyped like `MediaUsage.referenceId` — what table it points into
+/// depends on `contentType`.
+///
+/// Brief requirement: "phải giữ fallback tự động nếu CMS chưa cấu hình" — a
+/// section with zero enabled/currently-active placements is not an error
+/// state the schema needs to represent; `HomepageService` (see
+/// docs/BACKEND_ARCHITECTURE.md) falls back to an automatic query (e.g.
+/// "most recent published Article") whenever a section resolves no
+/// placements, so the homepage is never empty just because nobody has
+/// configured it yet.
+model HomepagePlacement {
+  id          String              @id @default(cuid())
+  sectionId   String
+  contentType HomepageContentType
+  contentId   String
+  order       Int
+  activeFrom  DateTime?
+  activeUntil DateTime?
+  isEnabled   Boolean             @default(true)
+
+  section HomepageSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([sectionId, order])
+  @@index([contentType, contentId])
+}
+
+// ============================================================
+// Audit log (section 12)
+// ============================================================
+
+/// One row per important write. `entityType`/`entityId` is the same
+/// loose-reference pattern as `MediaUsage`/`HomepagePlacement` — an audit
+/// log has to be able to point at literally any table, so a typed FK per
+/// entity type isn't practical. `metadata` holds action-specific extras
+/// (e.g. which fields changed) as JSON rather than a rigid column set.
+model AuditLog {
+  id         String      @id @default(cuid())
+  actorId    String?
+  action     AuditAction
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+}

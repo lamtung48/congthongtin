@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Prisma-generated client — regenerated from prisma/schema.prisma via
+    // `npx prisma generate`, never hand-edited. See docs/ENVIRONMENT.md.
+    "src/generated/**",
   ]),
 ]);
 
