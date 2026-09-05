@@ -542,6 +542,13 @@ async function main() {
     });
   }
 
+  console.log("Seeding the singleton MANUAL_EXTERNAL source (Social Inbox manual-paste items attach to this one row)...");
+  await prisma.source.upsert({
+    where: { id: "manual-external" },
+    create: { id: "manual-external", name: "Nhập thủ công", type: "MANUAL_EXTERNAL", status: "ACTIVE", isEnabled: true },
+    update: {},
+  });
+
   console.log("Seed complete.");
 }
 

@@ -12,15 +12,25 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   ARTICLE_RETURNED: "Trả lại",
   ARTICLE_APPROVED: "Đã duyệt",
   ARTICLE_PUBLISHED: "Xuất bản",
+  EXTERNAL_ITEM_ASSIGNED: "Được giao xử lý",
 };
 
-/** Every current `NotificationType` points at an `Article` — this maps
- *  `entityType` to the one admin route that can render it, the same
- *  `canView`-gated edit page every recipient (Manager/Admin about someone
- *  else's article, or the Contributor about their own) is already allowed
- *  to open. A future non-Article notification type just adds a case here. */
+/** Every `ARTICLE_*` type points at an `Article`; `EXTERNAL_ITEM_ASSIGNED`
+ *  (Social/External Content Collector task) points at an `ExternalItem`
+ *  instead — `entityHref` below branches on `entityType`, not on
+ *  `NotificationType`, exactly so this map only needs a route per entity
+ *  kind, not per notification type. This maps `entityType` to the one
+ *  admin route that can render it, the same `canView`-gated edit page
+ *  every recipient (Manager/Admin about someone else's article, or the
+ *  Contributor about their own) is already allowed
+ *  to open. `ExternalItem` links to the Social Inbox list itself (no
+ *  per-item detail route exists — the list is where every action on it
+ *  lives), not a `canView`-gated deep link, since Social Inbox access is
+ *  already checked per-row by `socialInboxService.canView` when that page
+ *  renders. */
 function entityHref(entityType: string, entityId: string): string | null {
   if (entityType === "Article") return `/admin/articles/${entityId}/edit`;
+  if (entityType === "ExternalItem") return `/admin/social-inbox`;
   return null;
 }
 

@@ -178,6 +178,37 @@ mock.module("@/server/integrations/platformAdapters/registry", {
   },
 });
 
+/**
+ * Social/External Content Collector task's own mock, same rationale as
+ * the ecosystem integration one above and the brief's own instruction
+ * ("Không scrape Facebook bằng browser automation... test bằng cách mock
+ * riêng lớp gọi API"): `sourceService.sync()` is the only caller of
+ * `getFetcherForSourceType`, and this fakes just that lookup — every
+ * permission/dedup/hashtag-filter/error-handling rule *inside*
+ * `sourceService`/`socialInboxService` still runs for real.
+ * `mockFetchResult`/`mockFetchCallCount` are mutated per-test to exercise
+ * both the success path and brief section 10's four failure kinds without
+ * a real network call. `MANUAL_EXTERNAL` returns `undefined`, matching
+ * the real registry (no fetcher for it).
+ */
+let mockFetchResult:
+  | { ok: true; posts: { externalId?: string; url: string; title?: string; excerpt?: string; contentText: string; publishedAt?: Date; hashtags: string[] }[] }
+  | { ok: false; reason: string; message: string } = { ok: true, posts: [] };
+let mockFetchCallCount = 0;
+mock.module("@/server/integrations/socialCollector/registry", {
+  namedExports: {
+    getFetcherForSourceType: (type: string) => {
+      if (type === "MANUAL_EXTERNAL") return undefined;
+      return {
+        fetchPosts: async () => {
+          mockFetchCallCount += 1;
+          return mockFetchResult;
+        },
+      };
+    },
+  },
+});
+
 const { hasPermission, PERMISSIONS, ROLE_LABELS, ASSIGNABLE_ROLES } = await import("@/server/auth/permissions");
 const { prisma } = await import("@/server/db/client");
 const { articleService } = await import("@/server/services/articleService");
@@ -189,6 +220,10 @@ const { platformRepository } = await import("@/server/repositories/platformRepos
 const { hashPassword } = await import("@/server/auth/password");
 const { articleRepository } = await import("@/server/repositories/articleRepository");
 const { notificationService } = await import("@/server/services/notificationService");
+const { sourceService } = await import("@/server/services/sourceService");
+const { sourceRepository } = await import("@/server/repositories/sourceRepository");
+const { socialInboxService } = await import("@/server/services/socialInboxService");
+const { externalItemRepository } = await import("@/server/repositories/externalItemRepository");
 const { DatabaseProvider } = await import("@/data-access/providers/databaseProvider");
 const databaseProvider = new DatabaseProvider();
 
@@ -215,6 +250,8 @@ const testMediaIds: string[] = [];
 const testGalleryIds: string[] = [];
 const testVideoIds: string[] = [];
 const testPlatformIds: string[] = [];
+const testSourceIds: string[] = [];
+const testExternalItemIds: string[] = [];
 
 async function makeUser(role: Actor["role"], label: string): Promise<Actor> {
   const passwordHash = await hashPassword(`throwaway-${label}-${Math.random()}`);
@@ -279,6 +316,22 @@ async function makePlatform(overrides: Partial<Parameters<typeof platformReposit
   return platform;
 }
 
+/** Bypasses `sourceService`'s own permission gate — pure fixture setup,
+ *  same reasoning as `makePlatform`. Tests exercising `sourceService.create`
+ *  itself call that directly instead. Defaults to a type with a real
+ *  registered fetcher (FACEBOOK_PAGE) so `sourceService.sync()` tests don't
+ *  need to override `type` just to get past the "no adapter" branch. */
+async function makeSource(overrides: Partial<Parameters<typeof sourceRepository.create>[0]> = {}) {
+  const source = await sourceRepository.create({
+    name: "Test Source",
+    type: "FACEBOOK_PAGE",
+    externalId: "test-page-id",
+    ...overrides,
+  });
+  testSourceIds.push(source.id);
+  return source;
+}
+
 before(async () => {
   const category = await prisma.category.create({
     data: { slug: `test-authz-category-${Date.now()}`, name: "Test category (authorization suite)" },
@@ -325,6 +378,13 @@ after(async () => {
   await prisma.video.deleteMany({ where: { id: { in: testVideoIds } } });
   await prisma.mediaAsset.deleteMany({ where: { id: { in: testMediaIds } } });
   await prisma.platform.deleteMany({ where: { id: { in: testPlatformIds } } });
+  // `ExternalItem.sourceId` cascades on `Source` delete (covers everything
+  // fetched under a throwaway `testSourceIds` row), but a manually-pasted
+  // item (`socialInboxService.createManual`) attaches to the shared seeded
+  // `manual-external` singleton, which is never deleted — those rows only
+  // get cleaned up by this explicit `testExternalItemIds` delete.
+  await prisma.externalItem.deleteMany({ where: { id: { in: testExternalItemIds } } });
+  await prisma.source.deleteMany({ where: { id: { in: testSourceIds } } });
   await prisma.authorProfile.deleteMany({ where: { id: { in: testAuthorProfileIds } } });
   await prisma.user.deleteMany({ where: { id: { in: testUserIds } } });
   await prisma.category.delete({ where: { id: categoryId } });
@@ -1213,5 +1273,302 @@ describe("Ecosystem integration — Platform (nhiệm vụ tích hợp hệ sinh
     const platform = await makePlatform({ category: "SV5TOT", isEnabled: false } as never);
     const enabledOnly = await platformRepository.listEnabled();
     assert.ok(!enabledOnly.some((p) => p.id === platform.id), "platform bị tắt không được xuất hiện trong danh sách công khai");
+  });
+});
+
+describe("Social/External Content Collector — Source (nhiệm vụ collector, brief mục 1, 3, 4, 6, 10, 12)", () => {
+  test("CONTRIBUTOR không xem lẫn quản lý Source; MANAGER chỉ xem, không quản lý; ADMIN toàn quyền", async () => {
+    const source = await makeSource();
+
+    await assert.rejects(async () => sourceService.list(contributorA));
+    await assert.rejects(async () => sourceService.getById(contributorA, source.id));
+    await assert.rejects(() =>
+      sourceService.create(contributorA, { name: "X", type: "RSS" as never }),
+    );
+    await assert.rejects(() => sourceService.update(contributorA, source, { name: "Hijack" }));
+    await assert.rejects(() => sourceService.setEnabled(contributorA, source, false));
+    await assert.rejects(() => sourceService.remove(contributorA, source));
+    await assert.rejects(() => sourceService.sync(contributorA, source));
+
+    const listedByManager = await sourceService.list(manager);
+    assert.ok(listedByManager.some((s) => s.id === source.id));
+    const fetchedByManager = await sourceService.getById(manager, source.id);
+    assert.equal(fetchedByManager?.id, source.id);
+    await assert.rejects(() => sourceService.update(manager, source, { name: "Manager không được sửa" }));
+    await assert.rejects(() => sourceService.setEnabled(manager, source, false));
+    await assert.rejects(() => sourceService.remove(manager, source));
+    await assert.rejects(() => sourceService.sync(manager, source));
+
+    const updated = await sourceService.update(admin, source, { name: "Admin sửa được" });
+    assert.equal(updated.name, "Admin sửa được");
+    const disabled = await sourceService.setEnabled(admin, updated, false);
+    assert.equal(disabled.isEnabled, false);
+  });
+
+  test("Credential không bao giờ lộ qua list()/getById(), kể cả với ADMIN", async () => {
+    const source = await makeSource({ encryptedCredential: null });
+    await sourceService.update(admin, source, { credential: "super-secret-token" });
+
+    const viaList = await sourceService.list(admin);
+    const found = viaList.find((s) => s.id === source.id);
+    assert.equal((found as unknown as { encryptedCredential?: unknown })?.encryptedCredential, undefined);
+
+    const viaGetById = await sourceService.getById(admin, source.id);
+    assert.equal((viaGetById as unknown as { encryptedCredential?: unknown })?.encryptedCredential, undefined);
+  });
+
+  test("create()/update() ghi CREATE_SOURCE/UPDATE_SOURCE vào audit log", async () => {
+    const created = await sourceService.create(admin, { name: "Nguồn mới", type: "RSS" });
+    testSourceIds.push(created.id);
+    await sourceService.update(admin, created, { name: "Đổi tên" });
+
+    const logs = await prisma.auditLog.findMany({ where: { entityType: "Source", entityId: created.id }, orderBy: { createdAt: "asc" } });
+    assert.ok(logs.some((l) => l.action === "CREATE_SOURCE"));
+    assert.ok(logs.some((l) => l.action === "UPDATE_SOURCE"));
+  });
+
+  test("remove() từ chối xoá Source loại MANUAL_EXTERNAL", async () => {
+    const manualSource = await sourceService.getById(admin, "manual-external");
+    assert.ok(manualSource, "seed phải tạo sẵn Source 'manual-external'");
+    await assert.rejects(() => sourceService.remove(admin, manualSource!));
+  });
+
+  test("sync(): 4 loại lỗi (brief mục 10) trả reason đúng, đưa Source về ERROR kèm lastError, luôn ghi SYNC_SOURCE", async () => {
+    const reasons = ["token_expired", "quota_exceeded", "network_error", "invalid_source"] as const;
+    for (const reason of reasons) {
+      const source = await makeSource();
+      mockFetchResult = { ok: false, reason, message: `Lỗi mô phỏng: ${reason}` };
+
+      const result = await sourceService.sync(admin, source);
+      assert.equal(result.ok, false);
+      if (!result.ok) assert.equal(result.reason, reason);
+
+      const reloaded = await sourceService.getById(admin, source.id);
+      assert.equal(reloaded?.status, "ERROR");
+      assert.equal(reloaded?.lastError, `Lỗi mô phỏng: ${reason}`);
+
+      const logs = await prisma.auditLog.findMany({ where: { entityType: "Source", entityId: source.id, action: "SYNC_SOURCE" } });
+      assert.equal(logs.length, 1);
+      assert.equal((logs[0].metadata as { ok?: boolean } | null)?.ok, false);
+    }
+  });
+
+  test("sync(): nguồn không có adapter (MANUAL_EXTERNAL) trả invalid_source mà không gọi fetcher", async () => {
+    const manualSource = await sourceService.getById(admin, "manual-external");
+    assert.ok(manualSource);
+    const callsBefore = mockFetchCallCount;
+    const result = await sourceService.sync(admin, manualSource!);
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.reason, "invalid_source");
+    assert.equal(mockFetchCallCount, callsBefore, "MANUAL_EXTERNAL không có fetcher nên không được gọi tới fetchPosts");
+  });
+
+  test("sync(): lọc theo includeHashtags/excludeHashtags CHỈ trên dữ liệu đã fetch hợp lệ (brief mục 9)", async () => {
+    const source = await makeSource({ includeHashtags: ["tinhnguyen"], excludeHashtags: ["quangcao"] });
+    mockFetchResult = {
+      ok: true,
+      posts: [
+        { url: "https://fb.example.test/post/1", contentText: "Bài về tình nguyện", hashtags: ["TinhNguyen"] },
+        { url: "https://fb.example.test/post/2", contentText: "Bài không liên quan", hashtags: ["giaitri"] },
+        { url: "https://fb.example.test/post/3", contentText: "Bài vừa tình nguyện vừa quảng cáo", hashtags: ["tinhnguyen", "QuangCao"] },
+      ],
+    };
+
+    const result = await sourceService.sync(admin, source);
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.fetched, 3);
+      assert.equal(result.stored, 1, "chỉ bài #1 vừa khớp include vừa không dính exclude mới được lưu");
+    }
+
+    const items = await externalItemRepository.listForAdmin({ sourceId: source.id });
+    testExternalItemIds.push(...items.map((i) => i.id));
+    assert.equal(items.length, 1);
+    assert.equal(items[0].url, "https://fb.example.test/post/1");
+    assert.equal(items[0].status, "PENDING_REVIEW", "brief mục 6: item mới luôn PENDING_REVIEW, không auto publish");
+  });
+
+  test("sync(): dedup theo externalId, URL, và nội dung chuẩn hoá trong cửa sổ thời gian (brief mục 7)", async () => {
+    const source = await makeSource();
+    const now = new Date();
+
+    mockFetchResult = {
+      ok: true,
+      posts: [{ externalId: "ext-1", url: "https://fb.example.test/post/dedup-1", contentText: "Nội dung gốc", hashtags: [], publishedAt: now }],
+    };
+    const first = await sourceService.sync(admin, source);
+    assert.equal(first.ok, true);
+    if (first.ok) assert.equal(first.stored, 1);
+
+    // Cùng externalId, URL khác, nội dung khác -> vẫn bị coi là trùng.
+    mockFetchResult = {
+      ok: true,
+      posts: [{ externalId: "ext-1", url: "https://fb.example.test/post/dedup-1-changed-url", contentText: "Nội dung đã đổi", hashtags: [], publishedAt: now }],
+    };
+    const second = await sourceService.sync(admin, source);
+    if (second.ok) assert.equal(second.stored, 0, "trùng externalId phải bị coi là duplicate");
+
+    // externalId khác nhưng URL trùng -> vẫn bị coi là trùng.
+    mockFetchResult = {
+      ok: true,
+      posts: [{ externalId: "ext-2", url: "https://fb.example.test/post/dedup-1", contentText: "Nội dung khác nữa", hashtags: [], publishedAt: now }],
+    };
+    const third = await sourceService.sync(admin, source);
+    if (third.ok) assert.equal(third.stored, 0, "trùng URL phải bị coi là duplicate");
+
+    // externalId và URL đều khác, nhưng nội dung chuẩn hoá giống hệt trong cửa sổ 48h -> vẫn trùng.
+    mockFetchResult = {
+      ok: true,
+      posts: [{ externalId: "ext-3", url: "https://fb.example.test/post/dedup-2", contentText: "  Nội   Dung GỐC  ", hashtags: [], publishedAt: now }],
+    };
+    const fourth = await sourceService.sync(admin, source);
+    if (fourth.ok) assert.equal(fourth.stored, 0, "trùng nội dung chuẩn hoá trong cửa sổ thời gian phải bị coi là duplicate");
+
+    // Nội dung hoàn toàn khác -> được lưu bình thường.
+    mockFetchResult = {
+      ok: true,
+      posts: [{ externalId: "ext-4", url: "https://fb.example.test/post/dedup-3", contentText: "Nội dung hoàn toàn mới, không liên quan gì", hashtags: [], publishedAt: now }],
+    };
+    const fifth = await sourceService.sync(admin, source);
+    if (fifth.ok) assert.equal(fifth.stored, 1, "nội dung thực sự khác không được coi là duplicate");
+
+    const items = await externalItemRepository.listForAdmin({ sourceId: source.id });
+    testExternalItemIds.push(...items.map((i) => i.id));
+    assert.equal(items.length, 2, "chỉ 2 item thực sự khác nhau được lưu sau 5 lần sync");
+  });
+});
+
+describe("Social/External Content Collector — Social Inbox (nhiệm vụ collector, brief mục 5, 6, 8, 12)", () => {
+  async function makeExternalItem(overrides: Partial<Parameters<typeof externalItemRepository.create>[0]> = {}) {
+    const item = await externalItemRepository.create({
+      sourceId: "manual-external",
+      url: `https://inbox.example.test/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      contentText: "Nội dung mẫu cho Social Inbox test",
+      normalizedContentHash: `hash-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      hashtags: [],
+      ...overrides,
+    });
+    testExternalItemIds.push(item.id);
+    return item;
+  }
+
+  test("listForActor(): CONTRIBUTOR chỉ thấy item được giao cho chính mình, MANAGER/ADMIN thấy toàn bộ", async () => {
+    const assignedToA = await makeExternalItem({ status: "ASSIGNED", assignedToId: contributorA.id });
+    const assignedToB = await makeExternalItem({ status: "ASSIGNED", assignedToId: contributorB.id });
+    const pending = await makeExternalItem({ status: "PENDING_REVIEW" });
+
+    const listA = await socialInboxService.listForActor(contributorA, {});
+    assert.ok(listA.some((i) => i.id === assignedToA.id));
+    assert.ok(!listA.some((i) => i.id === assignedToB.id));
+    assert.ok(!listA.some((i) => i.id === pending.id));
+
+    const listManager = await socialInboxService.listForActor(manager, {});
+    assert.ok(listManager.some((i) => i.id === assignedToA.id));
+    assert.ok(listManager.some((i) => i.id === assignedToB.id));
+    assert.ok(listManager.some((i) => i.id === pending.id));
+  });
+
+  test("canView: CONTRIBUTOR chỉ xem được item đã giao cho mình; MANAGER/ADMIN xem được mọi item", () => {
+    const ownItem = { assignedToId: contributorA.id };
+    const othersItem = { assignedToId: contributorB.id };
+    assert.equal(socialInboxService.canView(contributorA, ownItem), true);
+    assert.equal(socialInboxService.canView(contributorA, othersItem), false);
+    assert.equal(socialInboxService.canView(manager, othersItem), true);
+    assert.equal(socialInboxService.canView(admin, othersItem), true);
+  });
+
+  test("CONTRIBUTOR không được ignore/assign/tạo item thủ công", async () => {
+    const item = await makeExternalItem();
+    await assert.rejects(() => socialInboxService.ignore(contributorA, item));
+    await assert.rejects(() => socialInboxService.assign(contributorA, item, contributorB.id));
+    await assert.rejects(() =>
+      socialInboxService.createManual(contributorA, { url: "https://should-not-exist.test", contentText: "X" }),
+    );
+  });
+
+  test("assign(): chỉ giao được cho CONTRIBUTOR đang ACTIVE, tạo notification, ghi ASSIGN_EXTERNAL", async () => {
+    const item = await makeExternalItem();
+    await assert.rejects(() => socialInboxService.assign(manager, item, manager.id), "không thể giao cho MANAGER/ADMIN");
+
+    const disabledContributor = await makeUser("CONTRIBUTOR", "disabled-for-assign");
+    await prisma.user.update({ where: { id: disabledContributor.id }, data: { status: "DISABLED" } });
+    await assert.rejects(() => socialInboxService.assign(manager, item, disabledContributor.id), "không thể giao cho Contributor đã bị vô hiệu hoá");
+
+    const assigned = await socialInboxService.assign(manager, item, contributorA.id);
+    assert.equal(assigned.status, "ASSIGNED");
+    assert.equal(assigned.assignedToId, contributorA.id);
+
+    const notifications = await notificationService.listForUser(contributorA, { take: 20 });
+    assert.ok(notifications.some((n) => n.type === "EXTERNAL_ITEM_ASSIGNED" && n.entityId === item.id));
+
+    const logs = await prisma.auditLog.findMany({ where: { entityType: "ExternalItem", entityId: item.id, action: "ASSIGN_EXTERNAL" } });
+    assert.equal(logs.length, 1);
+  });
+
+  test("ignore(): chuyển IGNORED, ghi IGNORE_EXTERNAL, không thể ignore lại item đã CONVERTED/IGNORED", async () => {
+    const item = await makeExternalItem();
+    const ignored = await socialInboxService.ignore(manager, item);
+    assert.equal(ignored.status, "IGNORED");
+    assert.ok(ignored.ignoredAt);
+    assert.equal(ignored.ignoredById, manager.id);
+
+    await assert.rejects(() => socialInboxService.ignore(manager, ignored), "không thể bỏ qua một item đã bị bỏ qua trước đó");
+
+    const logs = await prisma.auditLog.findMany({ where: { entityType: "ExternalItem", entityId: item.id, action: "IGNORE_EXTERNAL" } });
+    assert.equal(logs.length, 1);
+  });
+
+  test("convertToArticle(): MANAGER/ADMIN chuyển được item bất kỳ; CONTRIBUTOR chỉ chuyển được item đã giao cho chính mình", async () => {
+    const forManager = await makeExternalItem({ contentText: "Nội dung do Manager chuyển thành bài" });
+    const converted = await socialInboxService.convertToArticle(manager, forManager, { categoryId });
+    testArticleIds.push(converted!.id);
+    allArticleIdsEverCreated.push(converted!.id);
+    assert.equal(converted!.status, "DRAFT", "brief mục 6: không auto publish, luôn tạo Draft");
+
+    const notAssigned = await makeExternalItem({ contentText: "Chưa giao cho ai" });
+    await assert.rejects(() => socialInboxService.convertToArticle(contributorA, notAssigned, { categoryId }));
+
+    const assignedToOther = await makeExternalItem({ status: "ASSIGNED", assignedToId: contributorB.id, contentText: "Giao cho Contributor B" });
+    await assert.rejects(() => socialInboxService.convertToArticle(contributorA, assignedToOther, { categoryId }));
+
+    const assignedToSelf = await makeExternalItem({ status: "ASSIGNED", assignedToId: contributorA.id, contentText: "Giao cho chính Contributor A" });
+    const convertedBySelf = await socialInboxService.convertToArticle(contributorA, assignedToSelf, { categoryId });
+    testArticleIds.push(convertedBySelf!.id);
+    allArticleIdsEverCreated.push(convertedBySelf!.id);
+    assert.equal(convertedBySelf!.status, "DRAFT");
+    assert.equal(convertedBySelf!.createdById, contributorA.id);
+  });
+
+  test("convertToArticle(): từ chối item đã CONVERTED hoặc IGNORED; ghi CONVERT_EXTERNAL; item chuyển sang CONVERTED kèm articleId", async () => {
+    const item = await makeExternalItem({ contentText: "Nội dung sẽ được chuyển thành bài viết thật" });
+    const article = await socialInboxService.convertToArticle(admin, item, { categoryId });
+    testArticleIds.push(article!.id);
+    allArticleIdsEverCreated.push(article!.id);
+
+    const reloadedItem = await externalItemRepository.findById(item.id);
+    assert.equal(reloadedItem?.status, "CONVERTED");
+    assert.equal(reloadedItem?.articleId, article!.id);
+
+    await assert.rejects(() => socialInboxService.convertToArticle(admin, reloadedItem!, { categoryId }), "không thể chuyển lại một item đã CONVERTED");
+
+    const ignoredItem = await socialInboxService.ignore(admin, await makeExternalItem());
+    await assert.rejects(() => socialInboxService.convertToArticle(admin, ignoredItem, { categoryId }), "không thể chuyển một item đã bị bỏ qua");
+
+    const logs = await prisma.auditLog.findMany({ where: { entityType: "ExternalItem", entityId: item.id, action: "CONVERT_EXTERNAL" } });
+    assert.equal(logs.length, 1);
+  });
+
+  test("createManual(): dedup theo URL và nội dung chuẩn hoá; item mới luôn PENDING_REVIEW gắn với Source 'manual-external'", async () => {
+    const url = `https://manual.example.test/${Date.now()}`;
+    const created = await socialInboxService.createManual(manager, { url, contentText: "Tin thủ công đầu tiên" });
+    testExternalItemIds.push(created.id);
+    assert.equal(created.status, "PENDING_REVIEW");
+    assert.equal(created.sourceId, "manual-external");
+
+    await assert.rejects(() => socialInboxService.createManual(manager, { url, contentText: "Nội dung khác nhưng cùng URL" }), "trùng URL phải bị từ chối");
+    await assert.rejects(
+      () => socialInboxService.createManual(manager, { url: `https://manual.example.test/khac-${Date.now()}`, contentText: "Tin thủ công đầu tiên" }),
+      "trùng nội dung chuẩn hoá trong cửa sổ thời gian phải bị từ chối",
+    );
   });
 });

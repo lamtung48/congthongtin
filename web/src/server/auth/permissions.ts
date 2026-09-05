@@ -31,6 +31,10 @@ export const PERMISSIONS = [
   "homepage.manage",
   "platform.manage",
   "platform.manage.display",
+  "source.manage",
+  "source.view",
+  "social_inbox.manage",
+  "social_inbox.convert_own",
   "user.manage",
   "user.changeRole",
   "system.configure",
@@ -48,6 +52,21 @@ export type Permission = (typeof PERMISSIONS)[number];
  * name/description/icon/url/ctaLabel/order/isEnabled/status/currentActivity,
  * and triggering an adapter refresh. CONTRIBUTOR holds neither (brief
  * section 1: "không quản lý platform configuration").
+ */
+
+/**
+ * Social/External Content Collector task, brief section 1: `source.manage`
+ * ("cấu hình source; token/integration; enable/disable source; quản lý
+ * collector") is ADMIN-only — MANAGER never writes anything on a `Source`.
+ * `source.view` ("xem source") is what lets MANAGER see the list at all
+ * (never the credential — that's excluded from every read path
+ * regardless of who's asking, see `Source`'s own schema comment).
+ * `social_inbox.manage` ("xử lý Social Inbox; convert; bỏ qua; quản lý
+ * rule") is ADMIN + MANAGER. `social_inbox.convert_own` is CONTRIBUTOR's
+ * one capability here — converting an `ExternalItem` already assigned to
+ * them into their own Draft; they hold neither `source.manage`,
+ * `source.view`, nor `social_inbox.manage` (brief: "không quản lý token/
+ * source/API configuration").
  */
 
 /**
@@ -77,6 +96,8 @@ const ROLE_PERMISSIONS: Record<Exclude<AdminRole, "ADMIN">, ReadonlySet<Permissi
     "video.manage",
     "homepage.manage",
     "platform.manage.display",
+    "source.view",
+    "social_inbox.manage",
     "auditlog.view.content",
   ]),
   CONTRIBUTOR: new Set<Permission>([
@@ -84,6 +105,7 @@ const ROLE_PERMISSIONS: Record<Exclude<AdminRole, "ADMIN">, ReadonlySet<Permissi
     "article.edit.own",
     "article.submit",
     "media.manage.own",
+    "social_inbox.convert_own",
   ]),
 };
 

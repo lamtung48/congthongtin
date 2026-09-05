@@ -6,6 +6,7 @@ import { userService } from "@/server/services/userService";
 import { mediaService } from "@/server/services/mediaService";
 import { eventService } from "@/server/services/eventService";
 import { auditLogRepository } from "@/server/repositories/auditLogRepository";
+import { externalItemRepository } from "@/server/repositories/externalItemRepository";
 import { ROLE_LABELS, hasPermission } from "@/server/auth/permissions";
 
 /** "Media issues" — brief section 5: an asset the CMS knows about but whose
@@ -29,13 +30,14 @@ export default async function AdminDashboardPage() {
   const session = await requireSession();
 
   if (session.role === "ADMIN") {
-    const [totalArticles, pendingReview, scheduled, published, userCount, mediaIssues, recentAudit] = await Promise.all([
+    const [totalArticles, pendingReview, scheduled, published, userCount, mediaIssues, socialInboxPending, recentAudit] = await Promise.all([
       articleService.countByStatus(),
       articleService.countByStatus("IN_REVIEW"),
       articleService.countByStatus("SCHEDULED"),
       articleService.countByStatus("PUBLISHED"),
       userService.count({}),
       countMediaIssues(),
+      externalItemRepository.countByStatus("PENDING_REVIEW"),
       auditLogRepository.listRecent(8),
     ]);
     return (
@@ -48,6 +50,7 @@ export default async function AdminDashboardPage() {
             { label: "Đã xuất bản", value: published },
             { label: "Tài khoản", value: userCount },
             { label: "Media lỗi", value: mediaIssues },
+            { label: "Social Inbox chờ xử lý", value: socialInboxPending },
           ]}
         />
         <RecentAudit
@@ -64,13 +67,14 @@ export default async function AdminDashboardPage() {
   }
 
   if (session.role === "MANAGER") {
-    const [pendingReview, returned, scheduled, publishedToday, mediaIssues, eventsToWatch] = await Promise.all([
+    const [pendingReview, returned, scheduled, publishedToday, mediaIssues, eventsToWatch, socialInboxPending] = await Promise.all([
       articleService.countByStatus("IN_REVIEW"),
       articleService.countForAdmin(session, { status: "DRAFT", hasReturnNote: true }),
       articleService.countByStatus("SCHEDULED"),
       articleService.countPublishedToday(),
       countMediaIssues(),
       eventService.countByStatus("UPCOMING"),
+      externalItemRepository.countByStatus("PENDING_REVIEW"),
     ]);
     return (
       <DashboardShell role={session.role}>
@@ -80,10 +84,12 @@ export default async function AdminDashboardPage() {
             { label: "Bài bị trả", value: returned },
             { label: "Bài đã lên lịch", value: scheduled },
             { label: "Xuất bản hôm nay", value: publishedToday },
+            { label: "Social Inbox chờ xử lý", value: socialInboxPending },
           ]}
         />
         <div className="adminCard adminCardPad" style={{ marginTop: 16, display: "flex", gap: 24, flexWrap: "wrap" }}>
           <Link href="/admin/review" className="adminButton adminButtonPrimary">Vào hàng đợi duyệt bài</Link>
+          <Link href="/admin/social-inbox" className="adminButton">Vào Social Inbox</Link>
           <Link href="/admin/homepage" className="adminButton">Quản lý Homepage</Link>
           <span className="adminHint">Media lỗi cần xử lý: <strong>{mediaIssues}</strong> · Sự kiện sắp diễn ra: <strong>{eventsToWatch}</strong></span>
         </div>
@@ -95,10 +101,11 @@ export default async function AdminDashboardPage() {
   // `returnNote` set (`Article.returnNote` in schema.prisma) — there's no
   // dedicated status for it, so it's derived by filtering the DRAFT list
   // rather than a separate count query.
-  const [drafts, inReview, published] = await Promise.all([
+  const [drafts, inReview, published, assignedToMe] = await Promise.all([
     articleService.listForAdmin(session, { status: "DRAFT" as const }),
     articleService.countByStatus("IN_REVIEW", session.id),
     articleService.countByStatus("PUBLISHED", session.id),
+    externalItemRepository.countForAdmin({ status: "ASSIGNED", assignedToId: session.id }),
   ]);
   const returned = drafts.filter((r) => r.returnNote).length;
 
@@ -110,10 +117,16 @@ export default async function AdminDashboardPage() {
           { label: "Đang chờ duyệt", value: inReview },
           { label: "Bị trả lại", value: returned },
           { label: "Đã xuất bản", value: published },
+          { label: "Được giao từ Social Inbox", value: assignedToMe },
         ]}
       />
       {!hasPermission(session.role, "article.publish") && (
         <p className="adminHint">Bạn có thể soạn bài và gửi duyệt. Quản trị viên sẽ duyệt và xuất bản.</p>
+      )}
+      {assignedToMe > 0 && (
+        <p className="adminHint">
+          Bạn có nội dung được giao từ Social Inbox chưa xử lý — <Link href="/admin/social-inbox">xem tại đây</Link>.
+        </p>
       )}
     </DashboardShell>
   );

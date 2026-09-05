@@ -285,6 +285,63 @@ enum AuditAction {
   UPDATE_PLATFORM
   ENABLE_PLATFORM
   DISABLE_PLATFORM
+  /// Social/External Content Collector task, brief section 12's exact
+  /// list. `CREATE_SOURCE`/`UPDATE_SOURCE` cover a `Source` row's own
+  /// config (enable/disable is just a field toggle within `UPDATE_SOURCE`
+  /// — the brief's list here, unlike the ecosystem integration task's,
+  /// doesn't call out ENABLE/DISABLE by name, so no dedicated pair was
+  /// added). `SYNC_SOURCE` is written on *every* sync attempt, success or
+  /// failure (`metadata` records which) — a sync is an external-facing
+  /// action worth a trail regardless of outcome, unlike a routine content
+  /// edit. `IGNORE_EXTERNAL`/`ASSIGN_EXTERNAL`/`CONVERT_EXTERNAL` are the
+  /// three things that can happen to one `ExternalItem`; generic
+  /// `CREATE`/`DELETE` (already above) cover creating/removing a `Source`
+  /// row outright and a manually-pasted `ExternalItem`.
+  CREATE_SOURCE
+  UPDATE_SOURCE
+  SYNC_SOURCE
+  IGNORE_EXTERNAL
+  ASSIGN_EXTERNAL
+  CONVERT_EXTERNAL
+}
+
+/// Social/External Content Collector task, brief section 2's exact five
+/// values. `MANUAL_EXTERNAL` has no fetcher (`socialCollector/registry.ts`
+/// has no adapter for it) — every `ExternalItem` under it is pasted by
+/// hand through the Social Inbox UI, sharing one singleton `Source` row
+/// the same way `YoutubeConnection` uses a fixed `id: "default"` row.
+enum SourceType {
+  FACEBOOK_PAGE
+  RSS
+  WEBSITE
+  YOUTUBE
+  MANUAL_EXTERNAL
+}
+
+/// `ACTIVE`/`DISABLED` are editor-controlled (brief section 1: "enable/
+/// disable source"); `ERROR` is set automatically by the last `sync()`
+/// attempt (brief section 10: token expired/quota/network/invalid source)
+/// and cleared back to `ACTIVE` the next time a sync succeeds — never a
+/// third independent toggle an Admin has to remember to flip back.
+enum SourceStatus {
+  ACTIVE
+  DISABLED
+  ERROR
+}
+
+/// PENDING_REVIEW (default on fetch/manual paste) -> ASSIGNED (Manager
+/// assigns to a Contributor) -> CONVERTED (a Draft `Article` now exists
+/// for it — by the assigned Contributor, or directly by Manager/Admin
+/// skipping assignment) | IGNORED (Manager/Admin, from either
+/// PENDING_REVIEW or ASSIGNED). There is no state past CONVERTED here —
+/// once an `Article` exists, brief section 5's "quay về workflow bình
+/// thường" means the *Article's* own `ArticleStatus` (DRAFT -> ... ->
+/// PUBLISHED) is what matters from that point on, not this enum.
+enum ExternalItemStatus {
+  PENDING_REVIEW
+  ASSIGNED
+  CONVERTED
+  IGNORED
 }
 
 /// Editorial workflow task, brief section 9: the exact 4 events that must
@@ -296,6 +353,9 @@ enum NotificationType {
   ARTICLE_RETURNED
   ARTICLE_APPROVED
   ARTICLE_PUBLISHED
+  /// Social/External Content Collector task, brief section 8: "Manager có
+  /// thể Assign to Contributor. Tạo notification."
+  EXTERNAL_ITEM_ASSIGNED
 }
 
 // ============================================================
@@ -342,6 +402,10 @@ model User {
   homepageConfigurationEdits HomepageConfiguration[]
   youtubeConnections         YoutubeConnection[]
   notifications              Notification[]
+  createdSources             Source[]                @relation("SourceCreatedBy")
+  assignedExternalItems      ExternalItem[]           @relation("ExternalItemAssignedTo")
+  ignoredExternalItems       ExternalItem[]           @relation("ExternalItemIgnoredBy")
+  createdExternalItems       ExternalItem[]           @relation("ExternalItemCreatedBy")
 
   @@index([role])
 }
@@ -410,6 +474,7 @@ model Category {
   articles           Article[]
   videos             Video[]
   activityStatistics ActivityStatistic[]
+  sources            Source[]
 }
 
 /// A curated editorial theme with its own landing page (e.g. "Đại hội XII").
@@ -756,6 +821,11 @@ model Article {
   notes       ArticleNote[]
 
   activityStatisticsAsLatest ActivityStatistic[] @relation("ActivityStatisticLatestArticle")
+  /// Set when this Article was created via Social Inbox's "Convert to
+  /// Article" (`ExternalItem.articleId`, the FK actually lives there —
+  /// see that model). `@relation` back-reference only, so a plain
+  /// `articleRepository.findById` doesn't have to always join it.
+  externalItem ExternalItem?
 
   @@index([status, publishedAt])
   @@index([categoryId])
@@ -1080,6 +1150,121 @@ model HomepagePlacement {
 
   @@index([sectionId, order])
   @@index([contentType, contentId])
+}
+
+// ============================================================
+// Social/External Content Collector
+// ============================================================
+
+/// One configured external content source — brief section 3
+/// (`/admin/sources`). Config fields are split by who may write them
+/// (`src/server/services/sourceService.ts`, `permissions.ts`'s
+/// `source.manage` vs `source.view`): only ADMIN ever writes anything on
+/// this model at all (brief section 1 — Manager only "xem source"); the
+/// split that matters here is *read* access, not a two-tier write split
+/// like `Platform`'s.
+///
+/// `encryptedCredential` is the one sensitive field (brief section 11:
+/// "Credential chỉ Admin/system... Không expose cho Contributor") — a
+/// Facebook Page access token, or a YouTube Data API key. Encrypted at
+/// rest with `src/server/crypto/secretBox.ts` (its own
+/// `SOURCE_CREDENTIAL_ENCRYPTION_KEY`, not YouTube's OAuth key — a leaked
+/// Facebook token and a leaked YouTube refresh token are unrelated
+/// incidents and shouldn't share a blast radius). Every repository read
+/// used by any UI-facing code excludes this column entirely
+/// (`sourceRepository.publicSelect`) — it's only ever selected inside
+/// `sourceService.sync()`, right before handing it to the matching
+/// adapter, and never returned from that function either.
+model Source {
+  id                  String       @id @default(cuid())
+  name                String
+  type                SourceType
+  status              SourceStatus @default(ACTIVE)
+  isEnabled           Boolean      @default(true)
+  /// The source's own public URL (RSS feed URL, website URL, Facebook Page
+  /// URL, YouTube channel URL) — never secret, safe to show anyone who can
+  /// see the source at all. `null` only for `MANUAL_EXTERNAL`.
+  externalUrl         String?
+  /// Platform-native id `sync()` fetches by — Facebook Page ID or YouTube
+  /// channel ID. `null` for `RSS`/`WEBSITE` (the URL alone is the address)
+  /// and `MANUAL_EXTERNAL`.
+  externalId          String?
+  encryptedCredential String?
+  /// Brief section 9: "Rule hashtag chỉ chạy trên dữ liệu đã fetch hợp
+  /// lệ" — applied by `sourceService.sync()` *after* normalizing the
+  /// fetched posts, before dedup/insert. Empty array = no filter on that
+  /// axis (include everything / exclude nothing).
+  includeHashtags     String[]     @default([])
+  excludeHashtags     String[]     @default([])
+  categoryId          String?
+  lastSyncedAt        DateTime?
+  lastSyncItemCount   Int?
+  /// Brief section 10's four failure kinds, already rendered as a
+  /// human-readable Vietnamese message by the adapter that hit them — see
+  /// `socialCollector/types.ts`'s `SourceFetchFailure`. Cleared on the
+  /// next successful sync.
+  lastError           String?
+  createdById         String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  category  Category?      @relation(fields: [categoryId], references: [id])
+  createdBy User?          @relation("SourceCreatedBy", fields: [createdById], references: [id])
+  items     ExternalItem[]
+
+  @@index([type, isEnabled])
+}
+
+/// One fetched (or manually pasted) piece of external content sitting in
+/// the Social Inbox (`/admin/social-inbox`, brief section 5). Dedup
+/// (brief section 7) checks, in order, before a row is ever inserted:
+/// (1) `@@unique([sourceId, externalId])` — the same platform-native post
+/// fetched twice; (2) `url` — the same link surfacing again (a re-fetch,
+/// or a different source pointing at the same content); (3)
+/// `normalizedContentHash` within a time window around `publishedAt` — a
+/// slightly-edited repost with no matching id/url. See
+/// `sourceService.ts`'s `findDuplicate()`.
+model ExternalItem {
+  id                     String             @id @default(cuid())
+  sourceId               String
+  externalId             String?
+  url                    String
+  title                  String?
+  excerpt                String?
+  contentText            String
+  /// Lowercased, whitespace-collapsed `contentText` — never displayed,
+  /// only compared for near-duplicate detection (see model comment).
+  normalizedContentHash  String
+  hashtags               String[]           @default([])
+  publishedAt            DateTime?
+  fetchedAt              DateTime           @default(now())
+  status                 ExternalItemStatus @default(PENDING_REVIEW)
+  assignedToId           String?
+  /// Set once "Convert to Article" runs — `@unique` makes this a true 1:1
+  /// with `Article`, and its mere presence is what "CONVERTED" means (the
+  /// enum value is redundant with this being non-null, kept anyway because
+  /// a plain status column is what every list/filter query in this
+  /// codebase already reads, matching `ArticleStatus`'s own precedent).
+  articleId              String?            @unique
+  ignoredAt              DateTime?
+  ignoredById            String?
+  /// Who pasted this in, for a `MANUAL_EXTERNAL` item — `null` for
+  /// anything fetched by a real adapter (attribution is the `Source`
+  /// itself, not a staff member).
+  createdById            String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  source     Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  assignedTo User?    @relation("ExternalItemAssignedTo", fields: [assignedToId], references: [id])
+  ignoredBy  User?    @relation("ExternalItemIgnoredBy", fields: [ignoredById], references: [id])
+  createdBy  User?    @relation("ExternalItemCreatedBy", fields: [createdById], references: [id])
+  article    Article? @relation(fields: [articleId], references: [id])
+
+  @@unique([sourceId, externalId])
+  @@index([status, publishedAt])
+  @@index([assignedToId])
+  @@index([url])
 }
 
 // ============================================================
