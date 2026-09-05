@@ -1,38 +1,44 @@
 import type { NextConfig } from "next";
 
 /**
- * GitHub Pages serves this app from `https://<user>.github.io/<repo>/`, not
- * from the domain root — so every asset/route needs a `/<repo>` prefix. Only
- * `next/link`, `next/image`, and the router apply `basePath` automatically;
- * anything that builds a path by hand (see `src/lib/basePath.ts`) has to add
- * it explicitly. `GITHUB_REPOSITORY` is set automatically by GitHub Actions
- * (`owner/repo`) — this only activates the prefix in CI, so local
- * `npm run dev`/`npm run build` are unaffected.
+ * `output: "export"` was removed in the authentication/authorization task
+ * (see docs/BACKEND_ARCHITECTURE.md, "What this task does not wire up" for
+ * why this was flagged as a deferred decision, and docs/AUTHENTICATION.md
+ * for the actual trigger). Next.js's own static-export docs
+ * (`node_modules/next/dist/docs/01-app/02-guides/static-exports.md`,
+ * "Unsupported Features") list Cookies and Server Actions as incompatible
+ * with `output: "export"` — not just at build time, but even under
+ * `next dev` — and `/admin/login` needs both. A Next.js build cannot mix
+ * static export for some routes with a real server for others; the whole
+ * app needs one mode or the other. GitHub Pages (a static-file host) can no
+ * longer serve this app as of this change — see docs/DEPLOYMENT.md for what
+ * that means for hosting going forward.
+ *
+ * `basePath`/`NEXT_PUBLIC_SITE_URL` remain env-driven rather than
+ * GitHub-Actions-derived, in case the eventual host still serves this app
+ * from a non-root path — set `NEXT_PUBLIC_BASE_PATH`/`NEXT_PUBLIC_SITE_URL`
+ * explicitly if so. Local `npm run dev`/`npm run build` are unaffected
+ * either way (both default to no base path, `http://localhost:3000`).
  */
-const isGithubActions = process.env.GITHUB_ACTIONS === "true";
-const [repoOwner, repoName] = (process.env.GITHUB_REPOSITORY ?? "").split("/");
-const basePath = isGithubActions && repoName ? `/${repoName}` : "";
-/**
- * The site's real public URL, computed once here (see `src/lib/siteConfig.ts`
- * for why every canonical/OG/sitemap URL goes through this instead of a
- * hand-built string). `NEXT_PUBLIC_SITE_URL` set in the environment always
- * wins — the escape hatch for a future custom domain (a GitHub Pages CNAME),
- * where the derived `github.io/<repo>` URL would be wrong. Otherwise it's
- * derived from `GITHUB_REPOSITORY` in CI, the same source `basePath` already
- * uses; outside CI (local dev) it's `localhost`, which has no path segment.
- */
-const inferredSiteUrl = isGithubActions && repoOwner && repoName ? `https://${repoOwner}.github.io/${repoName}` : undefined;
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? inferredSiteUrl ?? "http://localhost:3000";
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 const nextConfig: NextConfig = {
-  // Static export: GitHub Pages only serves static files, no Node.js server —
-  // see docs/DEPLOYMENT.md for what this trades away (per-request rendering,
-  // the section-specific not-found pages, live data).
-  output: "export",
   basePath,
   assetPrefix: basePath ? `${basePath}/` : undefined,
+  experimental: {
+    // Enables `forbidden()`/`unauthorized()` from `next/navigation` — the
+    // documented, purpose-built way to render a real 403/401 from a Server
+    // Component/Server Action (`docs/AUTHORIZATION.md`, "Route guard").
+    // Still marked experimental by Next.js itself; scoped narrowly to just
+    // this flag rather than a broader experimental opt-in.
+    authInterrupts: true,
+  },
   images: {
-    // The Image Optimization API needs a server; static export has none.
+    // No image loader/CDN has been chosen for the new (not-yet-decided)
+    // host — see docs/DEPLOYMENT.md. Unoptimized `next/image` still works
+    // correctly on a real server, just without on-the-fly resizing;
+    // revisiting this is independent of the auth work in this task.
     unoptimized: true,
   },
   env: {

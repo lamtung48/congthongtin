@@ -2,11 +2,10 @@ import { prisma } from "@/server/db/client";
 import type { AuditAction, Prisma } from "@/generated/prisma/client";
 
 /**
- * Write-only from the application's perspective today — nothing reads
- * `AuditLog` back yet (no admin UI, brief item 18). Kept as its own tiny
- * repository rather than inline `prisma.auditLog.create()` calls scattered
- * across every service, so a future "show me the history of this record"
- * admin feature has one place to add read methods to.
+ * `record()` is called from every write path across the services in this
+ * project. `listRecent()` now has a real caller too — the Admin dashboard
+ * (brief section 11: "audit gần đây") — kept as its own tiny repository
+ * rather than inline `prisma.auditLog.*` calls scattered across callers.
  */
 export const auditLogRepository = {
   record(entry: {
@@ -24,6 +23,17 @@ export const auditLogRepository = {
         entityId: entry.entityId,
         metadata: entry.metadata,
       },
+    });
+  },
+
+  /** Admin-only per brief's permission table ("Xem Audit Log đầy đủ" —
+   *  Admin only) — the route/page calling this must have already checked
+   *  `auditlog.view.full` via `requirePermission()`. */
+  listRecent(limit: number) {
+    return prisma.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      include: { actor: { select: { displayName: true, email: true } } },
     });
   },
 };

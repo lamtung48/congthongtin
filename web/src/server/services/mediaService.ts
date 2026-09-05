@@ -11,6 +11,8 @@ import type { MediaUsageType, Prisma } from "@/generated/prisma/client";
  */
 export const mediaService = {
   getById: mediaRepository.findById,
+  list: mediaRepository.list,
+  count: mediaRepository.count,
 
   registerAsset(data: Prisma.MediaAssetCreateInput, actorId: string | null) {
     return mediaRepository.create(data).then(async (asset) => {

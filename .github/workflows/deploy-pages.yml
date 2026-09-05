@@ -1,8 +1,14 @@
+# DISABLED as of the authentication/authorization task: `next.config.ts` no
+# longer sets `output: "export"` (Next.js's static export mode is
+# incompatible with the Cookies/Server Actions `/admin/login` needs — see
+# that file's comment and docs/DEPLOYMENT.md). `npm run build` no longer
+# produces the `web/out` directory this workflow uploads, so it would fail
+# on every push. Automatic triggering is turned off below (manual
+# `workflow_dispatch` only) until a new host is chosen and this workflow is
+# rewritten for it — see docs/DEPLOYMENT.md, "Next step: choose a host".
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

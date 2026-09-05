@@ -18,9 +18,9 @@ import {
   getUnitSlugs,
 } from "@/services/contentService";
 import { getEvents } from "@/services/homepageService";
-import { getTinTucPageCount } from "@/app/tin-tuc/TinTucPageView";
-import { getCategoryPageCount } from "@/app/chuyen-muc/[slug]/CategoryPageView";
-import { getTopicPageCount } from "@/app/chu-de/[slug]/TopicPageView";
+import { getTinTucPageCount } from "@/app/(site)/tin-tuc/TinTucPageView";
+import { getCategoryPageCount } from "@/app/(site)/chuyen-muc/[slug]/CategoryPageView";
+import { getTopicPageCount } from "@/app/(site)/chu-de/[slug]/TopicPageView";
 
 // Required for `output: "export"` (`docs/DEPLOYMENT.md`): built once from
 // the same fixture data every static page already generates from, not a

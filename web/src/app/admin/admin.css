@@ -1,0 +1,375 @@
+/*
+ * Admin CSS — deliberately its own file, not `(site)/globals.css`. Brief
+ * section 14: "không dùng cinematic motion của public website" — a
+ * separate stylesheet with no shared animation/transition vocabulary makes
+ * that true by construction, not by discipline. Plain, utilitarian,
+ * desktop-first-but-responsive, minimal motion (only instant hover/focus
+ * feedback — no page transitions, no scroll-driven effects).
+ */
+
+:root {
+  --admin-bg: #f4f5f7;
+  --admin-surface: #ffffff;
+  --admin-border: #dde1e6;
+  --admin-text: #1a1d21;
+  --admin-text-muted: #5b6470;
+  --admin-text-faint: #8a93a0;
+  --admin-brand: #0a4c8a;
+  --admin-brand-hover: #083a6a;
+  --admin-danger: #c11d16;
+  --admin-danger-bg: #fbdedc;
+  --admin-warning: #92660a;
+  --admin-warning-bg: #fbf0d6;
+  --admin-success: #146c2e;
+  --admin-success-bg: #dcf5e3;
+  --admin-radius: 6px;
+  --admin-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --admin-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body.admin-body {
+  margin: 0;
+  background: var(--admin-bg);
+  color: var(--admin-text);
+  font-family: var(--admin-font);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.adminShell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.adminSidebar {
+  width: 232px;
+  flex: 0 0 auto;
+  background: var(--admin-surface);
+  border-right: 1px solid var(--admin-border);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+}
+
+.adminSidebarBrand {
+  font-weight: 700;
+  font-size: 14px;
+  padding: 8px 10px 16px;
+  color: var(--admin-text);
+}
+
+.adminNav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.adminNavLink {
+  display: block;
+  padding: 8px 10px;
+  border-radius: var(--admin-radius);
+  color: var(--admin-text-muted);
+  text-decoration: none;
+  font-size: 13.5px;
+}
+
+.adminNavLink:hover {
+  background: var(--admin-bg);
+  color: var(--admin-text);
+}
+
+.adminNavLinkActive {
+  background: var(--admin-brand);
+  color: #fff;
+}
+
+.adminNavLinkActive:hover {
+  background: var(--admin-brand-hover);
+  color: #fff;
+}
+
+.adminMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.adminTopbar {
+  height: 56px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0 24px;
+  background: var(--admin-surface);
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.adminUserMenu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.adminRoleBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--admin-bg);
+  border: 1px solid var(--admin-border);
+  color: var(--admin-text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.adminLogoutButton {
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  color: var(--admin-text-muted);
+  border-radius: var(--admin-radius);
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.adminLogoutButton:hover {
+  border-color: var(--admin-danger);
+  color: var(--admin-danger);
+}
+
+.adminContent {
+  flex: 1 1 auto;
+  padding: 24px;
+  max-width: 1180px;
+  width: 100%;
+}
+
+.adminPageHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.adminPageTitle {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.adminPageSubtitle {
+  margin: 4px 0 0;
+  color: var(--admin-text-muted);
+  font-size: 13px;
+}
+
+.adminCard {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow);
+}
+
+.adminCardPad {
+  padding: 18px 20px;
+}
+
+.adminStatGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.adminStat {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  padding: 14px 16px;
+}
+
+.adminStatValue {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.adminStatLabel {
+  color: var(--admin-text-muted);
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+
+table.adminTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.adminTable th {
+  text-align: left;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-text-faint);
+  font-weight: 600;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--admin-border);
+  white-space: nowrap;
+}
+
+.adminTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--admin-border);
+  vertical-align: middle;
+}
+
+.adminTable tr:last-child td {
+  border-bottom: none;
+}
+
+.adminBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.adminBadgeNeutral {
+  background: var(--admin-bg);
+  color: var(--admin-text-muted);
+}
+
+.adminBadgeSuccess {
+  background: var(--admin-success-bg);
+  color: var(--admin-success);
+}
+
+.adminBadgeWarning {
+  background: var(--admin-warning-bg);
+  color: var(--admin-warning);
+}
+
+.adminBadgeDanger {
+  background: var(--admin-danger-bg);
+  color: var(--admin-danger);
+}
+
+.adminButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--admin-radius);
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.adminButton:hover {
+  border-color: var(--admin-text-faint);
+}
+
+.adminButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.adminButtonPrimary {
+  background: var(--admin-brand);
+  border-color: var(--admin-brand);
+  color: #fff;
+}
+
+.adminButtonPrimary:hover {
+  background: var(--admin-brand-hover);
+  border-color: var(--admin-brand-hover);
+}
+
+.adminButtonDanger {
+  background: var(--admin-surface);
+  border-color: var(--admin-danger);
+  color: var(--admin-danger);
+}
+
+.adminButtonDanger:hover {
+  background: var(--admin-danger-bg);
+}
+
+.adminButtonSmall {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.adminField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 14px;
+}
+
+.adminLabel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+}
+
+.adminInput,
+.adminSelect {
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--admin-text);
+  background: var(--admin-surface);
+}
+
+.adminInput:focus,
+.adminSelect:focus {
+  outline: 2px solid var(--admin-brand);
+  outline-offset: 1px;
+}
+
+.adminErrorText {
+  color: var(--admin-danger);
+  font-size: 12.5px;
+}
+
+.adminHint {
+  color: var(--admin-text-faint);
+  font-size: 12px;
+}
+
+.adminEmptyState {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--admin-text-muted);
+  font-size: 13.5px;
+}
+
+.adminToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+  align-items: center;
+}

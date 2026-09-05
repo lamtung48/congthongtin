@@ -21,10 +21,28 @@ datasource db {
 // Enums
 // ============================================================
 
+/// Exactly the two states the brief asks for (section 8: "Nếu cần thêm
+/// trạng thái phải giải thích") — nothing in this task creates an
+/// invite/email-verification flow that would need a third (e.g. PENDING),
+/// so none was added speculatively.
 enum UserStatus {
   ACTIVE
   DISABLED
-  PENDING
+}
+
+/// The CMS's three account tiers — brief section 1: "Không tạo thêm cấp
+/// quyền khác nếu chưa có yêu cầu mới." `User.role` is a single required
+/// field, not a many-to-many join table: exactly one tier per account,
+/// matching the brief's own `User` field list (section 8) and its
+/// permission tables (one row per role, not a set of roles per user).
+/// Extending this to more granular permissions later
+/// (`docs/AUTHORIZATION.md`, "Extensibility") means adding a
+/// `Permission`/`RolePermission` layer that `AdminRole` maps into — not
+/// rewriting this field.
+enum AdminRole {
+  ADMIN
+  MANAGER
+  CONTRIBUTOR
 }
 
 /// DRAFT -> IN_REVIEW -> APPROVED -> (SCHEDULED ->) PUBLISHED -> ARCHIVED.
@@ -161,6 +179,12 @@ enum HomepageContentType {
   GALLERY
 }
 
+/// Generic actions (CREATE/UPDATE/DELETE/PUBLISH/UNPUBLISH/APPROVE) are used
+/// by services this task doesn't touch (`EventService`, `MediaService`).
+/// User- and Article-workflow actions use the specific values brief section
+/// 12 names explicitly instead — a real audit trail should read
+/// "CREATE_ARTICLE", not a generic "CREATE" that needs a second lookup
+/// against `entityType` to mean anything.
 enum AuditAction {
   CREATE
   UPDATE
@@ -169,28 +193,57 @@ enum AuditAction {
   UNPUBLISH
   APPROVE
   LOGIN
+  LOGOUT
+  CREATE_USER
+  UPDATE_USER
+  CHANGE_ROLE
+  DISABLE_USER
+  ENABLE_USER
+  RESET_PASSWORD
+  CREATE_ARTICLE
+  UPDATE_ARTICLE
+  SUBMIT_REVIEW
+  APPROVE_ARTICLE
+  RETURN_ARTICLE
+  PUBLISH_ARTICLE
+  UNPUBLISH_ARTICLE
+  SCHEDULE_ARTICLE
 }
 
 // ============================================================
 // Identity & access
 // ============================================================
 
-/// A system account (can log in). Distinct from `AuthorProfile` — a byline
-/// ("who wrote this") is not always a person with a login, and a person with
-/// a login is not always credited as a byline. See `AuthorProfile` below.
+/// A system account (can log in to `/admin`). Distinct from `AuthorProfile`
+/// — a byline ("who wrote this") is not always a person with a login, and a
+/// person with a login is not always credited as a byline. See
+/// `AuthorProfile` below.
+///
+/// `role` is a single required `AdminRole`, not a many-to-many join table
+/// (the earlier, more generic `Role`/`UserRole` tables from the backend-
+/// foundation task were replaced by this — see docs/AUTHORIZATION.md,
+/// "Why a single `role` field, not a join table" for why keeping both
+/// would have meant two competing "what can this user do" answers in the
+/// same schema).
 model User {
   id            String     @id @default(cuid())
   email         String     @unique
-  passwordHash  String?
+  username      String?    @unique
+  passwordHash  String
   displayName   String
   avatarMediaId String?
+  role          AdminRole  @default(CONTRIBUTOR)
   status        UserStatus @default(ACTIVE)
+  lastLoginAt   DateTime?
+  createdById   String?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
   avatarMedia   MediaAsset?    @relation("UserAvatar", fields: [avatarMediaId], references: [id])
-  roles         UserRole[]
+  createdBy     User?          @relation("UserCreatedBy", fields: [createdById], references: [id])
+  createdUsers  User[]         @relation("UserCreatedBy")
   authorProfile AuthorProfile?
+  sessions      Session[]
 
   createdArticles            Article[]               @relation("ArticleCreatedBy")
   updatedArticles            Article[]               @relation("ArticleUpdatedBy")
@@ -198,30 +251,31 @@ model User {
   uploadedMedia              MediaAsset[]            @relation("MediaCreatedBy")
   auditLogs                  AuditLog[]
   homepageConfigurationEdits HomepageConfiguration[]
+
+  @@index([role])
 }
 
-/// A named permission bundle ("admin", "editor", "author",
-/// "province_reporter", ...). Deliberately just a name + description at this
-/// stage — see docs/BACKEND_ARCHITECTURE.md, "Authorization" for why a full
-/// permission-matrix table isn't built yet (no CMS UI to enforce it against
-/// in this task; see brief item 18).
-model Role {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  description String?
-
-  users UserRole[]
-}
-
-model UserRole {
+/// A server-side login session (`docs/AUTHENTICATION.md`, "Session"). The
+/// browser only ever holds `id` (an opaque random token, HttpOnly cookie);
+/// `tokenHash` stores a SHA-256 hash of that token, never the token itself
+/// — a database leak alone can't be replayed as a valid session, the same
+/// reasoning as storing a password hash instead of the password. Every
+/// admin request re-validates against this table (`expiresAt` and the
+/// owning `User.status`), never trusting the cookie's mere presence.
+model Session {
+  id         String   @id @default(cuid())
   userId     String
-  roleId     String
-  assignedAt DateTime @default(now())
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  ipAddress  String?
+  userAgent  String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
-  @@id([userId, roleId])
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 /// The public byline identity a reader sees on an article — matches
@@ -530,6 +584,13 @@ model Article {
   updatedAt      DateTime      @updatedAt
   createdById    String?
   updatedById    String?
+  /// Set when a Manager/Admin returns the article to its Contributor for
+  /// revision (brief section 9's REVIEW -> RETURN step); cleared the next
+  /// time it's submitted for review. Kept as a live field, not just buried
+  /// in `ArticleRevision.note` history, because the Contributor's own edit
+  /// view needs to surface it directly. See docs/AUTHORIZATION.md, "Article
+  /// workflow".
+  returnNote     String?
 
   // SEO
   seoTitle       String?

@@ -35,6 +35,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { hashPassword } from "../src/server/auth/password";
 
 import { CATEGORIES, TOPICS } from "../src/data-access/fixtures/taxonomy";
 import { PROVINCES } from "../src/data-access/fixtures/provinces";
@@ -115,20 +116,46 @@ const PLACE_TO_PROVINCE_SLUG: Record<string, string> = {
 async function main() {
   const activityMap = loadActivityMap();
 
-  console.log("Seeding roles...");
-  const roleNames = ["admin", "editor", "author", "province_reporter", "viewer"];
-  await prisma.role.createMany({ data: roleNames.map((name) => ({ name })), skipDuplicates: true });
-
-  console.log("Seeding a default admin user + author profiles...");
+  console.log("Seeding CMS admin accounts (one per AdminRole)...");
+  // DEV-ONLY credentials — never used outside a local/dev database. See
+  // docs/AUTHENTICATION.md, "Seeded accounts" for the same list; change or
+  // remove these before any shared/staging deployment.
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@hoisinhvien.vn" },
-    create: { email: "admin@hoisinhvien.vn", displayName: "Quản trị hệ thống", status: "ACTIVE" },
+    create: {
+      email: "admin@hoisinhvien.vn",
+      username: "admin",
+      displayName: "Quản trị hệ thống",
+      role: "ADMIN",
+      status: "ACTIVE",
+      passwordHash: await hashPassword("Admin@123456"),
+    },
     update: {},
   });
-  const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: "admin" } });
-  await prisma.userRole.upsert({
-    where: { userId_roleId: { userId: adminUser.id, roleId: adminRole.id } },
-    create: { userId: adminUser.id, roleId: adminRole.id },
+  await prisma.user.upsert({
+    where: { email: "manager@hoisinhvien.vn" },
+    create: {
+      email: "manager@hoisinhvien.vn",
+      username: "manager",
+      displayName: "Quản trị viên nội dung",
+      role: "MANAGER",
+      status: "ACTIVE",
+      passwordHash: await hashPassword("Manager@123456"),
+      createdById: adminUser.id,
+    },
+    update: {},
+  });
+  await prisma.user.upsert({
+    where: { email: "contributor@hoisinhvien.vn" },
+    create: {
+      email: "contributor@hoisinhvien.vn",
+      username: "contributor",
+      displayName: "Cộng tác viên nội dung",
+      role: "CONTRIBUTOR",
+      status: "ACTIVE",
+      passwordHash: await hashPassword("Contributor@123456"),
+      createdById: adminUser.id,
+    },
     update: {},
   });
 

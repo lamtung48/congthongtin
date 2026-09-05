@@ -36,6 +36,25 @@ export const articleRepository = {
     return prisma.article.findMany({ select: { slug: true } }).then((rows) => rows.map((r) => r.slug));
   },
 
+  /** The admin `/admin/articles` listing — any status, optionally scoped to
+   *  one author (a Contributor only ever sees their own) and/or one status
+   *  (the "Duyệt bài" nav link filters to IN_REVIEW). Distinct from
+   *  `listPublished*` below, which is the public-site-facing, PUBLISHED-only
+   *  read path. */
+  listForAdmin(params: { status?: ArticleStatus; createdById?: string; skip?: number; take?: number } = {}) {
+    return prisma.article.findMany({
+      where: { status: params.status, createdById: params.createdById },
+      orderBy: { updatedAt: "desc" },
+      include: articleWithRelations,
+      skip: params.skip,
+      take: params.take,
+    });
+  },
+
+  countByStatus(status?: ArticleStatus, createdById?: string) {
+    return prisma.article.count({ where: { status, createdById } });
+  },
+
   listPublished(params: { skip?: number; take?: number } = {}) {
     return prisma.article.findMany({
       where: { status: "PUBLISHED", publishedAt: { not: null } },
@@ -90,6 +109,10 @@ export const articleRepository = {
 
   updateStatus(id: string, status: ArticleStatus, extra: Prisma.ArticleUpdateInput = {}) {
     return prisma.article.update({ where: { id }, data: { status, ...extra } });
+  },
+
+  remove(id: string) {
+    return prisma.article.delete({ where: { id } });
   },
 
   replaceBlocks(articleId: string, blocks: { type: Prisma.ArticleBlockCreateManyInput["type"]; order: number; data: Prisma.InputJsonValue }[]) {

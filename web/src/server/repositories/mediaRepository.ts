@@ -13,6 +13,19 @@ export const mediaRepository = {
     return prisma.mediaAsset.findUnique({ where: { id } });
   },
 
+  list(params: { skip?: number; take?: number; createdById?: string } = {}) {
+    return prisma.mediaAsset.findMany({
+      where: params.createdById ? { createdById: params.createdById } : undefined,
+      orderBy: { createdAt: "desc" },
+      skip: params.skip,
+      take: params.take,
+    });
+  },
+
+  count(createdById?: string) {
+    return prisma.mediaAsset.count({ where: createdById ? { createdById } : undefined });
+  },
+
   create(data: Prisma.MediaAssetCreateInput) {
     return prisma.mediaAsset.create({ data });
   },

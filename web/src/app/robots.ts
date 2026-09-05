@@ -1,6 +1,14 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/siteConfig";
 
+// Lives at the true `src/app/` root, not inside `(site)/` alongside its
+// `sitemap.ts` sibling — verified empirically (a real build, not a guess)
+// that this Next.js version's `robots.ts` file convention isn't picked up
+// from within a route group, while `sitemap.ts`, `layout.tsx`, `page.tsx`,
+// etc. all work fine there. `favicon.ico` has the identical restriction,
+// for the same reason. See docs/AUTHENTICATION.md, "Route groups: two file
+// conventions that don't work inside one".
+//
 // Required for `output: "export"` (`docs/DEPLOYMENT.md`): this route has no
 // per-request input, so it's identical every build — safe to emit once as a
 // static file rather than a server function static export has no server for.
