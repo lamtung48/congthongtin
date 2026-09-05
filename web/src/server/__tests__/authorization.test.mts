@@ -146,12 +146,46 @@ mock.module("@/server/integrations/youtube", {
   },
 });
 
+/**
+ * Ecosystem integration task's own mock, same rationale as the Google
+ * Drive/YouTube ones above and the brief's own instruction for this task
+ * ("test bằng cách mock riêng lớp gọi API ở tầng test — không giả lập
+ * trong code production"): `platformService.refreshActivity` is the only
+ * caller of `getAdapterForCategory`, and this fakes just that lookup —
+ * every permission/failure-handling rule *inside* `platformService` itself
+ * still runs for real. `mockAdapterResult`/`mockAdapterCallCount` are
+ * mutated per-test (see the "Ecosystem integration" describe block below)
+ * to exercise both the success path and brief section 6's "timeout;
+ * fallback; cached/default state" without a real network call.
+ */
+let mockAdapterResult: { ok: true; currentActivity: string; status?: string } | { ok: false; reason: string; message: string } = {
+  ok: true,
+  currentActivity: "Mock: 5 khoá đang mở",
+};
+let mockAdapterCallCount = 0;
+mock.module("@/server/integrations/platformAdapters/registry", {
+  namedExports: {
+    getAdapterForCategory: (category: string) => {
+      if (category === "DATA") return undefined;
+      return {
+        category,
+        fetchActivity: async () => {
+          mockAdapterCallCount += 1;
+          return mockAdapterResult;
+        },
+      };
+    },
+  },
+});
+
 const { hasPermission, PERMISSIONS, ROLE_LABELS, ASSIGNABLE_ROLES } = await import("@/server/auth/permissions");
 const { prisma } = await import("@/server/db/client");
 const { articleService } = await import("@/server/services/articleService");
 const { userService } = await import("@/server/services/userService");
 const { mediaService, MediaInUseError } = await import("@/server/services/mediaService");
 const { youtubeService } = await import("@/server/services/youtubeService");
+const { platformService } = await import("@/server/services/platformService");
+const { platformRepository } = await import("@/server/repositories/platformRepository");
 const { hashPassword } = await import("@/server/auth/password");
 const { articleRepository } = await import("@/server/repositories/articleRepository");
 const { notificationService } = await import("@/server/services/notificationService");
@@ -180,6 +214,7 @@ const testAuthorProfileIds: string[] = [];
 const testMediaIds: string[] = [];
 const testGalleryIds: string[] = [];
 const testVideoIds: string[] = [];
+const testPlatformIds: string[] = [];
 
 async function makeUser(role: Actor["role"], label: string): Promise<Actor> {
   const passwordHash = await hashPassword(`throwaway-${label}-${Math.random()}`);
@@ -223,6 +258,25 @@ async function makeArticle(actor: Actor, title: string, blocks: ArticleBlockInpu
   testArticleIds.push(article.id);
   allArticleIdsEverCreated.push(article.id);
   return article;
+}
+
+/** Bypasses `platformService`'s own permission gate — pure fixture setup,
+ *  same reasoning as `makeUser` using `prisma.user.create` directly rather
+ *  than going through a service. Tests exercising `platformService.create`
+ *  itself call that directly instead. */
+async function makePlatform(overrides: Partial<Parameters<typeof platformRepository.create>[0]> = {}) {
+  const platform = await platformRepository.create({
+    slug: `test-authz-platform-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: "Test Platform",
+    description: "Nền tảng test cho authorization suite",
+    url: "https://platform.example.test",
+    category: "TRAINING",
+    status: "ACTIVE",
+    accessLevel: "Cần đăng nhập",
+    ...overrides,
+  });
+  testPlatformIds.push(platform.id);
+  return platform;
 }
 
 before(async () => {
@@ -270,6 +324,7 @@ after(async () => {
   await prisma.gallery.deleteMany({ where: { id: { in: testGalleryIds } } });
   await prisma.video.deleteMany({ where: { id: { in: testVideoIds } } });
   await prisma.mediaAsset.deleteMany({ where: { id: { in: testMediaIds } } });
+  await prisma.platform.deleteMany({ where: { id: { in: testPlatformIds } } });
   await prisma.authorProfile.deleteMany({ where: { id: { in: testAuthorProfileIds } } });
   await prisma.user.deleteMany({ where: { id: { in: testUserIds } } });
   await prisma.category.delete({ where: { id: categoryId } });
@@ -1030,5 +1085,133 @@ describe("Ghi chú nội bộ (ArticleNote) — không public, theo quyền canV
   test("Ghi chú trống bị từ chối", async () => {
     const article = await makeArticle(contributorA, "Ghi chú nội bộ rỗng bị từ chối");
     await assert.rejects(() => articleService.addNote(contributorA, article!, "   "));
+  });
+});
+
+describe("Ecosystem integration — Platform (nhiệm vụ tích hợp hệ sinh thái, brief mục 1, 5, 6, 7, 8)", () => {
+  test("CONTRIBUTOR không quản lý được platform configuration ở bất kỳ mức nào", async () => {
+    const platform = await makePlatform();
+    await assert.rejects(() => platformService.update(contributorA, platform, { display: { name: "Hijack" } }));
+    await assert.rejects(() => platformService.update(contributorA, platform, { integration: { apiBaseUrl: "https://evil.test" } }));
+    await assert.rejects(() => platformService.setEnabled(contributorA, platform, false));
+    await assert.rejects(() => platformService.refreshActivity(contributorA, platform));
+    await assert.rejects(() =>
+      platformService.create(contributorA, {
+        slug: `should-not-exist-${Date.now()}`,
+        name: "X",
+        description: "X",
+        url: "https://x.test",
+        category: "TRAINING",
+        status: "ACTIVE",
+        accessLevel: "X",
+      }),
+    );
+    await assert.rejects(() => platformService.remove(contributorA, platform));
+  });
+
+  test("MANAGER quản lý được nội dung/hiển thị nhưng không đụng được cấu hình tích hợp kỹ thuật", async () => {
+    const platform = await makePlatform();
+
+    const updated = await platformService.update(manager, platform, {
+      display: { name: "Tên mới do Manager sửa", status: "MAINTENANCE" },
+    });
+    assert.equal(updated.name, "Tên mới do Manager sửa");
+    assert.equal(updated.status, "MAINTENANCE");
+
+    await assert.rejects(() =>
+      platformService.update(manager, platform, { integration: { apiBaseUrl: "https://manager-should-not-set.test" } }),
+    );
+    await assert.rejects(() => platformService.create(manager, { slug: "x", name: "X", description: "X", url: "https://x.test", category: "TRAINING", status: "ACTIVE", accessLevel: "X" }));
+    await assert.rejects(() => platformService.remove(manager, platform));
+  });
+
+  test("ADMIN toàn quyền: sửa cả nội dung/hiển thị lẫn tích hợp kỹ thuật, tạo và xoá được", async () => {
+    const platform = await makePlatform();
+
+    const updated = await platformService.update(admin, platform, {
+      display: { name: "Tên do Admin sửa" },
+      integration: { apiBaseUrl: "https://admin-can-set.test", integrationType: "API" },
+    });
+    assert.equal(updated.name, "Tên do Admin sửa");
+    assert.equal(updated.apiBaseUrl, "https://admin-can-set.test");
+    assert.equal(updated.integrationType, "API");
+
+    const created = await platformService.create(admin, {
+      slug: `test-authz-created-platform-${Date.now()}`,
+      name: "Nền tảng do Admin tạo",
+      description: "X",
+      url: "https://x.test",
+      category: "VOLUNTEER",
+      status: "OPEN",
+      accessLevel: "X",
+    });
+    testPlatformIds.push(created.id);
+    assert.equal(created.name, "Nền tảng do Admin tạo");
+
+    await platformService.remove(admin, created);
+    testPlatformIds.splice(testPlatformIds.indexOf(created.id), 1);
+  });
+
+  test("ENABLE_PLATFORM/DISABLE_PLATFORM: MANAGER bật/tắt được (display state), ghi audit đúng action", async () => {
+    const platform = await makePlatform({ isEnabled: true } as never);
+    const disabled = await platformService.setEnabled(manager, platform, false);
+    assert.equal(disabled.isEnabled, false);
+    const enabled = await platformService.setEnabled(manager, disabled, true);
+    assert.equal(enabled.isEnabled, true);
+
+    const logs = await prisma.auditLog.findMany({ where: { entityType: "Platform", entityId: platform.id }, orderBy: { createdAt: "asc" } });
+    assert.ok(logs.some((l) => l.action === "DISABLE_PLATFORM"));
+    assert.ok(logs.some((l) => l.action === "ENABLE_PLATFORM"));
+  });
+
+  test("refreshActivity: thành công thì cập nhật currentActivity + ghi audit UPDATE_PLATFORM", async () => {
+    const platform = await makePlatform({ integrationType: "API", apiBaseUrl: "https://mock-training.test" } as never);
+    mockAdapterResult = { ok: true, currentActivity: "12 khoá đang mở (mock)" };
+
+    const result = await platformService.refreshActivity(manager, platform);
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.currentActivity, "12 khoá đang mở (mock)");
+
+    const reloaded = await platformRepository.findById(platform.id);
+    assert.equal(reloaded?.currentActivity, "12 khoá đang mở (mock)");
+    assert.ok(reloaded?.currentActivityUpdatedAt);
+
+    const logs = await prisma.auditLog.findMany({ where: { entityType: "Platform", entityId: platform.id, action: "UPDATE_PLATFORM" } });
+    assert.ok(logs.some((l) => (l.metadata as { source?: string } | null)?.source === "adapter-refresh"));
+  });
+
+  test("refreshActivity: brief mục 6 — timeout/lỗi mạng không xoá currentActivity cũ, portal vẫn có dữ liệu cached", async () => {
+    const platform = await makePlatform({
+      integrationType: "API",
+      apiBaseUrl: "https://mock-training-down.test",
+      currentActivity: "Dữ liệu cũ trước khi lỗi",
+    } as never);
+
+    mockAdapterResult = { ok: false, reason: "timeout", message: "Không nhận được phản hồi sau 5000ms." };
+    const result = await platformService.refreshActivity(manager, platform);
+    assert.equal(result.ok, false);
+
+    const reloaded = await platformRepository.findById(platform.id);
+    assert.equal(reloaded?.currentActivity, "Dữ liệu cũ trước khi lỗi", "currentActivity phải giữ nguyên giá trị cũ khi adapter lỗi");
+  });
+
+  test("refreshActivity: từ chối khi integrationType không phải API, hoặc danh mục chưa có adapter (DATA) — không hề gọi adapter", async () => {
+    const callsBefore = mockAdapterCallCount;
+
+    const externalLinkPlatform = await makePlatform({ integrationType: "EXTERNAL_LINK" } as never);
+    const externalResult = await platformService.refreshActivity(admin, externalLinkPlatform);
+    assert.equal(externalResult.ok, false);
+
+    const dataPlatform = await makePlatform({ category: "DATA", integrationType: "API", apiBaseUrl: "https://mock-data.test" } as never);
+    const dataResult = await platformService.refreshActivity(admin, dataPlatform);
+    assert.equal(dataResult.ok, false, "DATA không có adapter (brief mục 5: chỉ 4 adapter được liệt kê)");
+
+    assert.equal(mockAdapterCallCount, callsBefore, "cả hai trường hợp phải bị chặn trước khi gọi tới adapter");
+  });
+
+  test("Homepage vẫn hoạt động khi một platform bị tắt: DatabaseProvider không trả platform đã isEnabled=false", async () => {
+    const platform = await makePlatform({ category: "SV5TOT", isEnabled: false } as never);
+    const enabledOnly = await platformRepository.listEnabled();
+    assert.ok(!enabledOnly.some((p) => p.id === platform.id), "platform bị tắt không được xuất hiện trong danh sách công khai");
   });
 });

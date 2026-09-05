@@ -34,12 +34,12 @@ export function buildPlatformView(p: Platform): PlatformView {
         name: p.name,
         url: p.url,
         desc: p.description,
-        activity: p.liveActivityNote,
+        activity: p.currentActivity,
         isLive: p.status === "live",
         isActive: p.status === "active",
         isMaint: p.status === "maintenance",
         hasCta: p.status !== "maintenance",
-        cta: p.status === "live" ? "Tham gia phiên đang diễn ra" : "Truy cập nền tảng",
+        cta: p.ctaLabel ?? (p.status === "live" ? "Tham gia phiên đang diễn ra" : "Truy cập nền tảng"),
         note: "Nền tảng đang bảo trì. Tài liệu hội nghị sẽ mở lại sau khi hoàn tất.",
         access: p.accessLevel,
       };
@@ -50,7 +50,7 @@ export function buildPlatformView(p: Platform): PlatformView {
         url: p.url,
         metric: p.metric,
         desc: p.description,
-        cta: "Truy cập nền tảng",
+        cta: p.ctaLabel ?? "Truy cập nền tảng",
         access: p.accessLevel,
         hasCta: true,
       };
@@ -60,7 +60,7 @@ export function buildPlatformView(p: Platform): PlatformView {
         name: p.name,
         url: p.url,
         desc: p.description,
-        cta: "Mở hồ sơ",
+        cta: p.ctaLabel ?? "Mở hồ sơ",
         access: p.accessLevel,
         hasCta: true,
       };
@@ -74,7 +74,7 @@ export function buildPlatformView(p: Platform): PlatformView {
         isMaint: p.status === "maintenance",
         isDown: p.status === "unavailable",
         hasCta: p.status === "open",
-        cta: "Đăng ký chiến dịch",
+        cta: p.ctaLabel ?? "Đăng ký chiến dịch",
         note:
           p.status === "maintenance"
             ? "Nền tảng đang bảo trì. Bạn có thể đăng ký lại sau khi nền tảng mở."
@@ -90,7 +90,7 @@ export function buildPlatformView(p: Platform): PlatformView {
         isSoon: p.status === "soon",
         isActive: p.status === "active",
         hasCta: p.status === "active",
-        cta: "Xem báo cáo",
+        cta: p.ctaLabel ?? "Xem báo cáo",
         note: "Nền tảng sẽ mở trong nhiệm kỳ 2026 – 2031. Chưa có đường dẫn truy cập.",
         access: p.status === "soon" ? "Quyền truy cập sẽ công bố khi mở nền tảng" : "Cần đăng nhập cán bộ Hội",
       };

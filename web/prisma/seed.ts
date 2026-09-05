@@ -446,21 +446,31 @@ async function main() {
     unavailable: "UNAVAILABLE",
     soon: "SOON",
   };
-  for (const p of PLATFORMS) {
+  for (const [index, p] of PLATFORMS.entries()) {
+    const fields = {
+      name: p.name,
+      url: p.url,
+      description: p.description,
+      category: platformCategoryMap[p.category],
+      status: platformStatusMap[p.status],
+      accessLevel: p.accessLevel,
+      metric: p.metric,
+      currentActivity: p.currentActivity,
+      order: index,
+    };
     await prisma.platform.upsert({
       where: { slug: p.slug },
-      create: {
-        slug: p.slug,
-        name: p.name,
-        url: p.url,
-        description: p.description,
-        category: platformCategoryMap[p.category],
-        status: platformStatusMap[p.status],
-        accessLevel: p.accessLevel,
-        metric: p.metric,
-        liveActivityNote: p.liveActivityNote,
-      },
-      update: {},
+      create: { slug: p.slug, ...fields },
+      // Unlike most other `upsert`s in this seed script (fixed reference
+      // data that never changes once seeded), Platform rows are genuinely
+      // admin-editable content (`/admin/platforms`) — an empty `update: {}`
+      // would silently stop the seed fixture from ever reaching a re-seeded
+      // dev database again after the first run. Re-seeding intentionally
+      // overwrites these fields back to the fixture's values (a dev-reset
+      // convenience), but never touches `isEnabled`/`integrationType`/
+      // `apiBaseUrl`/`iconMediaId`/`ctaLabel` — those are admin-configured
+      // state this script has no fixture opinion about.
+      update: fields,
     });
   }
 

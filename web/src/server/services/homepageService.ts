@@ -69,11 +69,15 @@ async function resolveEventPlacements(placements: HomepagePlacement[]) {
   return resolved.filter((e) => e !== null);
 }
 
+/** Drops a placement pointing at a platform that's since been disabled
+ *  (brief section 7's "display state") — a CMS pin is not a bypass of that
+ *  toggle, same reasoning as `resolveArticlePlacements`'s Production Data
+ *  Policy check for a pinned-but-unpublished article. */
 async function resolvePlatformPlacements(placements: HomepagePlacement[]) {
   const resolved = await Promise.all(
     placements.filter((p) => p.contentType === "PLATFORM").map((p) => homepageRepository.resolvers.platform(p.contentId)),
   );
-  return resolved.filter((p) => p !== null);
+  return resolved.filter((p): p is NonNullable<typeof p> => p !== null && p.isEnabled);
 }
 
 async function resolveGalleryPlacement(placements: HomepagePlacement[]) {

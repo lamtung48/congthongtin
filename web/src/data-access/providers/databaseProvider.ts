@@ -42,15 +42,23 @@ import {
   SITE_FOOTER_GOVERNING_BODY_LINE,
 } from "@/lib/siteChrome";
 import type {
+  Prisma,
   OrganizationType as PrismaOrganizationType,
   PlatformCategory as PrismaPlatformCategory,
   PlatformStatus as PrismaPlatformStatus,
+  PlatformIntegrationType as PrismaPlatformIntegrationType,
   Organization as PrismaOrganization,
   Province as PrismaProvince,
   Video as PrismaVideo,
   Category as PrismaCategory,
-  Platform as PrismaPlatform,
 } from "@/generated/prisma/client";
+
+/** `Platform` rows are always read with `iconMedia` joined
+ *  (`homepageRepository.ts`'s `fallback.platforms`/`resolvers.platform`) so
+ *  `mapPlatform` can resolve `Platform.icon` — see that domain field's own
+ *  comment for why the homepage bento still falls back to a hardcoded
+ *  per-category SVG when this is absent. */
+type PrismaPlatformWithIcon = Prisma.PlatformGetPayload<{ include: { iconMedia: true } }>;
 
 /**
  * `ContentProvider` implementation backed by the real Postgres database —
@@ -134,7 +142,13 @@ const PLATFORM_STATUS_MAP: Record<PrismaPlatformStatus, Platform["status"]> = {
   SOON: "soon",
 };
 
-function mapPlatform(p: PrismaPlatform): Platform {
+const PLATFORM_INTEGRATION_TYPE_MAP: Record<PrismaPlatformIntegrationType, Platform["integrationType"]> = {
+  EXTERNAL_LINK: "external_link",
+  API: "api",
+  SSO_READY: "sso_ready",
+};
+
+function mapPlatform(p: PrismaPlatformWithIcon): Platform {
   return {
     id: p.id,
     slug: p.slug,
@@ -145,7 +159,10 @@ function mapPlatform(p: PrismaPlatform): Platform {
     status: PLATFORM_STATUS_MAP[p.status],
     accessLevel: p.accessLevel,
     metric: p.metric ?? undefined,
-    liveActivityNote: p.liveActivityNote ?? undefined,
+    currentActivity: p.currentActivity ?? undefined,
+    ctaLabel: p.ctaLabel ?? undefined,
+    integrationType: PLATFORM_INTEGRATION_TYPE_MAP[p.integrationType],
+    icon: p.iconMedia ? mapMedia(p.iconMedia) : undefined,
   };
 }
 

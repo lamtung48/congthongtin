@@ -19,7 +19,8 @@ export const PLATFORMS: Platform[] = [
     category: "conference",
     status: "live",
     accessLevel: "Cần đăng nhập tài khoản đại biểu",
-    liveActivityNote: "Hội nghị Ban Chấp hành Trung ương Hội lần thứ 3 — phiên biểu quyết đang mở",
+    currentActivity: "Hội nghị Ban Chấp hành Trung ương Hội lần thứ 3 — phiên biểu quyết đang mở",
+    integrationType: "external_link",
   },
   {
     id: "dao-tao",
@@ -31,6 +32,7 @@ export const PLATFORMS: Platform[] = [
     status: "active",
     accessLevel: "Cần đăng nhập cán bộ Hội",
     metric: "14 khoá đang mở",
+    integrationType: "external_link",
   },
   {
     id: "sv5tot",
@@ -41,6 +43,7 @@ export const PLATFORMS: Platform[] = [
     category: "sv5tot",
     status: "active",
     accessLevel: "Cần đăng nhập sinh viên",
+    integrationType: "external_link",
   },
   {
     id: "tinh-nguyen",
@@ -51,6 +54,7 @@ export const PLATFORMS: Platform[] = [
     category: "volunteer",
     status: "open",
     accessLevel: "Cần đăng nhập sinh viên",
+    integrationType: "external_link",
   },
   {
     id: "du-lieu",
@@ -61,5 +65,6 @@ export const PLATFORMS: Platform[] = [
     category: "data",
     status: "soon",
     accessLevel: "Quyền truy cập sẽ công bố khi mở nền tảng",
+    integrationType: "external_link",
   },
 ];

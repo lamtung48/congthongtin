@@ -169,6 +169,20 @@ enum PlatformStatus {
   SOON
 }
 
+/// Ecosystem integration task, brief section 3. `SSO_READY` is a
+/// classification only — this task does not implement a real SSO handoff,
+/// it just records that a platform's real integration is expected to be
+/// single-sign-on once built, so the CTA copy/adapter wiring can already
+/// branch on it later without another migration. Brief note: "Không iframe
+/// mặc định" — none of the three values ever results in embedding the
+/// external platform in an `<iframe>`; every one of them is always a real
+/// out-link (`<a href>`), just with different CTA semantics.
+enum PlatformIntegrationType {
+  EXTERNAL_LINK
+  API
+  SSO_READY
+}
+
 /// One entry per homepage section the frontend already renders
 /// (`src/app/page.tsx`) — adding a ninth section means adding a ninth value
 /// here, not a new table.
@@ -258,6 +272,19 @@ enum AuditAction {
   UPDATE_VIDEO
   CONNECT_YOUTUBE
   DISCONNECT_YOUTUBE
+  /// Ecosystem integration task, brief section 8. Generic `CREATE`/`DELETE`
+  /// (already in this enum) cover creating/removing a `Platform` row
+  /// itself — these three are for the transitions the brief calls out by
+  /// name: any content/config change (`UPDATE_PLATFORM`, covers both the
+  /// display-field group and, for an Admin, the integration-field group —
+  /// `metadata` records which), and the `isEnabled` toggle specifically
+  /// (`ENABLE_PLATFORM`/`DISABLE_PLATFORM`), kept distinct from a generic
+  /// update because "a platform went dark on the public site" is a
+  /// different kind of event to an auditor than "someone edited its
+  /// description".
+  UPDATE_PLATFORM
+  ENABLE_PLATFORM
+  DISABLE_PLATFORM
 }
 
 /// Editorial workflow task, brief section 9: the exact 4 events that must
@@ -574,6 +601,7 @@ model MediaAsset {
   usedAsArticleCover Article[]       @relation("ArticleCover")
   usedAsArticleOg    Article[]       @relation("ArticleOg")
   usedAsEventCover   Event[]         @relation("EventCover")
+  usedAsPlatformIcon Platform[]      @relation("PlatformIcon")
   galleryItems       GalleryItem[]
   videos             Video[]
 
@@ -869,22 +897,84 @@ model Event {
 }
 
 // ============================================================
-// Platforms
+// Platforms (ecosystem integration task)
 // ============================================================
 
+/// The registry entry for one external ecosystem platform (Hội nghị, Đào
+/// tạo, Sinh viên 5 tốt, Tình nguyện, ...+ any added later — brief header:
+/// "các platform khác sau này"). Two field groups, split by who may edit
+/// them (`src/server/services/platformService.ts`, `permissions.ts`'s
+/// `platform.manage` vs `platform.manage.display`):
+///
+///  - "Tích hợp kỹ thuật" (ADMIN only — brief section 1 "toàn quyền"):
+///    `category`, `integrationType`, `apiBaseUrl`.
+///  - "Nội dung/hiển thị" (ADMIN + MANAGER — brief section 1 "quản lý nội
+///    dung/hiển thị"): everything else, including `isEnabled`/`status`
+///    ("display state", brief section 7) and `currentActivity` (either
+///    hand-written by an editor or overwritten by an adapter refresh —
+///    see `platformService.refreshActivity`).
+///
+/// `apiBaseUrl` is never read by any public route — only
+/// `platformService.refreshActivity` (an authenticated Admin/Manager
+/// action) ever calls out to it, through the matching adapter in
+/// `src/server/integrations/platformAdapters/`. The public homepage always
+/// renders `currentActivity`/`status` as already stored here — see
+/// docs/ECOSYSTEM_INTEGRATION.md, "Failure isolation" for why the public
+/// path never blocks on an external platform's own uptime.
 model Platform {
-  id               String           @id @default(cuid())
-  slug             String           @unique
-  name             String
-  url              String
-  description      String
-  category         PlatformCategory
-  status           PlatformStatus
-  accessLevel      String
-  metric           String?
-  liveActivityNote String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  id          String                  @id @default(cuid())
+  slug        String                  @unique
+  name        String
+  url         String
+  description String
+  category    PlatformCategory
+  status      PlatformStatus
+  accessLevel String
+  metric      String?
+  /// What's happening right now, shown on the homepage bento card (e.g.
+  /// "Phiên biểu quyết đang mở", "14 khoá đang mở"). Renamed from
+  /// `liveActivityNote` — same field, now also writable by
+  /// `platformService.refreshActivity()` for an `integrationType: API`
+  /// platform, not just by hand.
+  currentActivity          String?
+  /// Set only by `refreshActivity()` — when this is non-null but old, the
+  /// admin UI can show "dữ liệu lúc HH:mm, làm mới thất bại" instead of
+  /// silently presenting a stale value as fresh. `null` for a platform
+  /// whose `currentActivity` (if any) was hand-typed and never refreshed.
+  currentActivityUpdatedAt DateTime?
+  /// Overrides the per-category default CTA copy `buildPlatformView`
+  /// (`src/lib/view/platformView.ts`) would otherwise use — `null` keeps
+  /// that default, so existing content needs no migration backfill.
+  ctaLabel    String?
+  iconMediaId String?
+  /// See `PlatformIntegrationType`'s own comment. Never changes what the
+  /// public CTA renders as (always a real link, brief section 3: "Không
+  /// iframe mặc định") — only which adapter (if any) `refreshActivity` is
+  /// allowed to call.
+  integrationType PlatformIntegrationType @default(EXTERNAL_LINK)
+  /// The base URL `src/server/integrations/platformAdapters/*` calls for
+  /// this platform's live activity — meaningless (and ignored) unless
+  /// `integrationType: API`. Never exposed to any public route.
+  apiBaseUrl  String?
+  /// Homepage bento position among platforms sharing a render slot, and
+  /// the admin listing's default sort — ascending, lower first.
+  order       Int                     @default(0)
+  /// Hard on/off switch, independent of `status` (brief section 7: "quản
+  /// lý display state") — a disabled platform never appears on the public
+  /// homepage regardless of `status`, e.g. to unpublish a platform being
+  /// decommissioned without deleting its registry row (audit trail,
+  /// `HomepagePlacement` references) along with it. See
+  /// `AuditAction.ENABLE_PLATFORM`/`DISABLE_PLATFORM` — this specific
+  /// toggle gets its own audit action, not folded into generic
+  /// `UPDATE_PLATFORM`.
+  isEnabled   Boolean                 @default(true)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  iconMedia MediaAsset? @relation("PlatformIcon", fields: [iconMediaId], references: [id])
+
+  @@index([category])
+  @@index([isEnabled, order])
 }
 
 // ============================================================

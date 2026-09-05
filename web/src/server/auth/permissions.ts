@@ -30,6 +30,7 @@ export const PERMISSIONS = [
   "video.manage",
   "homepage.manage",
   "platform.manage",
+  "platform.manage.display",
   "user.manage",
   "user.changeRole",
   "system.configure",
@@ -38,6 +39,16 @@ export const PERMISSIONS = [
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
+
+/**
+ * Ecosystem integration task, brief section 1: `platform.manage` ("toàn
+ * quyền" — category/integrationType/apiBaseUrl, create/delete) is ADMIN-
+ * only by omission from `ROLE_PERMISSIONS.MANAGER` below; `platform.manage.display`
+ * ("quản lý nội dung/hiển thị") is the subset MANAGER also gets —
+ * name/description/icon/url/ctaLabel/order/isEnabled/status/currentActivity,
+ * and triggering an adapter refresh. CONTRIBUTOR holds neither (brief
+ * section 1: "không quản lý platform configuration").
+ */
 
 /**
  * ADMIN gets every permission by construction (see `hasPermission`) rather
@@ -65,6 +76,7 @@ const ROLE_PERMISSIONS: Record<Exclude<AdminRole, "ADMIN">, ReadonlySet<Permissi
     "gallery.manage",
     "video.manage",
     "homepage.manage",
+    "platform.manage.display",
     "auditlog.view.content",
   ]),
   CONTRIBUTOR: new Set<Permission>([

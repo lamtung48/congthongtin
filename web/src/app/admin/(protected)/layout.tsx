@@ -41,6 +41,11 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
     { href: "/admin/organizations", label: "Đơn vị", show: hasPermission(session.role, "organization.manage") },
     { href: "/admin/events", label: "Sự kiện", show: hasPermission(session.role, "event.manage") },
     { href: "/admin/homepage", label: "Homepage", show: hasPermission(session.role, "homepage.manage") },
+    {
+      href: "/admin/platforms",
+      label: "Nền tảng",
+      show: hasPermission(session.role, "platform.manage") || hasPermission(session.role, "platform.manage.display"),
+    },
     { href: "/admin/users", label: "Users", show: hasPermission(session.role, "user.manage") },
     { href: "/admin/notifications", label: unreadCount > 0 ? `Thông báo (${unreadCount})` : "Thông báo", show: true },
     { href: "/admin/profile", label: "Hồ sơ cá nhân", show: true },

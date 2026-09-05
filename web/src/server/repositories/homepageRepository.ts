@@ -58,8 +58,13 @@ export const homepageRepository = {
     latestVideo() {
       return prisma.video.findFirst({ orderBy: { publishedAt: "desc" }, include: { category: true, media: true } });
     },
+    /** Ecosystem integration task: `order` (admin-set bento position), not
+     *  `createdAt` — and only `isEnabled` rows, so a platform an Admin/
+     *  Manager just turned off (brief section 7 "display state") never
+     *  reappears here just because the CMS has no placement configured for
+     *  it. */
     platforms(limit: number) {
-      return prisma.platform.findMany({ orderBy: { createdAt: "desc" }, take: limit });
+      return prisma.platform.findMany({ where: { isEnabled: true }, orderBy: { order: "asc" }, take: limit, include: { iconMedia: true } });
     },
     /**
      * Filters by `endAt >= now`, not the stored `status` column — the
@@ -110,7 +115,7 @@ export const homepageRepository = {
       return prisma.event.findUnique({ where: { id }, include: eventWithRelationsInclude });
     },
     platform(id: string) {
-      return prisma.platform.findUnique({ where: { id } });
+      return prisma.platform.findUnique({ where: { id }, include: { iconMedia: true } });
     },
     gallery(id: string) {
       return prisma.gallery.findUnique({ where: { id }, include: { items: { orderBy: { order: "asc" }, include: { media: true } } } });
