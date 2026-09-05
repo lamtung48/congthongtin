@@ -1,5 +1,6 @@
 import { prisma } from "@/server/db/client";
 import type { ArticleWithRelations } from "@/server/repositories/articleRepository";
+import { collectMediaIdsFromBlocks } from "@/server/validation/articleBlocks";
 import type { ArticleBlock, TextRun } from "@/domain/articleContent";
 import type { MediaAsset } from "@/domain/media";
 import type { Author } from "@/domain/people";
@@ -56,24 +57,6 @@ function mapMedia(media: PrismaMediaAsset): MediaAsset {
   };
 }
 
-/** Every `ArticleBlock.data`'s image/gallery/youtube shapes reference a
- *  `MediaAsset` only by id (`{mediaId}`/`{mediaIds}`, per
- *  `src/server/validation/articleBlocks.ts`) — this collects every id
- *  referenced anywhere in the article's blocks (plus its cover/OG, handled
- *  separately) so they can all be fetched in one query instead of one
- *  round-trip per block. */
-function collectBlockMediaIds(blocks: ArticleWithRelations["blocks"]): string[] {
-  const ids = new Set<string>();
-  for (const block of blocks) {
-    const data = block.data as Record<string, unknown>;
-    if (block.type === "IMAGE" || block.type === "YOUTUBE") {
-      if (typeof data.mediaId === "string") ids.add(data.mediaId);
-    } else if (block.type === "GALLERY" && Array.isArray(data.mediaIds)) {
-      for (const id of data.mediaIds) if (typeof id === "string") ids.add(id);
-    }
-  }
-  return [...ids];
-}
 
 function mapBlock(block: ArticleWithRelations["blocks"][number], mediaById: Map<string, MediaAsset>): ArticleBlock | null {
   const data = block.data as Record<string, unknown>;
@@ -139,7 +122,7 @@ export interface ResolvedArticleContent {
 }
 
 export async function resolveArticleContent(article: ArticleWithRelations): Promise<ResolvedArticleContent> {
-  const blockMediaIds = collectBlockMediaIds(article.blocks);
+  const blockMediaIds = collectMediaIdsFromBlocks(article.blocks);
   const [author, blockMediaRows] = await Promise.all([
     resolveAuthor(article),
     blockMediaIds.length > 0 ? prisma.mediaAsset.findMany({ where: { id: { in: blockMediaIds } } }) : Promise.resolve([]),

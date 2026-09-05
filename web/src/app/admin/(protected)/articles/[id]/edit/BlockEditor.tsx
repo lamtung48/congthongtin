@@ -111,16 +111,43 @@ function HeadingFields({ data, onChange }: { data: Record<string, unknown>; onCh
   );
 }
 
-function ImageFields({ data, onChange, mediaOptions }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void; mediaOptions: MediaOption[] }) {
+function ImageFields({
+  data,
+  onChange,
+  mediaOptions,
+  canManageMediaAny,
+}: {
+  data: Record<string, unknown>;
+  onChange: (d: Record<string, unknown>) => void;
+  mediaOptions: MediaOption[];
+  canManageMediaAny: boolean;
+}) {
   return (
     <div style={{ display: "grid", gap: 8 }}>
-      <MediaPicker label="Ảnh" accept="IMAGE" value={(data.mediaId as string) || null} onChange={(id) => onChange({ ...data, mediaId: id ?? "" })} options={mediaOptions} />
+      <MediaPicker
+        label="Ảnh"
+        accept="IMAGE"
+        value={(data.mediaId as string) || null}
+        onChange={(id) => onChange({ ...data, mediaId: id ?? "" })}
+        options={mediaOptions}
+        canManageAny={canManageMediaAny}
+      />
       <input className="adminInput" value={String(data.caption ?? "")} onChange={(e) => onChange({ ...data, caption: e.target.value })} placeholder="Chú thích ảnh (tuỳ chọn)" />
     </div>
   );
 }
 
-function GalleryFields({ data, onChange, mediaOptions }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void; mediaOptions: MediaOption[] }) {
+function GalleryFields({
+  data,
+  onChange,
+  mediaOptions,
+  canManageMediaAny,
+}: {
+  data: Record<string, unknown>;
+  onChange: (d: Record<string, unknown>) => void;
+  mediaOptions: MediaOption[];
+  canManageMediaAny: boolean;
+}) {
   const mediaIds = (data.mediaIds as string[]) ?? [];
   return (
     <div style={{ display: "grid", gap: 8 }}>
@@ -142,6 +169,7 @@ function GalleryFields({ data, onChange, mediaOptions }: { data: Record<string, 
         value={null}
         onChange={(id) => { if (id && !mediaIds.includes(id)) onChange({ ...data, mediaIds: [...mediaIds, id] }); }}
         options={mediaOptions}
+        canManageAny={canManageMediaAny}
       />
       <input className="adminInput" value={String(data.caption ?? "")} onChange={(e) => onChange({ ...data, caption: e.target.value })} placeholder="Chú thích chung (tuỳ chọn)" />
     </div>
@@ -242,12 +270,12 @@ function EmbedFields({ data, onChange }: { data: Record<string, unknown>; onChan
   );
 }
 
-function renderFields(block: EditorBlock, onChange: (d: Record<string, unknown>) => void, mediaOptions: MediaOption[]) {
+function renderFields(block: EditorBlock, onChange: (d: Record<string, unknown>) => void, mediaOptions: MediaOption[], canManageMediaAny: boolean) {
   switch (block.type) {
     case "PARAGRAPH": return <ParagraphFields data={block.data} onChange={onChange} />;
     case "HEADING": return <HeadingFields data={block.data} onChange={onChange} />;
-    case "IMAGE": return <ImageFields data={block.data} onChange={onChange} mediaOptions={mediaOptions} />;
-    case "GALLERY": return <GalleryFields data={block.data} onChange={onChange} mediaOptions={mediaOptions} />;
+    case "IMAGE": return <ImageFields data={block.data} onChange={onChange} mediaOptions={mediaOptions} canManageMediaAny={canManageMediaAny} />;
+    case "GALLERY": return <GalleryFields data={block.data} onChange={onChange} mediaOptions={mediaOptions} canManageMediaAny={canManageMediaAny} />;
     case "YOUTUBE": return <YoutubeFields data={block.data} onChange={onChange} mediaOptions={mediaOptions} />;
     case "QUOTE": return <QuoteFields data={block.data} onChange={onChange} />;
     case "TABLE": return <TableFields data={block.data} onChange={onChange} />;
@@ -269,10 +297,12 @@ export function BlockEditor({
   blocks,
   onChange,
   mediaOptions,
+  canManageMediaAny,
 }: {
   blocks: EditorBlock[];
   onChange: (blocks: EditorBlock[]) => void;
   mediaOptions: MediaOption[];
+  canManageMediaAny: boolean;
 }) {
   const addSelectId = useId();
 
@@ -316,7 +346,7 @@ export function BlockEditor({
           onDuplicate={() => duplicate(index)}
           onDelete={() => remove(index)}
         >
-          {renderFields(block, (d) => updateAt(index, d), mediaOptions)}
+          {renderFields(block, (d) => updateAt(index, d), mediaOptions, canManageMediaAny)}
         </BlockShell>
       ))}
 

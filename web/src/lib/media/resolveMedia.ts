@@ -5,13 +5,13 @@ import type { MediaAsset } from "@/domain/media";
  * turns into a real, fetchable URL. Every `MediaImage`/`MediaVideo` call
  * site works with `MediaAsset` only — never a raw Drive or YouTube URL.
  *
- * Both resolvers are intentionally stubbed to always return "not resolved"
- * for this task: no Google Drive API or YouTube API integration was in
- * scope, and no media proxy/CDN service exists yet to front Drive files. See
- * `docs/MEDIA_ARCHITECTURE.md` for the intended flow. Wiring a resolver up
- * later — the Media Service’s cached/CDN URL for `drive`, `img.youtube.com`
- * or a signed embed URL for `youtube` — requires no change anywhere except
- * inside these two functions: `MediaImage`/`MediaVideo` already handle
+ * `drive` now resolves to this app's own `/api/media/[mediaId]` delivery
+ * route (Google Drive media task, brief section 8: never hand the browser a
+ * raw Drive share URL) — that route is what actually knows the asset's
+ * `providerFileId` and streams its bytes; this resolver only ever needs the
+ * `MediaAsset.id`. `youtube` remains stubbed: it was out of scope for that
+ * task and still has no resolver wired up. See `docs/MEDIA_ARCHITECTURE.md`
+ * for the intended flow. `MediaImage`/`MediaVideo` already handle
  * "no URL resolved" as a normal, first-class state (falls back to
  * `MediaPlaceholder`), not an error.
  */
@@ -20,8 +20,8 @@ import type { MediaAsset } from "@/domain/media";
  *  to render `MediaPlaceholder` instead. */
 export function resolveImageUrl(media: MediaAsset): string | undefined {
   if (media.status !== "ready" || !media.sourceId) return undefined;
-  // Future: `drive` → Media Service cache/CDN URL derived from sourceId;
-  // `youtube` → e.g. `https://img.youtube.com/vi/${media.sourceId}/hqdefault.jpg`.
+  if (media.provider === "drive") return `/api/media/${media.id}`;
+  // Future: `youtube` → e.g. `https://img.youtube.com/vi/${media.sourceId}/hqdefault.jpg`.
   return undefined;
 }
 

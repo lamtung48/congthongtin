@@ -55,6 +55,7 @@ interface Permissions {
   canRestoreRevision: boolean;
   authorRestricted: boolean;
   ownAuthorId: string | null;
+  canManageMediaAny: boolean;
 }
 
 interface RevisionRow {
@@ -296,7 +297,7 @@ export function ArticleEditor({
 
           <div className="adminCard adminCardPad" style={{ marginBottom: 16 }}>
             <h2 className="adminLabel" style={{ marginBottom: 10, fontSize: 13 }}>Nội dung</h2>
-            <BlockEditor blocks={blocks} onChange={locked ? () => {} : setBlocks} mediaOptions={options.media} />
+            <BlockEditor blocks={blocks} onChange={locked ? () => {} : setBlocks} mediaOptions={options.media} canManageMediaAny={permissions.canManageMediaAny} />
           </div>
 
           <div className="adminCard adminCardPad">
@@ -314,7 +315,7 @@ export function ArticleEditor({
                 <label className="adminLabel" htmlFor="e-canonical">Canonical URL</label>
                 <input id="e-canonical" className="adminInput" value={canonicalUrl} onChange={(e) => setCanonicalUrl(e.target.value)} disabled={locked} />
               </div>
-              <MediaPicker label="Ảnh chia sẻ (OG image)" accept="IMAGE" value={ogMediaId} onChange={setOgMediaId} options={options.media} />
+              <MediaPicker label="Ảnh chia sẻ (OG image)" accept="IMAGE" value={ogMediaId} onChange={setOgMediaId} options={options.media} canManageAny={permissions.canManageMediaAny} />
             </div>
           </div>
         </div>
@@ -349,7 +350,7 @@ export function ArticleEditor({
                 {options.provinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
-            <MediaPicker label="Ảnh cover" accept="IMAGE" value={coverMediaId} onChange={setCoverMediaId} options={options.media} />
+            <MediaPicker label="Ảnh cover" accept="IMAGE" value={coverMediaId} onChange={setCoverMediaId} options={options.media} canManageAny={permissions.canManageMediaAny} />
           </div>
 
           <div className="adminCard adminCardPad" style={{ marginBottom: 16 }}>

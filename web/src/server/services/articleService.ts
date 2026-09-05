@@ -1,7 +1,8 @@
 import { articleRepository, type ArticleWithRelations, type ArticleAdminFilter } from "@/server/repositories/articleRepository";
 import { authorProfileRepository } from "@/server/repositories/authorProfileRepository";
+import { mediaRepository } from "@/server/repositories/mediaRepository";
 import { auditLogRepository } from "@/server/repositories/auditLogRepository";
-import { parseArticleBlockData, type ArticleBlockType } from "@/server/validation/articleBlocks";
+import { parseArticleBlockData, collectMediaIdsFromBlocks, type ArticleBlockType } from "@/server/validation/articleBlocks";
 import { hasPermission } from "@/server/auth/permissions";
 import type { SessionUser } from "@/server/auth/session";
 import type { Prisma } from "@/generated/prisma/client";
@@ -141,6 +142,18 @@ function validateBlocks(blocks: ArticleBlockInput[]) {
   return blocks.map((b) => ({ ...b, data: parseArticleBlockData(b.type, b.data) }));
 }
 
+/**
+ * Keeps `MediaUsage` (usageType `ARTICLE_BLOCK`) in lockstep with whatever
+ * media the article's blocks actually reference — called right after every
+ * `replaceBlocks`, mirroring its own "whole list, not a diff" contract.
+ * This is what lets `mediaService.remove()` correctly refuse to delete an
+ * image that's inline in an article body, not just one set as the cover
+ * (Google Drive media task, brief section 7).
+ */
+function syncBlockMediaUsage(articleId: string, blocks: ArticleBlockInput[]) {
+  return mediaRepository.replaceArticleBlockUsages(articleId, collectMediaIdsFromBlocks(blocks));
+}
+
 async function snapshotRevision(article: ArticleWithRelations, changedById: string | null, note?: string) {
   const version = await articleRepository.nextRevisionVersion(article.id);
   await articleRepository.createRevision({
@@ -246,6 +259,7 @@ export const articleService = {
     } as Prisma.ArticleUncheckedCreateInput);
     if (input.blocks) {
       await articleRepository.replaceBlocks(article.id, validateBlocks(input.blocks));
+      await syncBlockMediaUsage(article.id, input.blocks);
     }
     if (input.fields.topicIds) await articleRepository.replaceTopics(article.id, input.fields.topicIds);
     if (input.fields.tagIds) await articleRepository.replaceTags(article.id, input.fields.tagIds);
@@ -272,6 +286,7 @@ export const articleService = {
     } as Prisma.ArticleUncheckedUpdateInput);
     if (input.blocks) {
       await articleRepository.replaceBlocks(article.id, validateBlocks(input.blocks));
+      await syncBlockMediaUsage(article.id, input.blocks);
     }
     if (input.fields.topicIds) await articleRepository.replaceTopics(article.id, input.fields.topicIds);
     if (input.fields.tagIds) await articleRepository.replaceTags(article.id, input.fields.tagIds);
@@ -304,6 +319,7 @@ export const articleService = {
     } as Prisma.ArticleUncheckedUpdateInput);
     if (input.blocks) {
       await articleRepository.replaceBlocks(article.id, validateBlocks(input.blocks));
+      await syncBlockMediaUsage(article.id, input.blocks);
     }
     return articleRepository.findById(updated.id);
   },
@@ -449,6 +465,7 @@ export const articleService = {
       article.id,
       snapshot.blocks.map((b) => ({ type: b.type, order: b.order, data: b.data as Prisma.InputJsonValue })),
     );
+    await mediaRepository.replaceArticleBlockUsages(article.id, collectMediaIdsFromBlocks(snapshot.blocks));
     const full = await articleRepository.findById(updated.id);
     if (full) await snapshotRevision(full, actor.id, `Khôi phục từ phiên bản ${version}`);
     await auditLogRepository.record({ actorId: actor.id, action: "RESTORE_REVISION", entityType: "Article", entityId: article.id, metadata: { version } });

@@ -3,22 +3,20 @@
 import { z } from "zod";
 import { requireSession } from "@/server/auth/session";
 import { mediaService } from "@/server/services/mediaService";
-import { hasPermission } from "@/server/auth/permissions";
 
 /**
- * No real upload pipeline exists in this task (Google Drive/YouTube
- * integration is out of scope — see docs/AUTHORIZATION.md, "Remaining
- * work"). The block editor still needs *some* way to attach media, so this
- * registers a `MediaAsset` row from metadata a human types in (a Drive
- * share link's file id, a YouTube video id, or a plain placeholder) —
- * exactly the same "metadata now, real file later" contract
- * `mediaService.ts`'s own header comment describes. Any role that can
- * create/edit an article (which already implies at least `media.manage.own`
- * — see `src/server/auth/permissions.ts`) can register one for their own
- * use; this only creates a metadata row, never touches another user's
- * asset.
+ * The advanced fallback path in `MediaPicker` — "liên kết file có sẵn"
+ * (brief section 3's UI note: keep one such option for Admin/Manager only).
+ * The primary path for a new image is now `MediaUploader` talking straight
+ * to `POST /api/admin/media/upload` (a real Google Drive upload); this
+ * Server Action exists for the two cases that upload flow doesn't cover:
+ * linking a YouTube video id (there's no "upload" for a video — YouTube is
+ * where it already lives), and an Admin/Manager manually pointing at a
+ * Drive file id that exists outside this app's own upload flow.
+ * `mediaService.registerManualLink` itself is what actually restricts the
+ * IMAGE case to `media.manage.any` — this action is just its form-data glue.
  */
-const CreateMediaSchema = z.object({
+const LinkMediaSchema = z.object({
   provider: z.enum(["GOOGLE_DRIVE", "YOUTUBE", "LOCAL_PLACEHOLDER"]),
   type: z.enum(["IMAGE", "VIDEO"]),
   providerFileId: z.string().trim().optional(),
@@ -26,19 +24,16 @@ const CreateMediaSchema = z.object({
   caption: z.string().trim().optional(),
 });
 
-export interface CreateMediaResult {
+export interface LinkMediaResult {
   id: string;
   label: string;
   type: "IMAGE" | "VIDEO";
   error?: string;
 }
 
-export async function createMediaAction(formData: FormData): Promise<CreateMediaResult> {
+export async function linkMediaAction(formData: FormData): Promise<LinkMediaResult> {
   const actor = await requireSession();
-  if (!hasPermission(actor.role, "media.manage.own") && !hasPermission(actor.role, "media.manage.any")) {
-    return { id: "", label: "", type: "IMAGE", error: "Không có quyền thêm media." };
-  }
-  const parsed = CreateMediaSchema.safeParse({
+  const parsed = LinkMediaSchema.safeParse({
     provider: formData.get("provider"),
     type: formData.get("type"),
     providerFileId: formData.get("providerFileId") || undefined,
@@ -49,18 +44,10 @@ export async function createMediaAction(formData: FormData): Promise<CreateMedia
     return { id: "", label: "", type: "IMAGE", error: "Dữ liệu media không hợp lệ." };
   }
 
-  const asset = await mediaService.registerAsset(
-    {
-      provider: parsed.data.provider,
-      type: parsed.data.type,
-      providerFileId: parsed.data.providerFileId,
-      alt: parsed.data.alt,
-      caption: parsed.data.caption,
-      status: parsed.data.providerFileId ? "READY" : "MISSING",
-      createdBy: { connect: { id: actor.id } },
-    },
-    actor.id,
-  );
-
-  return { id: asset.id, label: asset.alt || asset.caption || asset.providerFileId || asset.id, type: asset.type };
+  try {
+    const asset = await mediaService.registerManualLink(actor, parsed.data);
+    return { id: asset.id, label: asset.alt || asset.caption || asset.providerFileId || asset.id, type: asset.type };
+  } catch (err) {
+    return { id: "", label: "", type: parsed.data.type, error: err instanceof Error ? err.message : "Không thể thêm media." };
+  }
 }

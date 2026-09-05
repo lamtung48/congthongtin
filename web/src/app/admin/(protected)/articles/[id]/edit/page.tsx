@@ -28,7 +28,7 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
     organizationRepository.list(),
     provinceRepository.list(),
     authorProfileRepository.list(),
-    mediaService.list({ createdById: canViewAnyMedia ? undefined : session.id, take: 200 }),
+    mediaService.listForAdmin(session, { take: 200 }),
     authorProfileRepository.findByUserId(session.id),
     articleService.listRevisions(session, article),
   ]);
@@ -80,6 +80,7 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
         canRestoreRevision: hasPermission(session.role, "article.edit.any"),
         authorRestricted: !hasPermission(session.role, "article.edit.any"),
         ownAuthorId: ownAuthor?.id ?? null,
+        canManageMediaAny: canViewAnyMedia,
       }}
       revisions={revisions.map((r) => ({
         version: r.version,

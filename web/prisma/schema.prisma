@@ -224,6 +224,13 @@ enum AuditAction {
   /// list, added for the same reason as RESTORE_ARTICLE — restoring content
   /// is a real write that needs an audit trail like any other.
   RESTORE_REVISION
+  /// Google Drive media task's own audit trio — brief section 11.
+  /// `entityType: "MediaAsset"` for all three; `UPDATE_MEDIA`'s metadata
+  /// holds which display fields (alt/caption) changed, never the file
+  /// itself or any credential.
+  UPLOAD_MEDIA
+  UPDATE_MEDIA
+  DELETE_MEDIA
 }
 
 // ============================================================

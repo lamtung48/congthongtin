@@ -89,3 +89,28 @@ export type ArticleBlockType = keyof typeof articleBlockDataSchemas;
 export function parseArticleBlockData(type: ArticleBlockType, data: unknown) {
   return articleBlockDataSchemas[type].parse(data);
 }
+
+/**
+ * Every id a block's `data` references a `MediaAsset` by — IMAGE/YOUTUBE's
+ * single `mediaId`, GALLERY's `mediaIds` array. Shared by
+ * `articleContentResolver.ts` (batch-fetching a block's media for preview)
+ * and `articleService.ts` (keeping `MediaUsage` rows in sync with what's
+ * actually in an article's content, so the Google Drive media task's
+ * "xóa media đang được nhiều bài sử dụng phải cảnh báo/block" can see block
+ * usage, not just cover-image usage). Takes a plain `{type, data}[]` rather
+ * than a Prisma `ArticleBlock[]` so it works on both a freshly-parsed
+ * `ArticleBlockInput[]` (before it's ever been written) and a row already
+ * read back from the database.
+ */
+export function collectMediaIdsFromBlocks(blocks: { type: string; data: unknown }[]): string[] {
+  const ids = new Set<string>();
+  for (const block of blocks) {
+    const data = block.data as Record<string, unknown>;
+    if (block.type === "IMAGE" || block.type === "YOUTUBE") {
+      if (typeof data.mediaId === "string") ids.add(data.mediaId);
+    } else if (block.type === "GALLERY" && Array.isArray(data.mediaIds)) {
+      for (const id of data.mediaIds) if (typeof id === "string") ids.add(id);
+    }
+  }
+  return [...ids];
+}
