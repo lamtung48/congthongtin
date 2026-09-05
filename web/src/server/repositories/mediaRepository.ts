@@ -1,5 +1,5 @@
 import { prisma } from "@/server/db/client";
-import type { MediaStatus, MediaType, MediaUsageType, Prisma } from "@/generated/prisma/client";
+import type { MediaStatus, MediaType, MediaUsageType, Prisma, YoutubeVisibility } from "@/generated/prisma/client";
 
 /**
  * Metadata-only, per brief section 6: no binary ever passes through this
@@ -17,6 +17,10 @@ export interface MediaAdminFilter {
   createdById?: string;
   type?: MediaType;
   status?: MediaStatus;
+  /** `/admin/media/videos`'s visibility filter — meaningless for IMAGE
+   *  rows (always `null`), so combining it with `type: "VIDEO"` is the
+   *  caller's job, not enforced here. */
+  visibility?: YoutubeVisibility;
   createdFrom?: Date;
   createdTo?: Date;
   skip?: number;
@@ -28,6 +32,7 @@ function buildWhere(params: MediaAdminFilter): Prisma.MediaAssetWhereInput {
     createdById: params.createdById,
     type: params.type,
     status: params.status,
+    visibility: params.visibility,
   };
   if (params.createdFrom || params.createdTo) {
     where.createdAt = { gte: params.createdFrom, lte: params.createdTo };
@@ -87,6 +92,27 @@ export const mediaRepository = {
   },
 
   updateMetadata(id: string, data: { alt?: string | null; caption?: string | null }) {
+    return prisma.mediaAsset.update({ where: { id }, data });
+  },
+
+  /** The YOUTUBE-provider-specific fields `youtubeService.ts` writes after
+   *  an upload/link/metadata-edit/status-refresh — `filename` doubles as
+   *  the video's own YouTube title and `caption` as its description (see
+   *  `MediaAsset.visibility`'s schema comment for why no dedicated `title`
+   *  column exists). Kept separate from `updateMetadata` (image alt/caption
+   *  edits) since the field sets barely overlap and mixing them would make
+   *  either caller's intent less obvious at the call site. */
+  updateVideoDetails(
+    id: string,
+    data: {
+      filename?: string;
+      caption?: string;
+      visibility?: YoutubeVisibility | null;
+      durationSeconds?: number | null;
+      errorReason?: string | null;
+      status?: MediaStatus;
+    },
+  ) {
     return prisma.mediaAsset.update({ where: { id }, data });
   },
 

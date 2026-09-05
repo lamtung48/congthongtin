@@ -96,26 +96,25 @@ export const mediaService = {
   },
 
   /**
-   * The advanced "liên kết file có sẵn" fallback (see `mediaActions.ts`),
-   * for the two things a real Drive upload doesn't cover: a YouTube video id
-   * (nothing to "upload" — it already lives on YouTube), and an Admin/
-   * Manager manually pointing at a Drive file id created outside this app's
-   * own upload flow. Restricted to `media.manage.any` for IMAGE specifically
-   * — a Contributor must go through `MediaUploader`/`registerUpload`, which
+   * The advanced "liên kết file có sẵn" fallback (see `mediaActions.ts`) —
+   * an Admin/Manager manually pointing at a Drive file id created outside
+   * this app's own upload flow. Restricted to `media.manage.any`: a
+   * Contributor must go through `MediaUploader`/`registerUpload`, which
    * actually verifies the file (brief section 9's validation) rather than
-   * trusting whatever id a form field claims. VIDEO has no such upload path
-   * to fall back to, so it stays open to anyone holding `media.manage.own`.
+   * trusting whatever id a form field claims.
+   *
+   * A YouTube video's equivalent manual-link path used to live here too
+   * (trusting a hand-typed video id without verification) — the YouTube
+   * integration task replaced it with `youtubeService.linkExistingVideo`,
+   * which verifies the id against the real YouTube Data API first. `data`
+   * still carries `type` for the `mediaRepository.create` call below, but
+   * every caller now always passes `"IMAGE"`.
    */
   async registerManualLink(
     actor: SessionUser,
     data: { provider: MediaProvider; type: MediaType; providerFileId?: string; alt?: string; caption?: string },
   ) {
-    const hasAny = hasPermission(actor.role, "media.manage.any");
-    const hasOwn = hasPermission(actor.role, "media.manage.own");
-    if (!hasOwn && !hasAny) {
-      throw new Error("Không có quyền thêm media.");
-    }
-    if (data.type === "IMAGE" && !hasAny) {
+    if (!hasPermission(actor.role, "media.manage.any")) {
       throw new Error("Chỉ Admin/Quản trị viên mới có thể liên kết ảnh thủ công — vui lòng dùng chức năng tải ảnh lên.");
     }
     const asset = await mediaRepository.create({

@@ -7,12 +7,11 @@ import { MediaUploader, type UploadedMedia } from "../media/MediaUploader";
 export interface MediaOption {
   id: string;
   label: string;
-  type: "IMAGE" | "VIDEO";
   /** Set only for a `GOOGLE_DRIVE`+`READY` asset — the `/api/media/[id]`
    *  delivery URL a caller can drop straight into an `<img>` for a real
    *  thumbnail (brief: "embed ảnh ... trong cùng một khung"). `undefined`
-   *  for anything else (YouTube, a placeholder, or a Drive asset still
-   *  missing its file) — callers fall back to a label-only placeholder. */
+   *  for anything else (a placeholder, or a Drive asset still missing its
+   *  file) — callers fall back to a label-only placeholder. */
   previewUrl?: string;
 }
 
@@ -22,22 +21,21 @@ function uploadedMediaLabel(media: UploadedMedia): string {
 
 /**
  * Controlled media picker shared by the cover-image/OG-image fields
- * (`ArticleEditor.tsx`) and every image/gallery/youtube node view embedded
- * in the rich-text body editor (`tiptap/nodes.tsx`) — one selection UI, not
- * one per call site. `accept` narrows the dropdown to the relevant
- * `MediaType`.
+ * (`ArticleEditor.tsx`) and every image/gallery node view embedded in the
+ * rich-text body editor (`tiptap/nodes.tsx`) — one selection UI, not one
+ * per call site. Images only — see `VideoPicker.tsx` for the YouTube
+ * counterpart (dropped from this component once video's own three add-paths
+ * — upload/paste URL-ID/browse channel — stopped sharing enough shape with
+ * image's to keep unifying them worthwhile).
  *
- * For `accept === "IMAGE"` the primary way to add a new option is a real
- * upload through `MediaUploader` (brief section 4) — every role that can
- * reach this picker already holds at least `media.manage.own`, so uploading
- * for one's own use needs no extra gate here (`/api/admin/media/upload`
- * re-checks permission server-side regardless). The old manual
- * provider/providerFileId form survives only as a collapsed "nâng cao"
- * fallback, and only for Admin/Manager (`canManageAny`) — see
- * `mediaService.registerManualLink`'s own header comment for why. For
- * `accept === "VIDEO"` there is no upload path at all (a YouTube video isn't
- * a file this app hosts), so that same form is the *only* way to add one and
- * stays open to anyone who can reach this picker.
+ * The primary way to add a new option is a real upload through
+ * `MediaUploader` (brief section 4) — every role that can reach this picker
+ * already holds at least `media.manage.own`, so uploading for one's own use
+ * needs no extra gate here (`/api/admin/media/upload` re-checks permission
+ * server-side regardless). The old manual provider/providerFileId form
+ * survives only as a collapsed "nâng cao" fallback, and only for Admin/
+ * Manager (`canManageAny`) — see `mediaService.registerManualLink`'s own
+ * header comment for why.
  *
  * `onChange`'s second argument carries the freshly created/uploaded
  * option's full metadata (never present for a plain pick from the existing
@@ -50,14 +48,12 @@ function uploadedMediaLabel(media: UploadedMedia): string {
  */
 export function MediaPicker({
   label,
-  accept,
   value,
   onChange,
   options,
   canManageAny = false,
 }: {
   label: string;
-  accept: "IMAGE" | "VIDEO" | "ANY";
   value: string | null;
   onChange: (mediaId: string | null, option?: MediaOption) => void;
   options: MediaOption[];
@@ -82,15 +78,10 @@ export function MediaPicker({
     setLocalOptions(options);
   }
 
-  const filtered = accept === "ANY" ? localOptions : localOptions.filter((o) => o.type === accept);
-  const showUploader = accept === "IMAGE" || accept === "ANY";
-  const showManualLinkToggle = accept === "VIDEO" || canManageAny;
-
   function handleUploaded(media: UploadedMedia) {
     const option: MediaOption = {
       id: media.id,
       label: uploadedMediaLabel(media),
-      type: media.type,
       previewUrl: `/api/media/${media.id}`, // registerUpload always creates a GOOGLE_DRIVE + READY asset
     };
     setLocalOptions((prev) => [option, ...prev]);
@@ -105,7 +96,7 @@ export function MediaPicker({
         setError(result.error);
         return;
       }
-      const option: MediaOption = { id: result.id, label: result.label, type: result.type, previewUrl: result.previewUrl };
+      const option: MediaOption = { id: result.id, label: result.label, previewUrl: result.previewUrl };
       setLocalOptions((prev) => [option, ...prev]);
       onChange(result.id, option);
       setShowManualLink(false);
@@ -123,43 +114,33 @@ export function MediaPicker({
           onChange={(e) => onChange(e.target.value || null)}
         >
           <option value="">— Không chọn —</option>
-          {filtered.map((o) => (
+          {localOptions.map((o) => (
             <option key={o.id} value={o.id}>{o.label}</option>
           ))}
         </select>
-        {showManualLinkToggle && (
+        {canManageAny && (
           <button type="button" className="adminButton adminButtonSmall" onClick={() => setShowManualLink((s) => !s)}>
-            {showManualLink ? "Đóng" : accept === "VIDEO" ? "+ Thêm video" : "Nâng cao"}
+            {showManualLink ? "Đóng" : "Nâng cao"}
           </button>
         )}
       </div>
 
-      {showUploader && (
-        <div style={{ marginTop: 8 }}>
-          <MediaUploader onUploaded={handleUploaded} />
-        </div>
-      )}
+      <div style={{ marginTop: 8 }}>
+        <MediaUploader onUploaded={handleUploaded} />
+      </div>
 
       {showManualLink && (
         <form
           action={handleManualLink}
           style={{ marginTop: 8, padding: 10, border: "1px solid var(--admin-border)", borderRadius: "var(--admin-radius)", display: "grid", gap: 8 }}
         >
-          {accept !== "VIDEO" && (
-            <p className="adminHint" style={{ margin: 0 }}>Liên kết thủ công một tệp đã có trên Drive — chỉ dùng khi không thể tải lên trực tiếp.</p>
-          )}
-          <input type="hidden" name="type" value={accept === "ANY" ? "IMAGE" : accept} />
-          <select name="provider" className="adminSelect" defaultValue={accept === "VIDEO" ? "YOUTUBE" : "GOOGLE_DRIVE"} required>
-            {accept !== "VIDEO" && <option value="GOOGLE_DRIVE">Google Drive</option>}
-            {(accept === "VIDEO" || accept === "ANY") && <option value="YOUTUBE">YouTube</option>}
-            {accept !== "VIDEO" && <option value="LOCAL_PLACEHOLDER">Placeholder (chưa có tệp)</option>}
+          <p className="adminHint" style={{ margin: 0 }}>Liên kết thủ công một tệp đã có trên Drive — chỉ dùng khi không thể tải lên trực tiếp.</p>
+          <input type="hidden" name="type" value="IMAGE" />
+          <select name="provider" className="adminSelect" defaultValue="GOOGLE_DRIVE" required>
+            <option value="GOOGLE_DRIVE">Google Drive</option>
+            <option value="LOCAL_PLACEHOLDER">Placeholder (chưa có tệp)</option>
           </select>
-          <input
-            name="providerFileId"
-            type="text"
-            placeholder={accept === "VIDEO" ? "YouTube video id" : "Drive file id (tuỳ chọn)"}
-            className="adminInput"
-          />
+          <input name="providerFileId" type="text" placeholder="Drive file id (tuỳ chọn)" className="adminInput" />
           <input name="alt" type="text" placeholder="Mô tả ảnh (alt)" className="adminInput" />
           <input name="caption" type="text" placeholder="Chú thích (tuỳ chọn)" className="adminInput" />
           <button type="submit" className="adminButton adminButtonPrimary adminButtonSmall" disabled={pending}>

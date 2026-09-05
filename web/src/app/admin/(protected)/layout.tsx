@@ -28,6 +28,11 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
       label: "Media",
       show: hasPermission(session.role, "media.manage.own") || hasPermission(session.role, "media.manage.any"),
     },
+    {
+      href: "/admin/media/videos",
+      label: "Video",
+      show: hasPermission(session.role, "media.manage.own") || hasPermission(session.role, "media.manage.any"),
+    },
     { href: "/admin/categories", label: "Chuyên mục", show: hasPermission(session.role, "taxonomy.manage") },
     { href: "/admin/topics", label: "Chủ đề", show: hasPermission(session.role, "taxonomy.manage") },
     { href: "/admin/tags", label: "Tag", show: hasPermission(session.role, "taxonomy.manage") },

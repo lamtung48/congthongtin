@@ -5,6 +5,7 @@ import { Extension, Node, mergeAttributes, type Editor } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent, type NodeViewProps } from "@tiptap/react";
 import { Fragment, type Node as PMNode } from "@tiptap/pm/model";
 import { MediaPicker, type MediaOption } from "../../../MediaPicker";
+import { VideoPicker, type VideoOption } from "../../../VideoPicker";
 
 /**
  * The rich-text editor's non-text block types, each a custom TipTap node
@@ -40,7 +41,21 @@ import { MediaPicker, type MediaOption } from "../../../MediaPicker";
 
 export interface ArticleMediaStorage {
   mediaOptions: MediaOption[];
+  /** Seeded once at editor creation, same as `mediaOptions` — unlike
+   *  images, a video linked/uploaded from one `articleYoutube` node isn't
+   *  broadcast to sibling YouTube blocks in the same document (no
+   *  `registerVideoOption` equivalent exists); each `VideoPicker` instance
+   *  just grows its own local list, same as `MediaPicker` did before the
+   *  cross-node registry existed. Documented as a known limitation — see
+   *  docs/YOUTUBE_INTEGRATION.md. */
+  videoOptions: VideoOption[];
   canManageMediaAny: boolean;
+  /** Whether *this* actor may upload a new video at all — Contributor's
+   *  own `media.manage.own` plus the deployment-wide policy env var (see
+   *  `youtubeService.isContributorVideoUploadAllowed`). Computed once
+   *  server-side and threaded through here rather than re-derived per
+   *  node view. */
+  canUploadVideo: boolean;
 }
 
 declare module "@tiptap/core" {
@@ -61,15 +76,20 @@ declare module "@tiptap/core" {
  * transaction, so it always reads the current array on its next render.
  */
 export const ArticleMediaRegistry = Extension.create<
-  { initialMediaOptions: MediaOption[]; canManageMediaAny: boolean },
+  { initialMediaOptions: MediaOption[]; initialVideoOptions: VideoOption[]; canManageMediaAny: boolean; canUploadVideo: boolean },
   ArticleMediaStorage
 >({
   name: "articleMediaRegistry",
   addOptions() {
-    return { initialMediaOptions: [], canManageMediaAny: false };
+    return { initialMediaOptions: [], initialVideoOptions: [], canManageMediaAny: false, canUploadVideo: false };
   },
   addStorage() {
-    return { mediaOptions: this.options.initialMediaOptions, canManageMediaAny: this.options.canManageMediaAny };
+    return {
+      mediaOptions: this.options.initialMediaOptions,
+      videoOptions: this.options.initialVideoOptions,
+      canManageMediaAny: this.options.canManageMediaAny,
+      canUploadVideo: this.options.canUploadVideo,
+    };
   },
 });
 
@@ -176,7 +196,6 @@ function ArticleImageView({ node, updateAttributes, deleteNode, getPos, editor }
       {picking || !mediaId ? (
         <MediaPicker
           label="Chọn ảnh"
-          accept="IMAGE"
           value={mediaId || null}
           onChange={(id, newOption) => {
             if (!id) return;
@@ -265,7 +284,6 @@ function ArticleGalleryView({ node, updateAttributes, deleteNode, getPos, editor
       </div>
       <MediaPicker
         label="Thêm ảnh vào bộ sưu tập"
-        accept="IMAGE"
         value={null}
         onChange={(id, newOption) => {
           if (!id) return;
@@ -312,27 +330,31 @@ function ArticleYoutubeView({ node, updateAttributes, deleteNode, getPos, editor
   const title = (node.attrs.title as string) || "";
   const storage = editor.storage.articleMediaRegistry as ArticleMediaStorage;
   const [picking, setPicking] = useState(!mediaId);
-  const option = storage.mediaOptions.find((o) => o.id === mediaId);
+  const option = storage.videoOptions.find((o) => o.id === mediaId);
 
   return (
     <NodeChrome editor={editor} getPos={getPos} deleteNode={deleteNode} label="Video YouTube">
       {picking || !mediaId ? (
-        <MediaPicker
+        <VideoPicker
           label="Chọn video"
-          accept="VIDEO"
           value={mediaId || null}
-          onChange={(id, newOption) => {
+          onChange={(id) => {
             if (!id) return;
-            if (newOption) registerMediaOption(editor, newOption);
             updateAttributes({ mediaId: id });
             setPicking(false);
           }}
-          options={storage.mediaOptions}
+          options={storage.videoOptions}
           canManageAny={storage.canManageMediaAny}
+          canUpload={storage.canUploadVideo}
         />
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
-          <div className="richVideoBadge">▶ {option?.label ?? mediaId}</div>
+          {option?.videoId ? (
+            // eslint-disable-next-line @next/next/no-img-element -- a public YouTube thumbnail URL, not a local asset
+            <img src={`https://img.youtube.com/vi/${option.videoId}/mqdefault.jpg`} alt={title || option.label} className="richImagePreview" style={{ maxWidth: 320 }} />
+          ) : (
+            <div className="richVideoBadge">▶ {option?.label ?? mediaId}</div>
+          )}
           <input
             className="adminInput"
             placeholder="Tiêu đề video"

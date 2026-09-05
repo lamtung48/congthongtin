@@ -131,6 +131,20 @@ enum MediaUsageType {
   HOMEPAGE_HERO
 }
 
+/// A YOUTUBE-provider `MediaAsset`'s privacy status, mirrored from the
+/// video's own YouTube setting (never independently decided by this app) —
+/// YouTube integration task, brief section 3. `PRIVATE` is a dead end for
+/// this CMS's own purposes: a private video cannot be embedded for an
+/// anonymous site visitor at all (only the channel owner / explicitly
+/// shared accounts can view it), so it is never selectable for an article's
+/// `YoutubeBlock` even though the row itself is kept (e.g. an Admin staging
+/// a video before making it public) — see `youtubeService.ts`.
+enum YoutubeVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
 enum EventStatus {
   UPCOMING
   LIVE
@@ -231,6 +245,19 @@ enum AuditAction {
   UPLOAD_MEDIA
   UPDATE_MEDIA
   DELETE_MEDIA
+  /// YouTube integration task's own audit set — brief section 8 names the
+  /// first three; `entityType: "MediaAsset"` for those (mirroring
+  /// UPLOAD_MEDIA/UPDATE_MEDIA). CONNECT_YOUTUBE/DISCONNECT_YOUTUBE aren't
+  /// in the brief's minimum list but were added for the same reason
+  /// RESTORE_ARTICLE was: a real credential-adjacent write (an Admin
+  /// linking or unlinking the whole channel) with no audit trail otherwise
+  /// — `entityType: "YoutubeConnection"` for those two, metadata holding
+  /// only the channel id/title, never the token.
+  UPLOAD_VIDEO
+  LINK_VIDEO
+  UPDATE_VIDEO
+  CONNECT_YOUTUBE
+  DISCONNECT_YOUTUBE
 }
 
 // ============================================================
@@ -274,6 +301,7 @@ model User {
   uploadedMedia              MediaAsset[]            @relation("MediaCreatedBy")
   auditLogs                  AuditLog[]
   homepageConfigurationEdits HomepageConfiguration[]
+  youtubeConnections         YoutubeConnection[]
 
   @@index([role])
 }
@@ -502,6 +530,26 @@ model MediaAsset {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
+  /// YouTube integration task (brief sections 3-4) — meaningful only for
+  /// `provider: YOUTUBE`. `visibility` mirrors the video's real YouTube
+  /// privacy status (never independently decided here); `durationSeconds`
+  /// and `errorReason` are populated from YouTube Data API responses at
+  /// upload/link time and refreshed on demand (`/admin/media/videos`'s
+  /// "Kiểm tra trạng thái"), not on every page view. `filename` doubles as
+  /// the video's own YouTube title and `caption` as its description for a
+  /// YOUTUBE asset — reusing the existing display fields rather than adding
+  /// two near-duplicate columns.
+  visibility      YoutubeVisibility?
+  durationSeconds Int?
+  /// A short machine-readable code (`"private"`, `"embed_disabled"`,
+  /// `"removed"`, `"quota_exceeded"`, `"upload_failed"`, `"processing"`) set
+  /// whenever a status check finds the video isn't currently playable —
+  /// brief section 7's error states. Cleared once a refresh finds it
+  /// healthy again. Deliberately a free-form string, not a DB enum: the set
+  /// of reasons is defined and validated in `youtubeService.ts`, not the
+  /// schema, so a new one never needs a migration.
+  errorReason     String?
+
   createdBy User? @relation("MediaCreatedBy", fields: [createdById], references: [id])
 
   usages MediaUsage[]
@@ -539,6 +587,35 @@ model MediaUsage {
 
   @@index([usageType, referenceId])
   @@index([mediaId])
+}
+
+/// The single OAuth link between this app and one YouTube channel — YouTube
+/// integration task, brief section 9: "OAuth token server-side." At most
+/// one row is ever meant to exist (`id: "default"`, a fixed singleton key
+/// `youtubeConnectionRepository.ts` always upserts/reads by, the same
+/// pattern a one-row settings table would use) — a second row is never
+/// created; reconnecting replaces this one. `encryptedRefreshToken` is
+/// AES-256-GCM-encrypted with `YOUTUBE_TOKEN_ENCRYPTION_KEY`
+/// (`src/server/integrations/youtube.ts`) — even a raw database dump never
+/// hands out a usable token, mirroring the "hash, don't store plaintext"
+/// discipline `User.passwordHash` already uses elsewhere (the difference
+/// being this value must be decryptable, since the API call itself needs
+/// the real token, unlike a one-way password hash). No service or route
+/// ever returns the decrypted value to a client — only connection status
+/// (channel title, connected-by, connected-at) is ever exposed, per brief
+/// section 9: "CONTRIBUTOR không được đọc token" (in practice, no role's
+/// client-facing response ever includes it, not just Contributor's).
+model YoutubeConnection {
+  id                    String   @id @default("default")
+  channelId             String
+  channelTitle          String
+  encryptedRefreshToken String
+  scope                 String
+  connectedById         String
+  connectedAt           DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  connectedBy User @relation(fields: [connectedById], references: [id])
 }
 
 model Gallery {

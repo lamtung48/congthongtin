@@ -4,6 +4,7 @@ import { requireSession } from "@/server/auth/session";
 import { articleService } from "@/server/services/articleService";
 import { taxonomyService } from "@/server/services/taxonomyService";
 import { mediaService } from "@/server/services/mediaService";
+import { youtubeService } from "@/server/services/youtubeService";
 import { organizationRepository } from "@/server/repositories/organizationRepository";
 import { provinceRepository } from "@/server/repositories/provinceRepository";
 import { authorProfileRepository } from "@/server/repositories/authorProfileRepository";
@@ -66,12 +67,19 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
         organizations: organizations.map((o) => ({ id: o.id, name: o.name })),
         provinces: provinces.map((p) => ({ id: p.id, name: p.name })),
         authors: authors.map((a) => ({ id: a.id, name: a.displayName })),
-        media: mediaRows.map((m) => ({
-          id: m.id,
-          label: m.alt || m.caption || m.providerFileId || m.id,
-          type: m.type,
-          previewUrl: m.provider === "GOOGLE_DRIVE" && m.status === "READY" ? `/api/media/${m.id}` : undefined,
-        })),
+        media: mediaRows
+          .filter((m) => m.type === "IMAGE")
+          .map((m) => ({
+            id: m.id,
+            label: m.alt || m.caption || m.providerFileId || m.id,
+            previewUrl: m.provider === "GOOGLE_DRIVE" && m.status === "READY" ? `/api/media/${m.id}` : undefined,
+          })),
+        // PRIVATE videos are filtered out at the source — brief section 3's
+        // decision to block them entirely from article content, not just
+        // warn — see `VideoPicker.tsx`'s header comment.
+        video: mediaRows
+          .filter((m) => m.type === "VIDEO" && m.provider === "YOUTUBE" && m.providerFileId && m.visibility !== "PRIVATE")
+          .map((m) => ({ id: m.id, label: m.filename || m.providerFileId!, videoId: m.providerFileId!, visibility: m.visibility })),
       }}
       permissions={{
         canEditNow: articleService.canEdit(session, article),
@@ -86,6 +94,7 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
         authorRestricted: !hasPermission(session.role, "article.edit.any"),
         ownAuthorId: ownAuthor?.id ?? null,
         canManageMediaAny: canViewAnyMedia,
+        canUploadVideo: youtubeService.canUploadVideo(session),
       }}
       revisions={revisions.map((r) => ({
         version: r.version,

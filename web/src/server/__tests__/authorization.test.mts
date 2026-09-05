@@ -61,11 +61,84 @@ mock.module("@/server/integrations/googleDrive", {
   },
 });
 
+/**
+ * The YouTube integration task's own mock, same rationale as the Google
+ * Drive one above — this environment has no real OAuth client/refresh
+ * token, so every function `youtubeService.ts` calls through
+ * `src/server/integrations/youtube.ts` is faked here; every permission/
+ * policy/visibility rule *inside* `youtubeService` itself still runs for
+ * real against the dev database. Video ids are fixed 11-character strings
+ * (the real `parseYoutubeVideoId` format `youtubeUrl.ts` enforces) keyed
+ * into `MOCK_VIDEO_STATUS` below, so `linkExistingVideo`/`importChannelVideo`
+ * exercise the exact same "verify against the real API" path production
+ * code takes — just against this in-memory fake instead of Google's.
+ */
+interface MockVideoStatus {
+  uploadStatus: string;
+  privacyStatus: "public" | "unlisted" | "private";
+  embeddable: boolean;
+  durationSeconds: number;
+  title: string;
+  description: string;
+}
+const MOCK_VIDEO_STATUS: Record<string, MockVideoStatus> = {
+  AAAAAAAAAAA: { uploadStatus: "processed", privacyStatus: "public", embeddable: true, durationSeconds: 120, title: "Video công khai", description: "Mô tả công khai" },
+  BBBBBBBBBBB: { uploadStatus: "processed", privacyStatus: "unlisted", embeddable: true, durationSeconds: 90, title: "Video không công khai", description: "" },
+  CCCCCCCCCCC: { uploadStatus: "processed", privacyStatus: "private", embeddable: true, durationSeconds: 60, title: "Video riêng tư", description: "" },
+  EEEEEEEEEEE: { uploadStatus: "processed", privacyStatus: "public", embeddable: false, durationSeconds: 30, title: "Video tắt nhúng", description: "" },
+  // "DDDDDDDDDDD" is intentionally absent — getVideoStatus(...) === null,
+  // simulating a removed/never-existed video.
+};
+
+mock.module("@/server/integrations/youtube", {
+  namedExports: {
+    isYoutubeConfigured: () => true,
+    buildYoutubeAuthUrl: (state: string) => `https://mock-google-oauth.test/authorize?state=${state}`,
+    exchangeCodeForTokens: async () => ({ refreshToken: "mock-refresh-token", channelId: "UC_mock_channel", channelTitle: "Kênh test HSV" }),
+    encryptToken: (token: string) => `enc:${token}`,
+    uploadVideoToYoutube: async (
+      _buffer: Buffer,
+      _mimeType: string,
+      options: { title: string; description: string; privacyStatus: "public" | "unlisted" | "private" },
+    ) => {
+      const videoId = `up${Math.random().toString(36).slice(2, 11)}`.padEnd(11, "0").slice(0, 11);
+      MOCK_VIDEO_STATUS[videoId] = {
+        uploadStatus: "processed",
+        privacyStatus: options.privacyStatus,
+        embeddable: true,
+        durationSeconds: 42,
+        title: options.title,
+        description: options.description,
+      };
+      return { videoId };
+    },
+    getVideoStatus: async (videoId: string) => MOCK_VIDEO_STATUS[videoId] ?? null,
+    updateVideoMetadata: async (videoId: string, changes: { title?: string; description?: string; privacyStatus?: "public" | "unlisted" | "private" }) => {
+      const existing = MOCK_VIDEO_STATUS[videoId];
+      if (!existing) return;
+      if (changes.title !== undefined) existing.title = changes.title;
+      if (changes.description !== undefined) existing.description = changes.description;
+      if (changes.privacyStatus !== undefined) existing.privacyStatus = changes.privacyStatus;
+    },
+    listChannelUploads: async (pageToken?: string) => {
+      if (pageToken) return { items: [], nextPageToken: undefined };
+      return {
+        items: [
+          { videoId: "AAAAAAAAAAA", title: "Video công khai", thumbnailUrl: "https://img.example.test/1.jpg", publishedAt: "2024-01-01T00:00:00Z" },
+          { videoId: "BBBBBBBBBBB", title: "Video không công khai", thumbnailUrl: "https://img.example.test/2.jpg", publishedAt: "2024-01-02T00:00:00Z" },
+        ],
+        nextPageToken: "page-2",
+      };
+    },
+  },
+});
+
 const { hasPermission, PERMISSIONS, ROLE_LABELS, ASSIGNABLE_ROLES } = await import("@/server/auth/permissions");
 const { prisma } = await import("@/server/db/client");
 const { articleService } = await import("@/server/services/articleService");
 const { userService } = await import("@/server/services/userService");
 const { mediaService, MediaInUseError } = await import("@/server/services/mediaService");
+const { youtubeService } = await import("@/server/services/youtubeService");
 const { hashPassword } = await import("@/server/auth/password");
 
 type Actor = { id: string; email: string; displayName: string; role: "ADMIN" | "MANAGER" | "CONTRIBUTOR"; status: "ACTIVE" | "DISABLED" };
@@ -150,6 +223,8 @@ before(async () => {
 });
 
 after(async () => {
+  delete process.env.YOUTUBE_ALLOW_CONTRIBUTOR_UPLOAD;
+  await prisma.youtubeConnection.deleteMany({ where: { id: "default" } });
   await prisma.auditLog.deleteMany({ where: { actorId: { in: testUserIds } } });
   await prisma.articleSlugHistory.deleteMany({ where: { articleId: { in: testArticleIds } } });
   // Articles first — this clears any Article.coverMediaId/ogMediaId FK
@@ -473,7 +548,7 @@ describe("Media library — tích hợp Google Drive (nhiệm vụ Google Drive 
     assert.equal(managerEdited.caption, "Manager sửa được của người khác");
   });
 
-  test("registerManualLink: chỉ Admin/Manager liên kết ảnh thủ công; liên kết video vẫn mở cho Contributor", async () => {
+  test("registerManualLink: chỉ Admin/Manager liên kết ảnh thủ công — Contributor luôn bị từ chối, kể cả trước đây từng có nhánh riêng cho video", async () => {
     await assert.rejects(() =>
       mediaService.registerManualLink(contributorA, { provider: "GOOGLE_DRIVE", type: "IMAGE", providerFileId: "manual-1" }),
     );
@@ -481,9 +556,13 @@ describe("Media library — tích hợp Google Drive (nhiệm vụ Google Drive 
     testMediaIds.push(manualImage.id);
     assert.equal(manualImage.status, "READY");
 
-    const manualVideo = await mediaService.registerManualLink(contributorA, { provider: "YOUTUBE", type: "VIDEO", providerFileId: "yt-1" });
-    testMediaIds.push(manualVideo.id);
-    assert.equal(manualVideo.provider, "YOUTUBE");
+    // The YouTube integration task replaced the old "trust a hand-typed
+    // video id" carve-out with `youtubeService.linkExistingVideo` (verified
+    // against the real API — see the "Video library" suite below), so this
+    // now requires `media.manage.any` like every other manual link.
+    await assert.rejects(() =>
+      mediaService.registerManualLink(contributorA, { provider: "YOUTUBE", type: "VIDEO", providerFileId: "yt-1" }),
+    );
   });
 
   test("remove(): Contributor không thể xoá media của người khác, và không thể xoá media đang được dùng làm cover", async () => {
@@ -566,5 +645,139 @@ describe("Media library — tích hợp Google Drive (nhiệm vụ Google Drive 
     assert.equal(usageAfter.length, 0, "removing the IMAGE block must also remove its MediaUsage row");
     await mediaService.remove(contributorA, image1.id);
     testMediaIds.splice(testMediaIds.indexOf(image1.id), 1);
+  });
+});
+
+describe("Video library — tích hợp YouTube (nhiệm vụ tích hợp YouTube, brief mục 1/3/9)", () => {
+  test("canUploadVideo/isContributorUploadAllowed phản ánh đúng biến môi trường YOUTUBE_ALLOW_CONTRIBUTOR_UPLOAD", () => {
+    delete process.env.YOUTUBE_ALLOW_CONTRIBUTOR_UPLOAD;
+    assert.equal(youtubeService.isContributorUploadAllowed(), false);
+    assert.equal(youtubeService.canUploadVideo(contributorA), false);
+    assert.equal(youtubeService.canUploadVideo(manager), true);
+    assert.equal(youtubeService.canUploadVideo(admin), true);
+
+    process.env.YOUTUBE_ALLOW_CONTRIBUTOR_UPLOAD = "true";
+    assert.equal(youtubeService.isContributorUploadAllowed(), true);
+    assert.equal(youtubeService.canUploadVideo(contributorA), true);
+    delete process.env.YOUTUBE_ALLOW_CONTRIBUTOR_UPLOAD;
+  });
+
+  test("uploadVideo: CONTRIBUTOR bị chặn khi chính sách tắt; khi bật, luôn bị ép về UNLISTED bất kể yêu cầu", async () => {
+    delete process.env.YOUTUBE_ALLOW_CONTRIBUTOR_UPLOAD;
+    await assert.rejects(() =>
+      youtubeService.uploadVideo(contributorA, { buffer: Buffer.from("x"), mimeType: "video/mp4", title: "Contributor bị chặn", description: "", visibility: "public" }),
+    );
+
+    process.env.YOUTUBE_ALLOW_CONTRIBUTOR_UPLOAD = "true";
+    const asset = await youtubeService.uploadVideo(contributorA, {
+      buffer: Buffer.from("x"),
+      mimeType: "video/mp4",
+      title: "Contributor upload khi được bật",
+      description: "Mô tả",
+      visibility: "public",
+    });
+    testMediaIds.push(asset.id);
+    assert.equal(asset.visibility, "UNLISTED", "một Contributor không bao giờ tự public được, kể cả khi yêu cầu public");
+    assert.equal(asset.createdById, contributorA.id);
+    assert.equal(asset.provider, "YOUTUBE");
+    delete process.env.YOUTUBE_ALLOW_CONTRIBUTOR_UPLOAD;
+  });
+
+  test("uploadVideo: MANAGER/ADMIN chọn visibility tự do, kể cả PRIVATE", async () => {
+    const asset = await youtubeService.uploadVideo(manager, {
+      buffer: Buffer.from("x"),
+      mimeType: "video/mp4",
+      title: "Manager upload private",
+      description: "",
+      visibility: "private",
+    });
+    testMediaIds.push(asset.id);
+    assert.equal(asset.visibility, "PRIVATE");
+  });
+
+  test("linkExistingVideo: parse URL/ID thật qua API, từ chối video không tồn tại hoặc chuỗi không hợp lệ", async () => {
+    const asset = await youtubeService.linkExistingVideo(contributorA, "https://youtu.be/AAAAAAAAAAA");
+    testMediaIds.push(asset.id);
+    assert.equal(asset.provider, "YOUTUBE");
+    assert.equal(asset.providerFileId, "AAAAAAAAAAA");
+    assert.equal(asset.visibility, "PUBLIC");
+    assert.equal(asset.durationSeconds, 120);
+
+    await assert.rejects(() => youtubeService.linkExistingVideo(contributorA, "DDDDDDDDDDD"), "video hợp lệ về hình thức nhưng không có thật trên YouTube phải bị từ chối");
+    await assert.rejects(() => youtubeService.linkExistingVideo(contributorA, "khong phai url hop le"));
+  });
+
+  test("listChannelUploadsForPicker/importChannelVideo: chỉ Admin/Manager duyệt được kênh, Contributor bị từ chối", async () => {
+    await assert.rejects(() => youtubeService.listChannelUploadsForPicker(contributorA));
+    const page = await youtubeService.listChannelUploadsForPicker(manager);
+    assert.equal(page.items.length, 2);
+
+    await assert.rejects(() => youtubeService.importChannelVideo(contributorA, "BBBBBBBBBBB"));
+    const imported = await youtubeService.importChannelVideo(admin, "BBBBBBBBBBB");
+    testMediaIds.push(imported.id);
+    assert.equal(imported.visibility, "UNLISTED");
+  });
+
+  test("updateVideoMetadata: CONTRIBUTOR chỉ sửa video của chính mình và không thể tự đặt PUBLIC/PRIVATE; MANAGER sửa tự do kể cả của người khác", async () => {
+    const ownAsset = await youtubeService.linkExistingVideo(contributorA, "BBBBBBBBBBB");
+    testMediaIds.push(ownAsset.id);
+
+    const updatedOwn = await youtubeService.updateVideoMetadata(contributorA, ownAsset.id, { title: "Tiêu đề mới", visibility: "unlisted" });
+    assert.equal(updatedOwn.filename, "Tiêu đề mới");
+    await assert.rejects(() => youtubeService.updateVideoMetadata(contributorA, ownAsset.id, { visibility: "public" }), "Contributor không được tự chuyển video của mình sang public");
+
+    const othersAsset = await youtubeService.linkExistingVideo(contributorB, "AAAAAAAAAAA");
+    testMediaIds.push(othersAsset.id);
+    await assert.rejects(() => youtubeService.updateVideoMetadata(contributorA, othersAsset.id, { title: "Chiếm quyền" }), "Contributor không được sửa video không phải của mình");
+
+    const managerEdited = await youtubeService.updateVideoMetadata(manager, othersAsset.id, { visibility: "private" });
+    assert.equal(managerEdited.visibility, "PRIVATE");
+  });
+
+  test("refreshStatus: đồng bộ lại trạng thái thật từ YouTube, kể cả khi video đã bị gỡ khỏi kênh", async () => {
+    const asset = await youtubeService.linkExistingVideo(manager, "CCCCCCCCCCC");
+    testMediaIds.push(asset.id);
+    assert.equal(asset.visibility, "PRIVATE");
+
+    delete MOCK_VIDEO_STATUS.CCCCCCCCCCC;
+    const refreshed = await youtubeService.refreshStatus(manager, asset.id);
+    assert.equal(refreshed.status, "REMOVED");
+    assert.equal(refreshed.errorReason, "removed");
+  });
+
+  test("listForAdmin: lọc thư viện video theo visibility hoạt động đúng", async () => {
+    // Freshly-uploaded videos only (not the shared fixed ids like
+    // "AAAAAAAAAAA" other tests above already linked and some also mutate
+    // via `updateVideoMetadata` — reusing one here would make this test's
+    // outcome depend on suite ordering).
+    const pub = await youtubeService.uploadVideo(manager, { buffer: Buffer.from("x"), mimeType: "video/mp4", title: "Video lọc public", description: "", visibility: "public" });
+    testMediaIds.push(pub.id);
+    const priv = await youtubeService.uploadVideo(manager, { buffer: Buffer.from("x"), mimeType: "video/mp4", title: "Video lọc private", description: "", visibility: "private" });
+    testMediaIds.push(priv.id);
+
+    const onlyPrivate = await mediaService.listForAdmin(manager, { type: "VIDEO", visibility: "PRIVATE" });
+    assert.ok(onlyPrivate.some((v) => v.id === priv.id));
+    assert.ok(!onlyPrivate.some((v) => v.id === pub.id));
+  });
+
+  test("Kết nối kênh YouTube (OAuth) chỉ Admin mới được thực hiện; connect/disconnect đọc/ghi đúng trạng thái", async () => {
+    await assert.rejects(() => youtubeService.getConnectionStatus(manager));
+    assert.throws(() => youtubeService.beginConnect(contributorA));
+
+    const { url, state } = youtubeService.beginConnect(admin);
+    assert.ok(url.includes(state));
+
+    const connection = await youtubeService.completeConnect(admin, "mock-auth-code");
+    assert.equal(connection.channelId, "UC_mock_channel");
+
+    const status = await youtubeService.getConnectionStatus(admin);
+    assert.equal(status.connected, true);
+    if (status.connected) assert.equal(status.channelTitle, "Kênh test HSV");
+
+    await assert.rejects(() => youtubeService.disconnect(contributorA));
+    await youtubeService.disconnect(admin);
+
+    const afterDisconnect = await youtubeService.getConnectionStatus(admin);
+    assert.equal(afterDisconnect.connected, false);
   });
 });

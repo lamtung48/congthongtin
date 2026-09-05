@@ -42,6 +42,13 @@ export interface MediaAsset {
   /** Shown by `MediaImage`/`MediaVideo` whenever no real source resolves. */
   placeholder?: string;
   status: MediaStatus;
+  /** A short machine-readable code for *why* a `"ready"` (or `"removed"`)
+   *  `youtube` asset still can't actually be embedded for a visitor —
+   *  `"private"`, `"embed_disabled"`, `"removed"`, `"upload_failed"`, or
+   *  `"quota_exceeded"`. Absent for every other provider. See
+   *  `resolveVideoPlaybackSource`/`resolveVideoUnavailableReason` in
+   *  `resolveMedia.ts`, the only place this is read. */
+  errorReason?: string;
   /** Provider-specific extras (e.g. capture location/date) that don't
    *  warrant their own top-level field. */
   metadata?: Record<string, string | number>;

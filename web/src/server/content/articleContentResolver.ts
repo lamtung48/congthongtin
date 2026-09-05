@@ -54,6 +54,7 @@ function mapMedia(media: PrismaMediaAsset): MediaAsset {
     height: media.height ?? undefined,
     mimeType: media.mimeType ?? undefined,
     status: MEDIA_STATUS_MAP[media.status],
+    errorReason: media.errorReason ?? undefined,
   };
 }
 

@@ -7,6 +7,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
 import type { MediaOption } from "../../MediaPicker";
+import type { VideoOption } from "../../VideoPicker";
 import { ArticleImage, ArticleGallery, ArticleYoutube, ArticleQuote, ArticleTable, ArticleEmbed, ArticleMediaRegistry } from "./tiptap/nodes";
 import { blocksToDoc, docToBlocks, type EditorBlock } from "./tiptap/blockConversion";
 
@@ -39,13 +40,17 @@ export function ArticleContentEditor({
   blocks,
   onChange,
   mediaOptions,
+  videoOptions,
   canManageMediaAny,
+  canUploadVideo,
   editable = true,
 }: {
   blocks: EditorBlock[];
   onChange: (blocks: EditorBlock[]) => void;
   mediaOptions: MediaOption[];
+  videoOptions: VideoOption[];
   canManageMediaAny: boolean;
+  canUploadVideo: boolean;
   editable?: boolean;
 }) {
   // Captured once, at mount, via the lazy-initializer form of `useState` —
@@ -56,6 +61,7 @@ export function ArticleContentEditor({
   // exactly once regardless.
   const [initialBlocks] = useState(blocks);
   const [initialMediaOptions] = useState(mediaOptions);
+  const [initialVideoOptions] = useState(videoOptions);
 
   // `onChange` itself is NOT captured once — the editor must always call
   // whatever the latest `onChange` prop is (`ArticleEditor.tsx` passes a
@@ -88,7 +94,7 @@ export function ArticleContentEditor({
         link: { openOnClick: false, autolink: true },
       }),
       Placeholder.configure({ placeholder: "Bắt đầu viết nội dung bài viết…" }),
-      ArticleMediaRegistry.configure({ initialMediaOptions, canManageMediaAny }),
+      ArticleMediaRegistry.configure({ initialMediaOptions, initialVideoOptions, canManageMediaAny, canUploadVideo }),
       ArticleImage,
       ArticleGallery,
       ArticleYoutube,

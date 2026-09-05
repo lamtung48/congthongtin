@@ -4,7 +4,7 @@ import styles from "./MediaVideo.module.css";
 import { MediaImage } from "./MediaImage";
 import { IconOffline, IconPlay } from "@/components/icons";
 import type { MediaAsset } from "@/domain/media";
-import { resolveVideoPlaybackSource } from "@/lib/media/resolveMedia";
+import { resolveVideoPlaybackSource, resolveVideoUnavailableReason, type VideoUnavailableReason } from "@/lib/media/resolveMedia";
 
 /**
  * The one place that knows how to render a video slot in either of its two
@@ -12,24 +12,37 @@ import { resolveVideoPlaybackSource } from "@/lib/media/resolveMedia";
  * surface (`playing={true}`) a caller swaps in once the viewer presses play
  * (e.g. inside a modal, as `VideoSection` does).
  *
- * States handled:
- * - **thumbnail**: `<MediaImage>` for the cover, plus a play button when
- *   `media.status === "ready"` and a `sourceId` exists.
- * - **unavailable**: `status !== "ready"` (or no `sourceId`) — no source has
- *   been connected yet. Renders a muted icon + `unavailableLabel` instead of
- *   a play button; the thumbnail below still renders normally.
- * - **removed**: `status === "removed"` — a source existed and was taken
- *   down. Same visual slot as unavailable, distinct label.
- * - **playing / embed disabled fallback**: `resolveVideoPlaybackSource()`
- *   is the only thing that can produce a real embeddable URL; today it
- *   always returns `undefined` (no YouTube integration in scope — see
- *   `docs/MEDIA_ARCHITECTURE.md`), so `playing` mode always renders the
- *   fallback note. Once a resolver returns a URL, this same branch renders
- *   a real `<iframe>` instead, with no caller-side change.
+ * States handled (via `resolveVideoUnavailableReason` — see its own doc
+ * comment for the full list):
+ * - **thumbnail**: `<MediaImage>` for the cover, plus a play button once
+ *   `resolveVideoPlaybackSource` can actually resolve a URL.
+ * - **unavailable / removed / processing**: no source connected yet, taken
+ *   down, or a freshly-uploaded YouTube video still being transcoded — same
+ *   visual slot as unavailable, each with its own label.
+ * - **private / embed_disabled / upload_failed / quota_exceeded**:
+ *   YouTube-specific states where the CMS has a row for the video but it
+ *   genuinely cannot be embedded right now (brief section 7) — same slot,
+ *   specific label.
+ * - **playing**: a real `<iframe>` once `resolveVideoPlaybackSource`
+ *   resolves a URL; otherwise the same reason-specific note.
  * - **responsive ratio**: like `MediaImage`, this fills its parent
  *   (`position: absolute; inset: 0`) — the caller's own CSS controls the
  *   aspect ratio (e.g. `aspect-ratio: 16/9` on `.player`), unchanged.
  */
+
+const REASON_LABELS: Record<Exclude<VideoUnavailableReason, "missing" | "removed">, string> = {
+  processing: "Video đang được xử lý, vui lòng quay lại sau.",
+  private: "Video này đang ở chế độ riêng tư.",
+  embed_disabled: "Chủ kênh đã tắt tính năng nhúng cho video này.",
+  upload_failed: "Video tải lên không thành công.",
+  quota_exceeded: "Không thể tải video lúc này, vui lòng thử lại sau.",
+};
+
+const PLAYING_FALLBACK_NOTE: Record<Exclude<VideoUnavailableReason, "missing">, string> = {
+  ...REASON_LABELS,
+  removed: "Video này đã bị gỡ khỏi kênh. Vui lòng chọn video khác trong playlist.",
+};
+
 export function MediaVideo({
   media,
   playing = false,
@@ -47,8 +60,8 @@ export function MediaVideo({
   removedLabel?: string;
   className?: string;
 }) {
-  const removed = media.status === "removed";
-  const connected = media.status === "ready" && !!media.sourceId;
+  const unavailableReason = resolveVideoUnavailableReason(media);
+  const connected = !unavailableReason;
 
   if (playing) {
     const playback = resolveVideoPlaybackSource(media);
@@ -71,13 +84,20 @@ export function MediaVideo({
           <IconPlay size={22} />
         </span>
         <span className={styles.note}>
-          {removed
-            ? "Video này đã bị gỡ khỏi kênh. Vui lòng chọn video khác trong playlist."
+          {unavailableReason && unavailableReason !== "missing"
+            ? PLAYING_FALLBACK_NOTE[unavailableReason]
             : "Video sẽ phát tại đây. Nếu video không khả dụng, bản dựng thật sẽ hiển thị liên kết mở trên kênh YouTube của Hội."}
         </span>
       </div>
     );
   }
+
+  const unavailableLabelText =
+    unavailableReason === "removed"
+      ? removedLabel
+      : unavailableReason && unavailableReason !== "missing"
+        ? REASON_LABELS[unavailableReason]
+        : unavailableLabel;
 
   return (
     <div className={className} style={{ position: "absolute", inset: 0 }}>
@@ -91,7 +111,7 @@ export function MediaVideo({
           <span className={styles.unavailIcon}>
             <IconOffline size={22} />
           </span>
-          <span className={styles.unavailLabel}>{removed ? removedLabel : unavailableLabel}</span>
+          <span className={styles.unavailLabel}>{unavailableLabelText}</span>
         </span>
       )}
     </div>

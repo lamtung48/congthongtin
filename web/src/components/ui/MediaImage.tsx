@@ -13,9 +13,8 @@ type LoadState = "idle" | "loading" | "loaded" | "error";
  * `MediaPlaceholder` does (`position: absolute; inset: 0`) — every parent
  * keeps controlling size/aspect-ratio through its own CSS, unchanged.
  *
- * States handled: `missing` (no resolvable source — including every asset
- * today, since Drive/YouTube resolution isn't wired up yet, see
- * `resolveMedia.ts`) falls back to `MediaPlaceholder`; `loading` shows the
+ * States handled: `missing` (no resolvable source — see `resolveMedia.ts`
+ * for what counts as one per provider) falls back to `MediaPlaceholder`; `loading` shows the
  * same placeholder underneath while the image decodes; `loaded` cross-fades
  * the real image in; `error` (the URL 404s or the file was removed) falls
  * back to `MediaPlaceholder` again rather than a broken-image icon.
@@ -44,9 +43,10 @@ export function MediaImage({ media, className, priority = false }: { media: Medi
     <div className={className} style={{ position: "absolute", inset: 0 }}>
       {missing && <MediaPlaceholder need={placeholderText} />}
       {src && state !== "error" && (
-        // Source host isn't known yet (Drive/YouTube, behind a future
-        // media service) — next/image needs a configured remotePattern,
-        // which doesn't exist until a real one is chosen.
+        // A plain `<img>`, not `next/image`: sources span this app's own
+        // `/api/media/[id]` route (Drive) and YouTube's public thumbnail
+        // host, and this component has no server-side context to pick a
+        // `next/image` loader/remotePattern per asset at render time.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={src}
