@@ -37,6 +37,19 @@ mock.module("@/server/auth/session", {
 });
 
 /**
+ * Production Data Policy task's own mock, same rationale as the session
+ * mock above: `revalidatePath`/`revalidateTag` require a live Next.js
+ * request/Server Action lifecycle (`articleService.ts`'s
+ * `revalidatePublicSite()` calls these on publish/unpublish/edit-while-
+ * published) — meaningless, and throwing ("Invariant: static generation
+ * store missing"), outside one. Every permission/workflow rule under test
+ * still runs for real; only this cache-invalidation side effect is faked.
+ */
+mock.module("next/cache", {
+  namedExports: { revalidatePath: () => {}, revalidateTag: () => {} },
+});
+
+/**
  * The Google Drive media task's own mock, same rationale as the session mock
  * above: `googleDrive.ts` throws `GoogleDriveNotConfiguredError` unless real
  * service-account env vars are set (never true in this test run), which
@@ -140,6 +153,9 @@ const { userService } = await import("@/server/services/userService");
 const { mediaService, MediaInUseError } = await import("@/server/services/mediaService");
 const { youtubeService } = await import("@/server/services/youtubeService");
 const { hashPassword } = await import("@/server/auth/password");
+const { articleRepository } = await import("@/server/repositories/articleRepository");
+const { DatabaseProvider } = await import("@/data-access/providers/databaseProvider");
+const databaseProvider = new DatabaseProvider();
 
 type Actor = { id: string; email: string; displayName: string; role: "ADMIN" | "MANAGER" | "CONTRIBUTOR"; status: "ACTIVE" | "DISABLED" };
 
@@ -779,5 +795,108 @@ describe("Video library — tích hợp YouTube (nhiệm vụ tích hợp YouTub
 
     const afterDisconnect = await youtubeService.getConnectionStatus(admin);
     assert.equal(afterDisconnect.connected, false);
+  });
+});
+
+describe("Production Data Policy — chỉ public bài PUBLISHED có publishedAt hợp lệ (nhiệm vụ kết nối database, brief mục 2)", () => {
+  test("DRAFT/IN_REVIEW/APPROVED/SCHEDULED không xuất hiện trên DatabaseProvider công khai", async () => {
+    const draft = await makeArticle(contributorA, "Bài DRAFT không được public");
+
+    const inReview = await makeArticle(contributorA, "Bài IN_REVIEW không được public");
+    await articleService.submitForReview(contributorA, await reload(inReview!.id));
+
+    const approved = await makeArticle(contributorA, "Bài APPROVED không được public");
+    await articleService.submitForReview(contributorA, await reload(approved!.id));
+    await articleService.approve(manager, await reload(approved!.id));
+
+    const scheduled = await makeArticle(contributorA, "Bài SCHEDULED không được public");
+    await articleService.submitForReview(contributorA, await reload(scheduled!.id));
+    await articleService.approve(manager, await reload(scheduled!.id));
+    await articleService.schedule(manager, await reload(scheduled!.id), new Date(Date.now() + 3600_000));
+
+    const nonPublicArticles = [draft!, inReview!, approved!, scheduled!];
+    for (const a of nonPublicArticles) {
+      assert.equal(await databaseProvider.getArticleBySlug(a.slug), null, `getArticleBySlug("${a.slug}") phải ẩn khỏi public (status hiện tại: ${(await reload(a.id)).status})`);
+    }
+
+    const publicSlugs = await databaseProvider.getArticleSlugs();
+    const allPublic = await databaseProvider.getAllArticles();
+    const draftCategorySlug = (await reload(draft!.id)).category.slug;
+    const byCategory = await databaseProvider.getArticlesByCategory(draftCategorySlug);
+    for (const a of nonPublicArticles) {
+      assert.ok(!publicSlugs.includes(a.slug), `getArticleSlugs() không được liệt kê "${a.slug}"`);
+      assert.ok(!allPublic.some((p) => p.slug === a.slug), `getAllArticles() không được trả "${a.slug}"`);
+      assert.ok(!byCategory.some((p) => p.slug === a.slug), `getArticlesByCategory() không được trả "${a.slug}"`);
+    }
+  });
+
+  test("PUBLISHED với publishedAt hợp lệ thì public đầy đủ; PUBLISHED nhưng publishedAt ở tương lai vẫn bị ẩn (phòng thủ)", async () => {
+    const article = await makeArticle(contributorA, "Bài xuất bản hợp lệ cho test policy");
+    await articleService.submitForReview(contributorA, await reload(article!.id));
+    await articleService.approve(manager, await reload(article!.id));
+    const published = await articleService.publish(manager, await reload(article!.id));
+    assert.equal(published.status, "PUBLISHED");
+
+    const publicArticle = await databaseProvider.getArticleBySlug(article!.slug);
+    assert.ok(publicArticle, "bài PUBLISHED với publishedAt quá khứ phải public");
+    assert.equal(publicArticle?.status, "published");
+    assert.ok((await databaseProvider.getArticleSlugs()).includes(article!.slug));
+
+    // A hand-set future `publishedAt` directly via the repository, bypassing
+    // `articleService`'s own workflow rules entirely — the production data
+    // policy must catch this on its own even if some future write path
+    // forgets to guard against it (brief mục 2's explicit "publishedAt hợp
+    // lệ" requirement, not just "status = PUBLISHED").
+    await articleRepository.update(article!.id, { publishedAt: new Date(Date.now() + 3600_000) });
+    assert.equal(await databaseProvider.getArticleBySlug(article!.slug), null, "PUBLISHED với publishedAt tương lai vẫn phải bị ẩn");
+    assert.ok(!(await databaseProvider.getArticleSlugs()).includes(article!.slug));
+  });
+
+  test("ARCHIVED (bài đã gỡ) không còn public", async () => {
+    const article = await makeArticle(contributorA, "Bài sẽ bị gỡ cho test policy");
+    await articleService.submitForReview(contributorA, await reload(article!.id));
+    await articleService.approve(manager, await reload(article!.id));
+    await articleService.publish(manager, await reload(article!.id));
+    assert.ok(await databaseProvider.getArticleBySlug(article!.slug), "phải public ngay sau khi xuất bản");
+
+    await articleService.unpublish(manager, await reload(article!.id));
+    assert.equal(await databaseProvider.getArticleBySlug(article!.slug), null, "bài đã gỡ (ARCHIVED) không được public");
+  });
+
+  test("searchContent() không lộ bài chưa PUBLISHED", async () => {
+    const uniqueTitle = `Chuoi tim kiem doc nhat ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const draft = await makeArticle(contributorA, uniqueTitle);
+    const results = await databaseProvider.searchContent(uniqueTitle, 10);
+    assert.ok(!results.some((r) => r.id === `article:${draft!.slug}`), "searchContent không được trả bài DRAFT");
+  });
+});
+
+describe("Preview CMS — 3 role (nhiệm vụ kết nối database, brief mục 8)", () => {
+  test("ADMIN và MANAGER xem được preview của bất kỳ bài nào, kể cả DRAFT của một Contributor", async () => {
+    const draft = await makeArticle(contributorA, "Bài DRAFT của Contributor A để test preview");
+    assert.equal(articleService.canView(admin, draft!), true);
+    assert.equal(articleService.canView(manager, draft!), true);
+  });
+
+  test("CONTRIBUTOR chỉ xem được preview bài của chính mình, không xem được bài của Contributor khác", async () => {
+    const ownDraft = await makeArticle(contributorA, "Bài của Contributor A cho test preview");
+    const othersDraft = await makeArticle(contributorB, "Bài của Contributor B cho test preview");
+    assert.equal(articleService.canView(contributorA, ownDraft!), true);
+    assert.equal(articleService.canView(contributorA, othersDraft!), false);
+  });
+
+  test("Quyền preview áp dụng như nhau bất kể trạng thái bài (DRAFT, IN_REVIEW, PUBLISHED, ...)", async () => {
+    const article = await makeArticle(contributorA, "Bài nhiều trạng thái cho test preview");
+    await articleService.submitForReview(contributorA, await reload(article!.id));
+    const inReview = await reload(article!.id);
+    // A Contributor can still preview their own submitted (no longer
+    // editable, per `assertCanEdit`) article — viewing and editing are
+    // different permissions, and `/preview/articles/[id]` only ever checks
+    // the former.
+    assert.equal(articleService.canView(contributorA, inReview), true);
+    assert.equal(articleService.canEdit(contributorA, inReview), false);
+    assert.equal(articleService.canView(contributorB, inReview), false);
+    assert.equal(articleService.canView(manager, inReview), true);
+    assert.equal(articleService.canView(admin, inReview), true);
   });
 });

@@ -7,7 +7,7 @@ import { PageShell } from "@/components/ui/PageShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchResultRow } from "@/components/content/SearchResultRow";
 import { IconSearch, IconWarning } from "@/components/icons";
-import { searchContent } from "@/services/contentService";
+import { fetchSearchResults } from "@/lib/searchClient";
 import { searchHref } from "@/lib/routes";
 import type { SearchResultItem } from "@/domain/search";
 
@@ -54,7 +54,7 @@ export function SearchPageClient() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPhase("loading");
     const requestId = ++requestIdRef.current;
-    searchContent(q, PAGE_RESULT_LIMIT)
+    fetchSearchResults(q, PAGE_RESULT_LIMIT)
       .then((hits) => {
         if (cancelled || requestId !== requestIdRef.current) return;
         setPhase(hits.length ? "results" : "empty");

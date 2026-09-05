@@ -7,6 +7,22 @@ import { getHomepage } from "@/services/homepageService";
 import { organizationJsonLd } from "@/lib/structuredData";
 import { SITE_DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/siteConfig";
 
+/**
+ * Production Data Policy task, brief section 6: an ISR safety net for
+ * every public page under this layout — the lowest `revalidate` across a
+ * route's layouts/pages governs the whole route (Next.js's own caching
+ * docs, "Revalidation frequency"), so this one export is enough to cap
+ * every `(site)` page (home, listings, article detail, locality/unit
+ * pages, ...) at a 60-second-stale ceiling without repeating it on each
+ * leaf page. This is the *fallback*, not the primary mechanism — the
+ * primary one is `articleService.ts`'s on-demand `revalidatePath("/",
+ * "layout")` on publish/unpublish/edit-while-published, which reflects a
+ * change immediately instead of waiting up to 60s. Admin/preview routes
+ * are unaffected (they're already dynamic per-request via `cookies()` in
+ * `requireSession()`, and this layout doesn't wrap them).
+ */
+export const revalidate = 60;
+
 // Weights/styles trimmed to exactly what the CSS uses — verified by
 // grepping every `font-weight`/`font-style` declaration in the codebase
 // (see docs/PERFORMANCE.md, "font loading"): only 400 (the unstyled

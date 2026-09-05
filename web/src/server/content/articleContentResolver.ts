@@ -14,14 +14,16 @@ import type {
 /**
  * Turns a Prisma `Article` (with its `ArticleBlock[]`/`MediaAsset` rows)
  * into the exact domain shapes `ArticleDetailView`/`ArticleBody` already
- * render for the public site — the one piece of glue that lets the CMS's
- * `/admin/articles/[id]/preview` reuse that production component instead of
- * a second, CMS-only renderer (which is explicitly what the brief rules
- * out: "Không tạo một renderer riêng trong CMS gây khác giao diện public").
- * Nothing in `src/data-access/**`/`src/services/**` reads from the
- * database yet (see docs/BACKEND_ARCHITECTURE.md, "What this task does not
- * wire up") — this resolver exists only for this one CMS preview path, not
- * as a general-purpose provider.
+ * render — the one piece of glue that lets both the CMS's
+ * `/preview/articles/[id]` AND the public `DatabaseProvider`
+ * (`src/data-access/providers/databaseProvider.ts`) reuse that same
+ * production component instead of a second, diverging renderer (which is
+ * explicitly what the brief rules out: "Không tạo một renderer riêng trong
+ * CMS gây khác giao diện public"). `mapMedia` is exported for
+ * `databaseProvider.ts`/`articleMapper.ts` to reuse directly wherever they
+ * need a lone `MediaAsset` row mapped outside of a full article (a Video's
+ * own media, a Hero's cover, ...), rather than duplicating this
+ * provider-enum/status-enum translation a second time.
  */
 
 const MEDIA_PROVIDER_MAP: Record<PrismaMediaProvider, MediaAsset["provider"]> = {
@@ -42,7 +44,7 @@ const MEDIA_STATUS_MAP: Record<PrismaMediaStatus, MediaAsset["status"]> = {
   PROCESSING: "processing",
 };
 
-function mapMedia(media: PrismaMediaAsset): MediaAsset {
+export function mapMedia(media: PrismaMediaAsset): MediaAsset {
   return {
     id: media.id,
     provider: MEDIA_PROVIDER_MAP[media.provider],

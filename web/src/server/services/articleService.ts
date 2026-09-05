@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { articleRepository, type ArticleWithRelations, type ArticleAdminFilter } from "@/server/repositories/articleRepository";
 import { authorProfileRepository } from "@/server/repositories/authorProfileRepository";
 import { mediaRepository } from "@/server/repositories/mediaRepository";
@@ -208,6 +209,27 @@ async function handleSlugChange(article: Pick<ArticleWithRelations, "id" | "slug
   }
 }
 
+/**
+ * Production Data Policy task, brief section 6: "CMS publish/update phải
+ * invalidate trang phù hợp." A single `revalidatePath("/", "layout")`
+ * purges every cached page under the public `(site)` root layout — home,
+ * every listing, every article detail page, locality/unit pages, all of
+ * it — in one call, per Next.js's own documented "Revalidating all data"
+ * pattern, rather than maintaining a hand-built list of every category/
+ * topic/province/organization path a single article touches (fragile: miss
+ * one and that page silently serves stale content until the 60s ISR
+ * ceiling in `(site)/layout.tsx` catches up). `/sitemap.xml` is a metadata
+ * route file, not a page under that layout, so it needs its own call.
+ * Called only from workflow methods that can actually change what's
+ * publicly visible — never from `create`/`submitForReview`/`approve`/
+ * `returnForRevision`/`autosaveDraft`, none of which can touch a currently-
+ * PUBLISHED article's public page.
+ */
+function revalidatePublicSite() {
+  revalidatePath("/", "layout");
+  revalidatePath("/sitemap.xml");
+}
+
 export const articleService = {
   getBySlug: articleRepository.findBySlug,
   getById: articleRepository.findById,
@@ -293,6 +315,10 @@ export const articleService = {
     const full = await articleRepository.findById(updated.id);
     if (full) await snapshotRevision(full, actor.id, input.note);
     await auditLogRepository.record({ actorId: actor.id, action: "UPDATE_ARTICLE", entityType: "Article", entityId: article.id });
+    // `article` is the pre-update row — its `status` here reflects whether
+    // this edit just changed already-public content (a Manager fixing a
+    // typo on a live article), the case `revalidatePublicSite()` exists for.
+    if (article.status === "PUBLISHED") revalidatePublicSite();
     return full;
   },
 
@@ -367,6 +393,7 @@ export const articleService = {
     assertTransitionAllowed(article.status, "PUBLISHED");
     const updated = await articleRepository.updateStatus(article.id, "PUBLISHED", article.publishedAt ? {} : { publishedAt: new Date() });
     await auditLogRepository.record({ actorId: actor.id, action: "PUBLISH_ARTICLE", entityType: "Article", entityId: article.id });
+    revalidatePublicSite();
     return updated;
   },
 
@@ -399,6 +426,7 @@ export const articleService = {
     assertTransitionAllowed(article.status, "ARCHIVED");
     const updated = await articleRepository.updateStatus(article.id, "ARCHIVED");
     await auditLogRepository.record({ actorId: actor.id, action: "UNPUBLISH_ARTICLE", entityType: "Article", entityId: article.id });
+    revalidatePublicSite();
     return updated;
   },
 
@@ -469,6 +497,10 @@ export const articleService = {
     const full = await articleRepository.findById(updated.id);
     if (full) await snapshotRevision(full, actor.id, `Khôi phục từ phiên bản ${version}`);
     await auditLogRepository.record({ actorId: actor.id, action: "RESTORE_REVISION", entityType: "Article", entityId: article.id, metadata: { version } });
+    // Same "was it already public" check as `update()` — restoring a past
+    // revision's content onto a currently-PUBLISHED article changes what a
+    // visitor sees right now, exactly like a normal content edit would.
+    if (article.status === "PUBLISHED") revalidatePublicSite();
     return full;
   },
 
@@ -490,5 +522,9 @@ export const articleService = {
     }
     await articleRepository.remove(article.id);
     await auditLogRepository.record({ actorId: actor.id, action: "DELETE", entityType: "Article", entityId: article.id });
+    // Admin deleting a still-live PUBLISHED article outright (a Manager
+    // can't reach this branch — they're refused above) — its public page
+    // must 404 immediately, not linger cached until the ISR ceiling.
+    if (article.status === "PUBLISHED") revalidatePublicSite();
   },
 };

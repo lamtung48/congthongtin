@@ -22,6 +22,13 @@ export const taxonomyRepository = {
     return prisma.topic.create({ data });
   },
 
+  /** The public site's `Topic.articleCount` (`/chu-de` listing, homepage's
+   *  trending topics) — published articles only, matching the same
+   *  production data policy every other public count/list applies. */
+  countPublishedArticlesByTopic(topicId: string) {
+    return prisma.article.count({ where: { status: "PUBLISHED", topics: { some: { topicId } } } });
+  },
+
   listTags() {
     return prisma.tag.findMany({ orderBy: { name: "asc" } });
   },

@@ -1,4 +1,11 @@
 import { prisma } from "@/server/db/client";
+import { articleWithRelations } from "@/server/repositories/articleRepository";
+
+const eventWithRelationsInclude = {
+  province: true,
+  organization: true,
+  coverMedia: true,
+} as const;
 
 const placementsInclude = {
   sections: {
@@ -29,7 +36,7 @@ export const homepageRepository = {
       return prisma.article.findFirst({
         where: { status: "PUBLISHED" },
         orderBy: { publishedAt: "desc" },
-        include: { category: true, author: true, coverMedia: true },
+        include: articleWithRelations,
       });
     },
     featuredArticles(limit: number) {
@@ -37,7 +44,7 @@ export const homepageRepository = {
         where: { status: "PUBLISHED" },
         orderBy: { publishedAt: "desc" },
         take: limit,
-        include: { category: true, coverMedia: true },
+        include: articleWithRelations,
       });
     },
     storyRailArticles(limit: number) {
@@ -45,7 +52,7 @@ export const homepageRepository = {
         where: { status: "PUBLISHED", provinceId: { not: null } },
         orderBy: { publishedAt: "desc" },
         take: limit,
-        include: { category: true, province: true },
+        include: articleWithRelations,
       });
     },
     latestVideo() {
@@ -81,8 +88,32 @@ export const homepageRepository = {
         where: { status: "PUBLISHED", organizationId: { not: null } },
         orderBy: { publishedAt: "desc" },
         take: limit,
-        include: { organization: true, category: true },
+        include: articleWithRelations,
       });
+    },
+  },
+
+  /**
+   * One lookup per `HomepageContentType` a `HomepagePlacement.contentId`
+   * can point at — `HomepageService.resolveHomepage()`'s own join for the
+   * "CMS has actually pinned something" path, the counterpart to `fallback`
+   * above. `ARTICLE` is deliberately not resolved here: it goes through
+   * `articleRepository.findById` instead (see the service), since that
+   * already returns the exact `ArticleWithRelations` shape this app has
+   * exactly one query for.
+   */
+  resolvers: {
+    video(id: string) {
+      return prisma.video.findUnique({ where: { id }, include: { category: true, media: true } });
+    },
+    event(id: string) {
+      return prisma.event.findUnique({ where: { id }, include: eventWithRelationsInclude });
+    },
+    platform(id: string) {
+      return prisma.platform.findUnique({ where: { id } });
+    },
+    gallery(id: string) {
+      return prisma.gallery.findUnique({ where: { id }, include: { items: { orderBy: { order: "asc" }, include: { media: true } } } });
     },
   },
 };

@@ -9,7 +9,7 @@ import type { ArticleStatus, Prisma } from "@/generated/prisma/client";
  * layer" for why the split exists.
  */
 
-const articleWithRelations = {
+export const articleWithRelations = {
   category: true,
   author: true,
   organization: true,
@@ -169,6 +169,18 @@ export const articleRepository = {
   listPublishedByProvince(provinceId: string) {
     return prisma.article.findMany({
       where: { status: "PUBLISHED", provinceId },
+      orderBy: { publishedAt: "desc" },
+      include: articleWithRelations,
+    });
+  },
+
+  /** `/don-vi/[slug]`'s own local-news list — the counterpart to
+   *  `listPublishedByProvince` above, added for the Production Data Policy
+   *  task so that page can query by `organizationId` directly instead of
+   *  scanning every published article client-side. */
+  listPublishedByOrganization(organizationId: string) {
+    return prisma.article.findMany({
+      where: { status: "PUBLISHED", organizationId },
       orderBy: { publishedAt: "desc" },
       include: articleWithRelations,
     });

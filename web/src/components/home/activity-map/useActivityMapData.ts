@@ -5,7 +5,6 @@ import * as topojson from "topojson-client";
 import type { Topology } from "topojson-specification";
 import type { Feature, Geometry } from "geojson";
 import type { ActivityMapData } from "@/domain/activity";
-import { getActivityMap } from "@/services/homepageService";
 import { withBasePath } from "@/lib/basePath";
 import { NEIGHBOURS } from "./constants";
 
@@ -34,7 +33,13 @@ export function useActivityMapData(): MapDataResult {
     async function load() {
       let data: ActivityMapData;
       try {
-        data = await getActivityMap();
+        // A fetch, not `getContentProvider().getActivityMap()` directly —
+        // `DatabaseProvider` calls Prisma, which cannot run in a browser at
+        // all (see `/api/activity-map/route.ts`'s own header comment for
+        // why this indirection exists specifically for this hook).
+        const res = await fetch(withBasePath("/api/activity-map"));
+        if (!res.ok) throw new Error(`activity-map fetch failed: ${res.status}`);
+        data = (await res.json()) as ActivityMapData;
       } catch {
         if (!cancelled) setResult({ state: "error", data: null, vnFeature: null, nearFeatures: [] });
         return;

@@ -8,7 +8,7 @@ import { SearchResultRow } from "@/components/content/SearchResultRow";
 import type { SearchResultItem } from "@/domain/search";
 import type { Topic } from "@/domain/taxonomy";
 import { searchHref } from "@/lib/routes";
-import { searchContent } from "@/services/contentService";
+import { fetchSearchResults } from "@/lib/searchClient";
 import { IconClose, IconSearch, IconWarning } from "@/components/icons";
 
 /** Matches the task brief's five states exactly — "initial" is the empty
@@ -102,7 +102,7 @@ export function SearchOverlay({
     setPhase("loading");
     const requestId = ++requestIdRef.current;
     timerRef.current = setTimeout(() => {
-      searchContent(value, OVERLAY_RESULT_LIMIT)
+      fetchSearchResults(value, OVERLAY_RESULT_LIMIT)
         .then((hits) => {
           if (requestId !== requestIdRef.current) return; // a newer keystroke has already superseded this request
           setPhase(hits.length ? "results" : "empty");

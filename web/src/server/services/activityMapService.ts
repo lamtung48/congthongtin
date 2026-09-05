@@ -46,15 +46,29 @@ export const activityMapService = {
           ? { title: aggregate.latestArticle.title, published_at: aggregate.latestArticle.publishedAt?.toISOString() ?? "" }
           : null,
         category_distribution: breakdown.length
-          ? Object.fromEntries(breakdown.map((b) => [b.category?.slug ?? b.categoryId, b.activityCount ?? 0]))
+          ? (Object.fromEntries(
+              breakdown.map((b): [string, number] => [b.category?.slug ?? b.categoryId ?? "", b.activityCount ?? 0]),
+            ) as Record<string, number>)
           : null,
         period: aggregate?.period ?? period ?? "",
         unit_url: `/don-vi/${province.slug}`,
       };
     });
 
+    const updatedAt = statistics.reduce<Date | null>(
+      (latest, s) => (!latest || s.updatedAt > latest ? s.updatedAt : latest),
+      null,
+    );
+
     return {
       period,
+      // The whole dataset's own "when was this compiled" — the latest of
+      // every `ActivityStatistic.updatedAt` for the active period, not a
+      // per-province value (the source report doesn't break it down
+      // further than this — see `ProvinceActivityProfile.updatedAt`'s own
+      // doc comment in `src/domain/activity.ts`). Falls back to "now" only
+      // when the period has no statistics rows at all yet.
+      updatedAt: (updatedAt ?? new Date()).toISOString(),
       provinces: provinceRows,
       overseas: overseas.map((o) => ({ name: o.name, activity_count: o.activityCount })),
       summary: {

@@ -30,21 +30,19 @@ import { PLATFORMS } from "../fixtures/platforms";
 import { HOMEPAGE_GALLERY } from "../fixtures/gallery";
 import { PROVINCES, provinceBySlug } from "../fixtures/provinces";
 import { OVERSEAS_ORGANIZATIONS, overseasOrganizationBySlug } from "../fixtures/overseasOrganizations";
+import { HERO, HERO_SLUG, SEARCH_CORPUS } from "../fixtures/homepage";
 import {
-  NAV,
-  HERO,
-  HERO_SLUG,
-  FOOTER_COLUMNS,
-  FOOTER_SOCIALS,
-  FOOTER_POLICIES,
-  FOOTER_ORG_NAME,
-  FOOTER_ORG_DESCRIPTION,
-  FOOTER_ADDRESS,
-  FOOTER_CONTACT_NOTE,
-  FOOTER_COPYRIGHT_LINE,
-  FOOTER_GOVERNING_BODY_LINE,
-  SEARCH_CORPUS,
-} from "../fixtures/homepage";
+  SITE_NAV,
+  SITE_FOOTER_COLUMNS,
+  SITE_FOOTER_SOCIALS,
+  SITE_FOOTER_POLICIES,
+  SITE_FOOTER_ORG_NAME,
+  SITE_FOOTER_ORG_DESCRIPTION,
+  SITE_FOOTER_ADDRESS,
+  SITE_FOOTER_CONTACT_NOTE,
+  SITE_FOOTER_COPYRIGHT_LINE,
+  SITE_FOOTER_GOVERNING_BODY_LINE,
+} from "@/lib/siteChrome";
 
 /**
  * Same underlying file `getActivityMap()` fetches client-side, imported
@@ -278,19 +276,19 @@ function toProvinceActivityProfile(p: ActivityMapProvince): ProvinceActivityProf
 export class FixtureProvider implements ContentProvider {
   async getHomepage(): Promise<HomepageConfiguration> {
     return {
-      nav: NAV,
+      nav: SITE_NAV,
       hero: HERO,
       trendingTopics: TOPICS,
       footer: {
-        columns: FOOTER_COLUMNS,
-        socials: FOOTER_SOCIALS,
-        policies: FOOTER_POLICIES,
-        orgName: FOOTER_ORG_NAME,
-        orgDescription: FOOTER_ORG_DESCRIPTION,
-        address: FOOTER_ADDRESS,
-        contactNote: FOOTER_CONTACT_NOTE,
-        copyrightLine: FOOTER_COPYRIGHT_LINE,
-        governingBodyLine: FOOTER_GOVERNING_BODY_LINE,
+        columns: SITE_FOOTER_COLUMNS,
+        socials: SITE_FOOTER_SOCIALS,
+        policies: SITE_FOOTER_POLICIES,
+        orgName: SITE_FOOTER_ORG_NAME,
+        orgDescription: SITE_FOOTER_ORG_DESCRIPTION,
+        address: SITE_FOOTER_ADDRESS,
+        contactNote: SITE_FOOTER_CONTACT_NOTE,
+        copyrightLine: SITE_FOOTER_COPYRIGHT_LINE,
+        governingBodyLine: SITE_FOOTER_GOVERNING_BODY_LINE,
       },
       search: { corpus: SEARCH_CORPUS },
     };

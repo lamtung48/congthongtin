@@ -6,4 +6,6 @@ export const ORGANIZATION_LEVEL_LABEL: Record<OrganizationLevel, string> = {
   province: "Hội Sinh viên cấp tỉnh, thành",
   university: "Hội Sinh viên cấp trường",
   overseas: "Hội Sinh viên ở nước ngoài",
+  central: "Trung ương Hội",
+  other: "Đơn vị khác",
 };

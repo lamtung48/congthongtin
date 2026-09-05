@@ -1,4 +1,6 @@
+import { cache } from "react";
 import { homepageRepository } from "@/server/repositories/homepageRepository";
+import { articleRepository, type ArticleWithRelations } from "@/server/repositories/articleRepository";
 import type { HomepagePlacement, HomepageSectionKey } from "@/generated/prisma/client";
 
 /**
@@ -28,38 +30,116 @@ async function resolveSection(
   return { section, placements: activePlacements };
 }
 
-export const homepageService = {
-  /**
-   * Returns the resolved content for every homepage section: each section
-   * key maps to either its configured `HomepagePlacement[]` (the CMS's
-   * choice, in `order`) or the automatic fallback query's result — callers
-   * don't need to know which one they got, only that something renderable
-   * came back. A future `DatabaseProvider.getHomepage()` maps this into the
-   * exact `HomepageConfiguration`/`FeaturedNewsResult`/etc. shapes
-   * `src/data-access/provider.ts` already declares.
-   */
-  async resolveHomepage() {
+/**
+ * Resolves every `ARTICLE`-typed placement in `placements` to its real,
+ * currently-public `Article` row — silently dropping (never throwing) a
+ * placement whose target has since been unpublished/deleted, or one that
+ * was pinned to the wrong `HomepageSectionKey`'s content type entirely
+ * (`contentType !== "ARTICLE"`). The Production Data Policy task's own
+ * rule — PUBLISHED + a past `publishedAt` — applies here exactly as it does
+ * everywhere else content reaches the public site: a CMS-pinned placement
+ * is not a bypass. An Admin staging a DRAFT as next week's Hero pick before
+ * it's ready would otherwise leak that draft to every visitor the moment
+ * the placement is saved, which is precisely what this task's Production
+ * Data Policy forbids.
+ */
+async function resolveArticlePlacements(placements: HomepagePlacement[]): Promise<ArticleWithRelations[]> {
+  const now = new Date();
+  const resolved = await Promise.all(
+    placements
+      .filter((p) => p.contentType === "ARTICLE")
+      .map((p) => articleRepository.findById(p.contentId)),
+  );
+  return resolved.filter(
+    (a): a is ArticleWithRelations => !!a && a.status === "PUBLISHED" && !!a.publishedAt && a.publishedAt <= now,
+  );
+}
+
+async function resolveVideoPlacements(placements: HomepagePlacement[]) {
+  const resolved = await Promise.all(
+    placements.filter((p) => p.contentType === "VIDEO").map((p) => homepageRepository.resolvers.video(p.contentId)),
+  );
+  return resolved.filter((v) => v !== null);
+}
+
+async function resolveEventPlacements(placements: HomepagePlacement[]) {
+  const resolved = await Promise.all(
+    placements.filter((p) => p.contentType === "EVENT").map((p) => homepageRepository.resolvers.event(p.contentId)),
+  );
+  return resolved.filter((e) => e !== null);
+}
+
+async function resolvePlatformPlacements(placements: HomepagePlacement[]) {
+  const resolved = await Promise.all(
+    placements.filter((p) => p.contentType === "PLATFORM").map((p) => homepageRepository.resolvers.platform(p.contentId)),
+  );
+  return resolved.filter((p) => p !== null);
+}
+
+async function resolveGalleryPlacement(placements: HomepagePlacement[]) {
+  const galleryPlacement = placements.find((p) => p.contentType === "GALLERY");
+  return galleryPlacement ? homepageRepository.resolvers.gallery(galleryPlacement.contentId) : null;
+}
+
+/**
+ * Returns the resolved content for every homepage section — each key maps
+ * to either its configured `HomepagePlacement`s (fully joined to their real
+ * Article/Video/Event/Platform/Gallery rows, CMS's choice, in `order`) or
+ * the automatic fallback query's result. `hero`/`video`/`gallery` resolve
+ * to a single entity-or-`null` (one Hero, one featured video, one gallery);
+ * `featured`/`storyRail`/`platforms`/`events`/`localNews` resolve to
+ * arrays. Callers don't need to know which path (configured vs. fallback)
+ * produced a given result, only its shape — `DatabaseProvider`
+ * (`src/data-access/providers/databaseProvider.ts`) maps this directly into
+ * the exact `HomepageConfiguration`/`FeaturedNewsResult`/etc. shapes
+ * `src/data-access/provider.ts` declares.
+ *
+ * `cache()`-wrapped: `DatabaseProvider` calls this independently from
+ * several different `ContentProvider` methods (`getFeaturedArticles`,
+ * `getStoryRail`, `getVideos`'s homepage pick, `getEvents`, `getGallery`,
+ * `getLocalNews`, ...), all of which the homepage renders in one
+ * `Promise.all` — without memoizing, each would re-run this same set of
+ * section/fallback queries independently in the same request.
+ */
+const resolveHomepage = cache(async () => {
     const config = await homepageRepository.findActiveConfiguration();
     const sections = config?.sections ?? [];
 
-    const hero = await resolveSection(sections, "HERO");
-    const featured = await resolveSection(sections, "FEATURED_ARTICLES");
-    const storyRail = await resolveSection(sections, "STORY_RAIL");
-    const video = await resolveSection(sections, "VIDEO_FEATURE");
-    const platforms = await resolveSection(sections, "PLATFORM_CARDS");
-    const events = await resolveSection(sections, "EVENTS");
-    const gallery = await resolveSection(sections, "GALLERY");
-    const localNews = await resolveSection(sections, "LOCAL_NEWS");
+    const heroSection = await resolveSection(sections, "HERO");
+    const heroArticles = await resolveArticlePlacements(heroSection.placements);
+    const hero = heroArticles[0] ?? (await homepageRepository.fallback.heroArticle());
 
-    return {
-      hero: hero.placements.length ? hero.placements : await homepageRepository.fallback.heroArticle(),
-      featured: featured.placements.length ? featured.placements : await homepageRepository.fallback.featuredArticles(6),
-      storyRail: storyRail.placements.length ? storyRail.placements : await homepageRepository.fallback.storyRailArticles(10),
-      video: video.placements.length ? video.placements : await homepageRepository.fallback.latestVideo(),
-      platforms: platforms.placements.length ? platforms.placements : await homepageRepository.fallback.platforms(6),
-      events: events.placements.length ? events.placements : await homepageRepository.fallback.upcomingEvents(6),
-      gallery: gallery.placements.length ? gallery.placements : await homepageRepository.fallback.latestGallery(),
-      localNews: localNews.placements.length ? localNews.placements : await homepageRepository.fallback.localNewsArticles(6),
-    };
-  },
+    const featuredSection = await resolveSection(sections, "FEATURED_ARTICLES");
+    const featuredArticles = await resolveArticlePlacements(featuredSection.placements);
+    const featured = featuredArticles.length ? featuredArticles : await homepageRepository.fallback.featuredArticles(6);
+
+    const storyRailSection = await resolveSection(sections, "STORY_RAIL");
+    const storyRailArticles = await resolveArticlePlacements(storyRailSection.placements);
+    const storyRail = storyRailArticles.length ? storyRailArticles : await homepageRepository.fallback.storyRailArticles(10);
+
+    const videoSection = await resolveSection(sections, "VIDEO_FEATURE");
+    const videoPlacements = await resolveVideoPlacements(videoSection.placements);
+    const video = videoPlacements[0] ?? (await homepageRepository.fallback.latestVideo());
+
+    const platformsSection = await resolveSection(sections, "PLATFORM_CARDS");
+    const platformPlacements = await resolvePlatformPlacements(platformsSection.placements);
+    const platforms = platformPlacements.length ? platformPlacements : await homepageRepository.fallback.platforms(6);
+
+    const eventsSection = await resolveSection(sections, "EVENTS");
+    const eventPlacements = await resolveEventPlacements(eventsSection.placements);
+    const events = eventPlacements.length ? eventPlacements : await homepageRepository.fallback.upcomingEvents(6);
+
+    const gallerySection = await resolveSection(sections, "GALLERY");
+    const galleryPlacement = await resolveGalleryPlacement(gallerySection.placements);
+    const gallery = galleryPlacement ?? (await homepageRepository.fallback.latestGallery());
+
+    const localNewsSection = await resolveSection(sections, "LOCAL_NEWS");
+    const localNewsArticles = await resolveArticlePlacements(localNewsSection.placements);
+    const localNews = localNewsArticles.length ? localNewsArticles : await homepageRepository.fallback.localNewsArticles(6);
+
+    return { hero, featured, storyRail, video, platforms, events, gallery, localNews };
+});
+
+export const homepageService = {
+  resolveHomepage,
 };

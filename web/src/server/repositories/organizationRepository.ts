@@ -15,4 +15,25 @@ export const organizationRepository = {
       include: { province: true },
     });
   },
+
+  /** `/dia-phuong/[slug]`'s "Hội units operating here" list — a real query
+   *  against `Organization.provinceId` now, replacing the old fixture
+   *  world's only approximation (deriving a unit list from local-news
+   *  bylines' `slugify()`-matched org names). */
+  listByProvince(provinceId: string) {
+    return prisma.organization.findMany({
+      where: { provinceId, status: "ACTIVE" },
+      orderBy: { name: "asc" },
+    });
+  },
+
+  /** `/don-vi/[slug]` on the public site — an `Organization` row carries its
+   *  own `slug` directly, unlike the old fixture world where a unit was only
+   *  reachable by `slugify()`-ing a local-news byline's org name. */
+  findBySlug(slug: string) {
+    return prisma.organization.findUnique({
+      where: { slug },
+      include: { province: true },
+    });
+  },
 };
