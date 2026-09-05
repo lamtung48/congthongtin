@@ -1,9 +1,16 @@
 .stage { position: relative; margin: 0 auto; }
 .stage svg { display: block; overflow: hidden; }
 .province { cursor: pointer; outline: none; }
-.province circle.hit { fill: transparent; }
+/*
+ * Hover/select highlight for circle.dot is driven entirely from React state
+ * (`hoverSlug`/`selectedSlug` in VietnamMapSvg.tsx) via the `fill-opacity`
+ * attribute, not a `:hover`/`:focus-visible` rule here — a CSS rule would
+ * win the cascade over that attribute and re-trigger on whichever dot the
+ * browser's own hit-testing puts on top, which is exactly the overlapping-
+ * marker mismatch the JS-side nearest-center hit-testing exists to avoid.
+ * See the "nearest center" comment above `nearestProvinceAt` in that file.
+ */
 .province circle.dot { transition: r var(--dur-base) var(--ease-standard), fill-opacity var(--dur-base) var(--ease-standard); }
-.province:hover circle.dot, .province:focus-visible circle.dot { fill-opacity: 1; }
 .province:focus-visible circle.ring { stroke: var(--focus-ring); stroke-width: 2.5; opacity: 1; }
 
 .archLabel text { font-family: var(--font-mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; fill: var(--text-muted); }

@@ -196,6 +196,61 @@ export function VietnamMapSvg({
 
   const tip = hoverProvince ? tooltipFor(hoverProvince) : null;
 
+  /**
+   * Precomputed once per render instead of inline inside the `.map()` below
+   * so the same list can also drive hit-testing (`nearestProvinceAt`) — see
+   * that function's comment for why hover/click can't rely on each dot's own
+   * `onMouseEnter`/`onClick` any more.
+   */
+  const provinceMarkers = order
+    .map((i) => {
+      const p = provinces[i];
+      const xy = projectPoint(p.lon, p.lat);
+      if (!xy) return null;
+      const v = provinceValue(p, filter);
+      const none = v == null;
+      const rad = none ? 4.6 : r(v);
+      return { p, x: xy[0], y: xy[1], v, none, rad, hitR: Math.max(rad + 9, 16) };
+    })
+    .filter((m): m is NonNullable<typeof m> => m !== null);
+
+  /**
+   * On a map this dense, neighboring provinces' enlarged hit circles
+   * routinely overlap (34 points on one country outline — see
+   * `docs/PERFORMANCE.md`'s sibling functional-audit notes). With each
+   * dot handling its own `onMouseEnter`/`onClick`, whichever one happens to
+   * be painted last (smallest-value markers, drawn on top per `order`)
+   * wins the pointer regardless of which center the cursor is actually
+   * closer to — verified concretely: TP. Hồ Chí Minh's own dot center sits
+   * inside Đồng Nai's hit circle, so aiming exactly at HCMC selects Đồng
+   * Nai instead. Hit-testing by nearest center within its own hit radius,
+   * computed fresh from the raw pointer position on every move/click
+   * instead of relying on DOM z-order, fixes that regardless of which
+   * provinces happen to be adjacent. Keyboard access (`tabIndex`,
+   * `onFocus`/`onKeyDown` on each `<g>` below) is untouched by this — tab
+   * order never depended on paint order to begin with.
+   */
+  function nearestProvinceAt(x: number, y: number): (typeof provinceMarkers)[number] | null {
+    let best: (typeof provinceMarkers)[number] | null = null;
+    let bestDist = Infinity;
+    for (const m of provinceMarkers) {
+      const d = Math.hypot(m.x - x, m.y - y);
+      if (d <= m.hitR && d < bestDist) {
+        best = m;
+        bestDist = d;
+      }
+    }
+    return best;
+  }
+
+  function localPoint(e: React.PointerEvent<SVGGElement> | React.MouseEvent<SVGGElement>): [number, number] | null {
+    const svg = e.currentTarget.ownerSVGElement;
+    if (!svg) return null;
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    return [((e.clientX - rect.left) / rect.width) * W, ((e.clientY - rect.top) / rect.height) * H];
+  }
+
   return (
     <div ref={hostRef}>
       <div className={styles.stage} style={{ width: W, height: H }}>
@@ -282,55 +337,60 @@ export function VietnamMapSvg({
             </g>
           )}
 
-          {order.map((i) => {
-            const p = provinces[i];
-            const xy = projectPoint(p.lon, p.lat);
-            if (!xy) return null;
-            const v = provinceValue(p, filter);
-            const sel = selectedSlug === p.slug;
-            const none = v == null;
-            const rad = none ? 4.6 : r(v);
-            const label = none
-              ? `${p.province_name}: chưa có số liệu${p.reported === false ? " — đơn vị chưa báo cáo kỳ này" : " cho chuyên mục đang chọn"}`
-              : `${p.province_name}: ${v} hoạt động${p.article_count != null ? `, ${p.article_count} tin bài` : ""}`;
-            return (
-              <g
-                key={p.slug}
-                className={styles.province}
-                transform={`translate(${xy[0].toFixed(1)},${xy[1].toFixed(1)})`}
-                tabIndex={0}
-                role="button"
-                aria-label={label}
-                aria-pressed={sel}
-                onMouseEnter={() => setHoverSlug(p.slug)}
-                onMouseLeave={() => setHoverSlug((s) => (s === p.slug ? null : s))}
-                onFocus={() => setHoverSlug(p.slug)}
-                onBlur={() => setHoverSlug((s) => (s === p.slug ? null : s))}
-                onClick={() => onSelectProvince(selectedSlug === p.slug ? null : p.slug)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onSelectProvince(selectedSlug === p.slug ? null : p.slug);
-                  }
-                }}
-              >
-                <circle className={styles.ring} r={rad + 5.5} fill="none" stroke="var(--blue-700)" strokeWidth={sel ? 1.8 : 0} opacity={sel ? 1 : 0} />
-                {none ? (
-                  <circle className={styles.dot} r={rad} fill="var(--white)" fillOpacity={0.9} stroke="var(--ink-400)" strokeWidth={1.3} strokeDasharray="2.6 2.2" />
-                ) : (
-                  <circle
-                    className={styles.dot}
-                    r={rad}
-                    fill={sel ? "var(--blue-700)" : "var(--blue-500)"}
-                    fillOpacity={sel ? 1 : 0.32 + 0.5 * ((v ?? 0) / max)}
-                    stroke="var(--white)"
-                    strokeWidth={1}
-                  />
-                )}
-                <circle className={styles.hit} r={Math.max(rad + 9, 16)} />
-              </g>
-            );
-          })}
+          <g
+            onPointerMove={(e) => {
+              const pt = localPoint(e);
+              const hit = pt ? nearestProvinceAt(pt[0], pt[1]) : null;
+              setHoverSlug(hit ? hit.p.slug : null);
+            }}
+            onPointerLeave={() => setHoverSlug(null)}
+            onClick={(e) => {
+              const pt = localPoint(e);
+              const hit = pt ? nearestProvinceAt(pt[0], pt[1]) : null;
+              if (hit) onSelectProvince(selectedSlug === hit.p.slug ? null : hit.p.slug);
+            }}
+          >
+            {provinceMarkers.map(({ p, x, y, v, none, rad }) => {
+              const sel = selectedSlug === p.slug;
+              const hovered = hoverSlug === p.slug;
+              const label = none
+                ? `${p.province_name}: chưa có số liệu${p.reported === false ? " — đơn vị chưa báo cáo kỳ này" : " cho chuyên mục đang chọn"}`
+                : `${p.province_name}: ${v} hoạt động${p.article_count != null ? `, ${p.article_count} tin bài` : ""}`;
+              return (
+                <g
+                  key={p.slug}
+                  className={styles.province}
+                  transform={`translate(${x.toFixed(1)},${y.toFixed(1)})`}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={label}
+                  aria-pressed={sel}
+                  onFocus={() => setHoverSlug(p.slug)}
+                  onBlur={() => setHoverSlug((s) => (s === p.slug ? null : s))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectProvince(selectedSlug === p.slug ? null : p.slug);
+                    }
+                  }}
+                >
+                  <circle className={styles.ring} r={rad + 5.5} fill="none" stroke="var(--blue-700)" strokeWidth={sel ? 1.8 : 0} opacity={sel ? 1 : 0} />
+                  {none ? (
+                    <circle className={styles.dot} r={rad} fill="var(--white)" fillOpacity={sel || hovered ? 1 : 0.9} stroke="var(--ink-400)" strokeWidth={1.3} strokeDasharray="2.6 2.2" />
+                  ) : (
+                    <circle
+                      className={styles.dot}
+                      r={rad}
+                      fill={sel ? "var(--blue-700)" : "var(--blue-500)"}
+                      fillOpacity={sel || hovered ? 1 : 0.32 + 0.5 * ((v ?? 0) / max)}
+                      stroke="var(--white)"
+                      strokeWidth={1}
+                    />
+                  )}
+                </g>
+              );
+            })}
+          </g>
         </svg>
 
         {tip && hoverProvince && (
