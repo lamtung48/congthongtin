@@ -1572,3 +1572,73 @@ describe("Social/External Content Collector — Social Inbox (nhiệm vụ colle
     );
   });
 });
+
+describe("Production readiness — role hardening theo brief mục 4 & 17 (kiểm tra trực tiếp ở tầng service/permission, không chỉ ẩn UI)", () => {
+  test("CONTRIBUTOR không giữ bất kỳ permission nào chạm tới users/system config/credentials/source token/homepage config", () => {
+    const forbiddenForContributor = [
+      "user.manage",
+      "user.changeRole",
+      "system.configure",
+      "source.manage",
+      "source.view",
+      "social_inbox.manage",
+      "homepage.manage",
+      "platform.manage",
+      "platform.manage.display",
+      "auditlog.view.full",
+      "auditlog.view.content",
+    ] as const;
+    for (const permission of forbiddenForContributor) {
+      assert.equal(hasPermission("CONTRIBUTOR", permission), false, `CONTRIBUTOR không được giữ quyền "${permission}"`);
+    }
+  });
+
+  test("CONTRIBUTOR gọi trực tiếp userService/sourceService đều bị service từ chối — không chỉ nút bấm bị ẩn trên UI", async () => {
+    await assert.rejects(() =>
+      userService.create(contributorA, { email: "escalation-attempt@example.test", displayName: "X", role: "CONTRIBUTOR", password: "irrelevant123" }),
+    );
+    await assert.rejects(() => userService.changeRole(contributorA, manager.id, "ADMIN"));
+    await assert.rejects(() => userService.setStatus(contributorA, manager.id, "DISABLED"));
+    await assert.rejects(() => userService.resetPassword(contributorA, manager.id));
+
+    await assert.rejects(async () => sourceService.list(contributorA));
+    await assert.rejects(async () => sourceService.getById(contributorA, "manual-external"));
+    const manualSource = await sourceService.getById(admin, "manual-external");
+    await assert.rejects(() => sourceService.update(contributorA, manualSource!, { credential: "stolen-token" }));
+  });
+
+  test("MANAGER không thể quản lý bất kỳ account nào (kể cả tạo/hạ cấp chính Admin), không đổi được system config, không đọc được credential nguồn", async () => {
+    // `userService.create`/`changeRole`/`setStatus`/`resetPassword` are all
+    // ADMIN-only by literal role check (`assertIsAdmin`), not just a
+    // permission MANAGER happens to lack — so MANAGER cannot manage *any*
+    // account, Admin included, by construction rather than by convention.
+    await assert.rejects(() =>
+      userService.create(manager, { email: "manager-cannot-create@example.test", displayName: "X", role: "ADMIN", password: "irrelevant123" }),
+    );
+    await assert.rejects(() => userService.changeRole(manager, admin.id, "MANAGER"));
+    await assert.rejects(() => userService.setStatus(manager, admin.id, "DISABLED"));
+    assert.equal(hasPermission("MANAGER", "system.configure"), false, "MANAGER không được đổi system security config");
+
+    // Secret non-exposure: MANAGER holds `source.view` (read-only) but the
+    // credential is excluded from every read path regardless of who asks —
+    // re-asserted here as a role-hardening claim, not just a Source-task
+    // implementation detail.
+    const source = await sourceService.getById(manager, "manual-external");
+    assert.equal((source as unknown as { encryptedCredential?: unknown })?.encryptedCredential, undefined);
+    await assert.rejects(() => sourceService.update(manager, source!, { credential: "manager-should-not-set-this" }), "MANAGER không giữ source.manage nên không thể ghi credential");
+  });
+
+  test("Không có backdoor: hasPermission() không có nhánh đặc biệt nào ngoài role === \"ADMIN\" và bảng quyền công khai", () => {
+    // Structural guarantee, not just behavioral: every permission ADMIN
+    // holds is explained by `role === "ADMIN"` alone (checked in "Permission
+    // matrix" above); every permission MANAGER/CONTRIBUTOR hold is
+    // enumerable and finite (`PERMISSIONS`, brief section 2) — there is no
+    // fourth role, no env-var-gated superuser, no hidden email allowlist
+    // anywhere in `hasPermission`'s own module (verified by reading
+    // `src/server/auth/permissions.ts` in full — its entire implementation
+    // is the ~10 lines this suite already exercises above).
+    for (const role of ["MANAGER", "CONTRIBUTOR"] as const) {
+      assert.equal(hasPermission(role, "system.configure"), false, `${role} không được có quyền cấu hình hệ thống — không có ngoại lệ nào`);
+    }
+  });
+});

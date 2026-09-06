@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/server/auth/session";
 import { sourceService, type SourceFieldsInput } from "@/server/services/sourceService";
+import { externalIntegrationRateLimiter } from "@/server/security/rateLimit";
 import type { SourceType } from "@/generated/prisma/client";
 
 /**
@@ -86,6 +87,13 @@ export interface SyncSourceFormState {
 
 export async function syncSourceAction(_prev: SyncSourceFormState | undefined, formData: FormData): Promise<SyncSourceFormState> {
   const actor = await requireSession();
+  // Brief section 9: "external integration endpoint" rate limit — a sync
+  // makes a real outbound call to a third-party API (Facebook/YouTube/RSS),
+  // so this also protects those APIs' own rate limits, not just ours.
+  if (!externalIntegrationRateLimiter.check(actor.id).allowed) {
+    return { ok: false, message: "Bạn đang đồng bộ quá nhanh — vui lòng thử lại sau ít phút." };
+  }
+  externalIntegrationRateLimiter.record(actor.id);
   const source = await loadOr404(String(formData.get("sourceId")));
   const result = await sourceService.sync(actor, source);
   revalidateSourceViews(source.id);

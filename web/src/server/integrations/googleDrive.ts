@@ -1,6 +1,7 @@
 import "server-only";
 import { Readable } from "node:stream";
 import { auth, drive as driveClient, type drive_v3 } from "@googleapis/drive";
+import { summarizeErrorForLog } from "@/server/logging/safeError";
 
 /**
  * The one module in this codebase allowed to hold a Google service-account
@@ -93,9 +94,12 @@ function getClient(): drive_v3.Drive {
  * auth-adjacent details in its `config`/`response` fields depending on the
  * failure). Logs the real error server-side (stdout, not a place a
  * Contributor's browser ever sees) and returns a short, safe message.
+ * `summarizeErrorForLog` (brief section 7) strips exactly those
+ * `config`/`response` fields before this ever reaches `console.error` —
+ * the raw `err` itself must never be passed to a logger.
  */
 function describeDriveError(err: unknown): string {
-  console.error("[googleDrive] operation failed:", err);
+  console.error("[googleDrive] operation failed:", summarizeErrorForLog(err));
   if (err instanceof Error) {
     // Common, safe-to-surface cases a CMS editor should be able to
     // recognize and act on (or report) without a stack trace.

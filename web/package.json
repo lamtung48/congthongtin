@@ -11,6 +11,10 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
+    "db:bootstrap-admin": "tsx scripts/bootstrapAdmin.ts",
+    "db:purge-audit-logs": "tsx scripts/purgeOldAuditLogs.ts",
+    "db:backup": "bash scripts/backupDatabase.sh",
+    "db:restore": "bash scripts/restoreDatabase.sh",
     "test": "node --conditions=react-server --experimental-test-module-mocks --import tsx --test 'src/**/__tests__/**/*.test.mts'"
   },
   "dependencies": {

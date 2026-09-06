@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { requireSession } from "@/server/auth/session";
 import { youtubeService } from "@/server/services/youtubeService";
+import { externalIntegrationRateLimiter } from "@/server/security/rateLimit";
 import { YoutubeNotConfiguredError, YoutubeOperationError } from "@/server/integrations/youtube";
 
 /**
@@ -31,6 +32,13 @@ function redirectWithStatus(status: "connected" | "error", message?: string) {
 
 export async function GET(request: Request) {
   const actor = await requireSession();
+  // Brief section 9: "external integration endpoint" — completing a
+  // connection calls Google's token endpoint; also blunts a script hitting
+  // this callback repeatedly with garbage `code`/`state` values.
+  if (!externalIntegrationRateLimiter.check(actor.id).allowed) {
+    return redirectWithStatus("error", "Bạn đang thao tác quá nhanh — vui lòng thử lại sau ít phút.");
+  }
+  externalIntegrationRateLimiter.record(actor.id);
   const { searchParams } = new URL(request.url);
 
   const oauthError = searchParams.get("error");

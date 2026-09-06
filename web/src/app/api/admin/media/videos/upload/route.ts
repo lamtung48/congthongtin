@@ -3,6 +3,7 @@ import { getSession } from "@/server/auth/session";
 import { hasPermission } from "@/server/auth/permissions";
 import { youtubeService } from "@/server/services/youtubeService";
 import { validateVideoUpload } from "@/server/validation/videoUpload";
+import { uploadRateLimiter } from "@/server/security/rateLimit";
 import { YoutubeNotConfiguredError, YoutubeNotConnectedError, YoutubeOperationError, type YoutubePrivacyStatus } from "@/server/integrations/youtube";
 
 /**
@@ -25,6 +26,14 @@ export async function POST(request: Request) {
   if (!hasPermission(actor.role, "media.manage.own") && !hasPermission(actor.role, "media.manage.any")) {
     return NextResponse.json({ error: "Không có quyền tải video lên." }, { status: 403 });
   }
+
+  // Brief section 9: "upload init" is a rate-limit priority — same shared
+  // bucket as the image upload route (`uploadRateLimiter`), since both are
+  // the same kind of resource-heavy, third-party-API-calling operation.
+  if (!uploadRateLimiter.check(actor.id).allowed) {
+    return NextResponse.json({ error: "Bạn đang tải lên quá nhanh — vui lòng thử lại sau ít phút." }, { status: 429 });
+  }
+  uploadRateLimiter.record(actor.id);
 
   let formData: FormData;
   try {

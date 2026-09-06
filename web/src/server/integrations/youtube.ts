@@ -3,6 +3,7 @@ import { Readable } from "node:stream";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { auth, youtube as youtubeClient, type youtube_v3 } from "@googleapis/youtube";
 import { youtubeConnectionRepository } from "@/server/repositories/youtubeConnectionRepository";
+import { summarizeErrorForLog } from "@/server/logging/safeError";
 
 /**
  * The one module allowed to hold the YouTube OAuth client secret or a
@@ -190,9 +191,12 @@ async function getAuthorizedClient(): Promise<youtube_v3.Youtube> {
 
 /** Never includes the raw googleapis/gaxios error in what reaches a
  *  client — logs the real error server-side, returns a short safe message.
- *  Mirrors `googleDrive.ts`'s `describeDriveError`. */
+ *  Mirrors `googleDrive.ts`'s `describeDriveError`, including running the
+ *  logged value through `summarizeErrorForLog` first (brief section 7:
+ *  never log an OAuth/Google credential — a raw gaxios error can carry the
+ *  outgoing request's Authorization header on `.config`/`.response`). */
 function describeYoutubeError(err: unknown): string {
-  console.error("[youtube] operation failed:", err);
+  console.error("[youtube] operation failed:", summarizeErrorForLog(err));
   if (err instanceof Error) {
     if (/quota|rateLimitExceeded|dailyLimitExceeded/i.test(err.message)) {
       return "YouTube tạm thời vượt hạn mức API — vui lòng thử lại sau.";

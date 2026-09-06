@@ -3,6 +3,7 @@ import { getSession } from "@/server/auth/session";
 import { hasPermission } from "@/server/auth/permissions";
 import { mediaService } from "@/server/services/mediaService";
 import { validateImageUpload, buildStorageFilename } from "@/server/validation/mediaUpload";
+import { uploadRateLimiter } from "@/server/security/rateLimit";
 import {
   uploadFileToDrive,
   GoogleDriveNotConfiguredError,
@@ -34,6 +35,15 @@ export async function POST(request: Request) {
   if (!hasPermission(actor.role, "media.manage.own") && !hasPermission(actor.role, "media.manage.any")) {
     return NextResponse.json({ error: "Không có quyền tải lên media." }, { status: 403 });
   }
+
+  // Brief section 9: "upload init" is a rate-limit priority — this is the
+  // one route on the whole site that both accepts an arbitrary-size body
+  // and triggers an outbound call to a third-party API (Google Drive) per
+  // request.
+  if (!uploadRateLimiter.check(actor.id).allowed) {
+    return NextResponse.json({ error: "Bạn đang tải lên quá nhanh — vui lòng thử lại sau ít phút." }, { status: 429 });
+  }
+  uploadRateLimiter.record(actor.id);
 
   let formData: FormData;
   try {

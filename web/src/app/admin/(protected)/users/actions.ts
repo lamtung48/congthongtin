@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requirePermission } from "@/server/auth/guard";
 import { userService } from "@/server/services/userService";
 import { ASSIGNABLE_ROLES } from "@/server/auth/permissions";
+import { sensitiveAdminActionRateLimiter } from "@/server/security/rateLimit";
 import type { AdminRole } from "@/generated/prisma/client";
 
 /**
@@ -14,7 +15,19 @@ import type { AdminRole } from "@/generated/prisma/client";
  * quyền tại server/service layer." A Server Action is reachable directly
  * (it's a POST endpoint under the hood), not only through the page that
  * happens to render a form calling it, so it re-checks independently.
+ *
+ * Brief section 9: "sensitive admin API" rate limit — every action here
+ * changes an account's role/status/password, so each one also checks
+ * `sensitiveAdminActionRateLimiter` keyed by the *actor* (not the target
+ * user), right after the permission check.
  */
+
+function assertNotRateLimited(actorId: string): void {
+  if (!sensitiveAdminActionRateLimiter.check(actorId).allowed) {
+    throw new Error("Bạn đang thao tác quá nhanh — vui lòng thử lại sau ít phút.");
+  }
+  sensitiveAdminActionRateLimiter.record(actorId);
+}
 
 const CreateUserSchema = z.object({
   email: z.email(),
@@ -31,6 +44,10 @@ export interface CreateUserFormState {
 
 export async function createUserAction(_prev: CreateUserFormState | undefined, formData: FormData): Promise<CreateUserFormState> {
   const actor = await requirePermission("user.manage");
+  if (!sensitiveAdminActionRateLimiter.check(actor.id).allowed) {
+    return { error: "Bạn đang thao tác quá nhanh — vui lòng thử lại sau ít phút." };
+  }
+  sensitiveAdminActionRateLimiter.record(actor.id);
   const parsed = CreateUserSchema.safeParse({
     email: formData.get("email"),
     username: formData.get("username") || undefined,
@@ -52,6 +69,7 @@ export async function createUserAction(_prev: CreateUserFormState | undefined, f
 
 export async function changeRoleAction(formData: FormData): Promise<void> {
   const actor = await requirePermission("user.changeRole");
+  assertNotRateLimited(actor.id);
   const userId = String(formData.get("userId"));
   const role = String(formData.get("role")) as AdminRole;
   await userService.changeRole(actor, userId, role);
@@ -60,6 +78,7 @@ export async function changeRoleAction(formData: FormData): Promise<void> {
 
 export async function setStatusAction(formData: FormData): Promise<void> {
   const actor = await requirePermission("user.manage");
+  assertNotRateLimited(actor.id);
   const userId = String(formData.get("userId"));
   const status = String(formData.get("status")) as "ACTIVE" | "DISABLED";
   await userService.setStatus(actor, userId, status);
@@ -73,6 +92,10 @@ export interface ResetPasswordFormState {
 
 export async function resetPasswordAction(_prev: ResetPasswordFormState | undefined, formData: FormData): Promise<ResetPasswordFormState> {
   const actor = await requirePermission("user.manage");
+  if (!sensitiveAdminActionRateLimiter.check(actor.id).allowed) {
+    return { error: "Bạn đang thao tác quá nhanh — vui lòng thử lại sau ít phút." };
+  }
+  sensitiveAdminActionRateLimiter.record(actor.id);
   const userId = String(formData.get("userId"));
   try {
     const { temporaryPassword } = await userService.resetPassword(actor, userId);

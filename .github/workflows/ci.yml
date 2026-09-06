@@ -1,0 +1,88 @@
+name: CI
+
+# Production readiness task, brief section 12: "Không deploy nếu build fail,
+# type fail, lint fail, migration fail." This workflow is the gate — it
+# runs on every push/PR and does not deploy anything itself (this repo has
+# no automated deploy target yet; see docs/DEPLOYMENT.md, "First deploy" /
+# "Subsequent deploys" for the manual SSH steps a human runs only after
+# this workflow is green on `main`). A real deploy job can be added later
+# as a second job with `needs: verify`, so it only ever runs once this one
+# has already passed.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    # A real Postgres instance, not a mock — `next build` runs
+    # `generateStaticParams`/ISR against the actual `DatabaseProvider`
+    # (`NODE_ENV=production` during `next build` forces that provider
+    # regardless of `CONTENT_PROVIDER`, see `src/data-access/index.ts`), so
+    # this job's database needs the real schema and some real rows, the
+    # same as verifying a build locally.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hsv_portal_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hsv_portal_ci?schema=public
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint .
+
+      # Brief section 12's "migration fail" gate: a broken migration file
+      # (bad SQL, a migration that doesn't apply cleanly to a fresh
+      # database) fails right here, before build/test even run.
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      # `next build`'s static generation step needs real rows to exercise
+      # (see the `services.postgres` comment above) — the dev seed's
+      # well-known throwaway accounts are fine on a CI-only, destroyed-
+      # after-the-job database; this is never run against a real
+      # deployment target (`scripts/bootstrapAdmin.ts` is the production
+      # path — see docs/SECURITY.md).
+      - name: Seed CI database
+        run: npx prisma db seed
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
