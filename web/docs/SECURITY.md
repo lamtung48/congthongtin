@@ -89,8 +89,8 @@ both share the same window/sweep implementation.
 |---|---|---|---|
 | `/admin/login` (`authService.login`) | 15 min | 5 failed attempts | email + IP |
 | Media/video upload init (`/api/admin/media/upload`, `/api/admin/media/videos/upload`) | 10 min | 30 | acting user id |
-| Sensitive admin actions (`createUserAction`/`changeRoleAction`/`setStatusAction`/`resetPasswordAction`) | 5 min | 30 | acting user id |
-| External integration endpoints (`syncSourceAction`, YouTube OAuth callback) | 5 min | 10 | acting user id |
+| Sensitive admin actions — writes credentials/config/privileges (`users/actions.ts`'s create/changeRole/setStatus/resetPassword; `sources/actions.ts`'s create/update/setEnabled/delete; `platforms/actions.ts`'s create/updateDisplay/updateIntegration/setEnabled/delete) | 5 min | 30 | acting user id |
+| External integration endpoints — actually call a third-party API (`syncSourceAction`; YouTube OAuth callback + `videos/actions.ts`'s connect/disconnect/link/import/browse/updateMetadata/refreshStatus; `platforms/actions.ts`'s `refreshActivityAction`; `media/actions.ts`'s `deleteMediaAction`, which calls the Google Drive delete API) | 5 min | 10 | acting user id |
 
 A future horizontally-scaled deployment (more than one Next.js process)
 would need to move these to a shared store (Redis, or a dedicated DB

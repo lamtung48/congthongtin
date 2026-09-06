@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/server/auth/session";
 import { mediaService, MediaInUseError } from "@/server/services/mediaService";
+import { externalIntegrationRateLimiter } from "@/server/security/rateLimit";
 
 /**
  * Both actions re-check permission/ownership/usage inside `mediaService`
@@ -11,6 +12,14 @@ import { mediaService, MediaInUseError } from "@/server/services/mediaService";
  * `MediaInUseError`'s usage list back to the client as plain data (never a
  * thrown error across the server/client boundary) so the UI can render it
  * as a confirmation prompt instead of a dead-end failure (brief section 7).
+ *
+ * Brief section 9: "external integration endpoint" — `mediaService.remove`
+ * calls the real Google Drive API to delete the underlying file for a
+ * GOOGLE_DRIVE-provider asset, so `deleteMediaAction` gets the same
+ * `externalIntegrationRateLimiter` bucket `syncSourceAction`/the video
+ * actions use. `updateMediaMetadataAction` only touches this app's own
+ * database (Drive itself has no per-file metadata this app manages), so
+ * it stays in the regular unthrottled CMS-editing class.
  */
 
 export interface UpdateMetadataResult {
@@ -40,6 +49,10 @@ export interface DeleteMediaResult {
 
 export async function deleteMediaAction(formData: FormData): Promise<DeleteMediaResult> {
   const actor = await requireSession();
+  if (!externalIntegrationRateLimiter.check(actor.id).allowed) {
+    return { ok: false, error: "Bạn đang thao tác quá nhanh — vui lòng thử lại sau ít phút." };
+  }
+  externalIntegrationRateLimiter.record(actor.id);
   const mediaId = String(formData.get("mediaId") ?? "");
   const force = formData.get("force") === "true";
   try {

@@ -303,17 +303,25 @@ than expected. Also run `df -h` and `du -sh /opt/hoinghi /opt/daotaohsv`
 once (section 0) to see how much of the 200GB the other two apps already
 use before assuming the remainder below is actually free.
 
-| Item | Budget | Notes |
+Ordered to match brief section 14's own list exactly (OS, Docker, Next
+build, PostgreSQL, logs, cache, temporary files, existing training
+platform), so every named category has an explicit answer — including
+the two that are "not applicable to this app" rather than silently
+omitted:
+
+| Item (brief's own category) | Budget | Notes |
 |---|---|---|
-| App repo (`node_modules` + `.next` build output) | 2–3 GB | `npm ci --omit=dev` in production if disk-constrained; keep only the current + one previous release directory if using a release-per-deploy layout |
-| PostgreSQL data (this app's database only) | 5–10 GB | Text/metadata only — no media rows ever store bytes, so this stays small even at tens of thousands of articles |
-| Application logs (PM2/systemd + this app's own) | ~1 GB | Capped by log rotation — see docs/OPERATIONS.md |
-| Database backups (`scripts/backupDatabase.sh` output) | ~1–2 GB | `BACKUP_RETENTION_DAYS` (default 14) × average dump size; dumps are small since the DB itself is small |
-| `.next/cache` (ISR/build cache) | 1–2 GB | Next.js's own incremental cache; safe to delete and let it rebuild if it ever needs reclaiming |
-| Temporary upload buffers | **0 GB** | In-memory only — see section 5 |
-| **This app's total** | **~10–18 GB** | |
-| Reserved headroom (never let real usage exceed ~80% of the disk) | 40+ GB | Standard operational floor — Postgres and PM2 both behave badly on a full disk |
-| `hoinghi` + `daotaohsv` + OS + everything else already on the VPS | remainder (~140–150 GB, **verify with section 0**) | Out of this app's control — this budget is deliberately small precisely so it doesn't compete with the other two |
+| **OS** | ~2–4 GB, VPS-wide | Not this app's to budget — already there before this app arrives, shared with `hoinghi`/`daotaohsv`. Run `df -h` / `du -sh /` on the real VPS (section 0) for the actual number. |
+| **Docker** | **0 GB for this app** | This app does not use Docker — deployed directly via PM2/systemd (section 2), no container needed for one Node process on one VPS. If `hoinghi`/`daotaohsv` run Docker, their image/layer cache is their own cost, not this app's — run `docker system df` on the VPS if it's installed to see that separately. |
+| **Next build** (`.next` build output + `node_modules`) | 2–3 GB | `npm ci --omit=dev` in production if disk-constrained; keep only the current + one previous release directory if using a release-per-deploy layout. |
+| **PostgreSQL** (this app's database only) | 5–10 GB | Text/metadata only — no media rows ever store bytes, so this stays small even at tens of thousands of articles. |
+| **Logs** (PM2/systemd + this app's own, e.g. the backup cron's log) | ~1 GB | Capped by log rotation — see docs/OPERATIONS.md. |
+| **Cache** (`.next/cache` — ISR/build cache) | 1–2 GB | Next.js's own incremental cache; safe to delete and let it rebuild if it ever needs reclaiming. |
+| **Temporary files** | **0 GB** | Upload buffers are in-memory only, never written to disk — see section 5. Nothing to clean up because nothing temporary is ever created. |
+| **Existing training platform** (`/opt/daotaohsv`) + `/opt/hoinghi` | out of this app's control, **verify with section 0** | This budget is deliberately small precisely so it doesn't compete with either. |
+| Database backups (`scripts/backupDatabase.sh` output — not one of the 8 named categories, but a real line item) | ~1–2 GB | `BACKUP_RETENTION_DAYS` (default 14) × average dump size; dumps are small since the DB itself is small. |
+| **This app's own total** (Next build + PostgreSQL + logs + cache + backups; OS/Docker/existing platform excluded — not this app's footprint) | **~10–18 GB** | |
+| Reserved headroom (never let real usage exceed ~80% of the disk) | 40+ GB | Standard operational floor — Postgres and PM2 both behave badly on a full disk. |
 
 ## 7. First deploy
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/server/auth/session";
 import { platformService, type PlatformDisplayFields, type PlatformIntegrationFields } from "@/server/services/platformService";
+import { sensitiveAdminActionRateLimiter, externalIntegrationRateLimiter } from "@/server/security/rateLimit";
 import type { PlatformCategory, PlatformIntegrationType, PlatformStatus } from "@/generated/prisma/client";
 
 /**
@@ -11,7 +12,21 @@ import type { PlatformCategory, PlatformIntegrationType, PlatformStatus } from "
  * (`platform.manage` vs `platform.manage.display`) — this file does no
  * authorization logic of its own beyond `requireSession()`, same
  * discipline as `articles/actions.ts`.
+ *
+ * Brief section 9: "sensitive admin API" — same limiter `users/actions.ts`
+ * and `sources/actions.ts` use for their own config writes, applied here
+ * for consistency across every admin-config surface in the app.
+ * `refreshActivityAction` gets `externalIntegrationRateLimiter` instead —
+ * it's the one action here that actually calls out to a third-party
+ * adapter API, the same "external integration endpoint" bucket
+ * `syncSourceAction` uses.
  */
+function assertNotRateLimited(actorId: string): void {
+  if (!sensitiveAdminActionRateLimiter.check(actorId).allowed) {
+    throw new Error("Bạn đang thao tác quá nhanh — vui lòng thử lại sau ít phút.");
+  }
+  sensitiveAdminActionRateLimiter.record(actorId);
+}
 
 async function loadOr404(id: string) {
   const platform = await platformService.getById(id);
@@ -26,6 +41,7 @@ function revalidatePlatformViews(id: string) {
 
 export async function createPlatformAction(formData: FormData): Promise<void> {
   const actor = await requireSession();
+  assertNotRateLimited(actor.id);
   await platformService.create(actor, {
     slug: String(formData.get("slug")).trim(),
     name: String(formData.get("name")).trim(),
@@ -45,6 +61,7 @@ export async function createPlatformAction(formData: FormData): Promise<void> {
  *  `platformService.update`'s own "only prove what you send" contract. */
 export async function updateDisplayAction(formData: FormData): Promise<void> {
   const actor = await requireSession();
+  assertNotRateLimited(actor.id);
   const platform = await loadOr404(String(formData.get("platformId")));
   const display: PlatformDisplayFields = {
     name: String(formData.get("name")).trim(),
@@ -64,6 +81,7 @@ export async function updateDisplayAction(formData: FormData): Promise<void> {
 
 export async function updateIntegrationAction(formData: FormData): Promise<void> {
   const actor = await requireSession();
+  assertNotRateLimited(actor.id);
   const platform = await loadOr404(String(formData.get("platformId")));
   const apiBaseUrlRaw = (formData.get("apiBaseUrl") as string | null)?.trim();
   const integration: PlatformIntegrationFields = {
@@ -77,6 +95,7 @@ export async function updateIntegrationAction(formData: FormData): Promise<void>
 
 export async function setPlatformEnabledAction(formData: FormData): Promise<void> {
   const actor = await requireSession();
+  assertNotRateLimited(actor.id);
   const platform = await loadOr404(String(formData.get("platformId")));
   const isEnabled = String(formData.get("isEnabled")) === "true";
   await platformService.setEnabled(actor, platform, isEnabled);
@@ -90,6 +109,10 @@ export interface RefreshActivityFormState {
 
 export async function refreshActivityAction(_prev: RefreshActivityFormState | undefined, formData: FormData): Promise<RefreshActivityFormState> {
   const actor = await requireSession();
+  if (!externalIntegrationRateLimiter.check(actor.id).allowed) {
+    return { ok: false, message: "Bạn đang làm mới quá nhanh — vui lòng thử lại sau ít phút." };
+  }
+  externalIntegrationRateLimiter.record(actor.id);
   const platform = await loadOr404(String(formData.get("platformId")));
   const result = await platformService.refreshActivity(actor, platform);
   revalidatePlatformViews(platform.id);
@@ -101,6 +124,7 @@ export async function refreshActivityAction(_prev: RefreshActivityFormState | un
 
 export async function deletePlatformAction(formData: FormData): Promise<void> {
   const actor = await requireSession();
+  assertNotRateLimited(actor.id);
   const platform = await loadOr404(String(formData.get("platformId")));
   await platformService.remove(actor, platform);
   revalidatePath("/admin/platforms");

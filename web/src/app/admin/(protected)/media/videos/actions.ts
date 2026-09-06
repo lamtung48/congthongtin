@@ -8,11 +8,19 @@ import { youtubeService } from "@/server/services/youtubeService";
 import { YoutubeNotConfiguredError, YoutubeNotConnectedError, YoutubeOperationError, type YoutubePrivacyStatus } from "@/server/integrations/youtube";
 import { MediaInUseError } from "@/server/services/mediaService";
 import { mediaService } from "@/server/services/mediaService";
+import { externalIntegrationRateLimiter } from "@/server/security/rateLimit";
 
 /**
  * Every action re-checks permission/role inside `youtubeService` itself
  * (`requireSession()` here only confirms *someone* is logged in) — same
  * discipline as `articles/actions.ts`/`media/actions.ts`.
+ *
+ * Brief section 9: "external integration endpoint" — every action here
+ * except `unlinkVideoAction` (a local DB delete, same class as regular
+ * media management) either calls the real YouTube Data API or manages the
+ * OAuth connection credential itself, so each gets the same
+ * `externalIntegrationRateLimiter` bucket `syncSourceAction`/the OAuth
+ * callback route already use.
  */
 
 const OAUTH_STATE_COOKIE = "yt_oauth_state"; // must match src/app/api/admin/youtube/oauth/callback/route.ts
@@ -37,6 +45,10 @@ export async function startYoutubeConnectAction(): Promise<void> {
 
 export async function disconnectYoutubeAction(): Promise<void> {
   const actor = await requireSession();
+  if (!externalIntegrationRateLimiter.check(actor.id).allowed) {
+    throw new Error("Bạn đang thao tác quá nhanh — vui lòng thử lại sau ít phút.");
+  }
+  externalIntegrationRateLimiter.record(actor.id);
   await youtubeService.disconnect(actor);
   revalidatePath("/admin/media/videos");
 }
@@ -71,6 +83,10 @@ function toVideoOption(asset: { id: string; filename: string | null; providerFil
 
 export async function linkVideoAction(formData: FormData): Promise<LinkVideoResult> {
   const actor = await requireSession();
+  if (!externalIntegrationRateLimiter.check(actor.id).allowed) {
+    return { ok: false, error: "Bạn đang thao tác quá nhanh — vui lòng thử lại sau ít phút." };
+  }
+  externalIntegrationRateLimiter.record(actor.id);
   const input = String(formData.get("input") ?? "").trim();
   if (!input) return { ok: false, error: "Vui lòng dán URL hoặc video ID." };
   try {
@@ -84,6 +100,10 @@ export async function linkVideoAction(formData: FormData): Promise<LinkVideoResu
 
 export async function importChannelVideoAction(formData: FormData): Promise<LinkVideoResult> {
   const actor = await requireSession();
+  if (!externalIntegrationRateLimiter.check(actor.id).allowed) {
+    return { ok: false, error: "Bạn đang thao tác quá nhanh — vui lòng thử lại sau ít phút." };
+  }
+  externalIntegrationRateLimiter.record(actor.id);
   const videoId = String(formData.get("videoId") ?? "").trim();
   if (!videoId) return { ok: false, error: "Thiếu video ID." };
   try {
@@ -108,6 +128,10 @@ export interface BrowseChannelResult {
  *  above use. */
 export async function browseChannelVideosAction(pageToken?: string): Promise<BrowseChannelResult> {
   const actor = await requireSession();
+  if (!externalIntegrationRateLimiter.check(actor.id).allowed) {
+    return { ok: false, error: "Bạn đang thao tác quá nhanh — vui lòng thử lại sau ít phút." };
+  }
+  externalIntegrationRateLimiter.record(actor.id);
   try {
     const page = await youtubeService.listChannelUploadsForPicker(actor, pageToken);
     return { ok: true, items: page.items, nextPageToken: page.nextPageToken };
@@ -118,6 +142,10 @@ export async function browseChannelVideosAction(pageToken?: string): Promise<Bro
 
 export async function updateVideoMetadataAction(formData: FormData): Promise<VideoActionResult> {
   const actor = await requireSession();
+  if (!externalIntegrationRateLimiter.check(actor.id).allowed) {
+    return { ok: false, error: "Bạn đang thao tác quá nhanh — vui lòng thử lại sau ít phút." };
+  }
+  externalIntegrationRateLimiter.record(actor.id);
   const mediaId = String(formData.get("mediaId") ?? "");
   const title = String(formData.get("title") ?? "").trim() || undefined;
   const description = String(formData.get("description") ?? "").trim() || undefined;
@@ -134,6 +162,10 @@ export async function updateVideoMetadataAction(formData: FormData): Promise<Vid
 
 export async function refreshVideoStatusAction(formData: FormData): Promise<VideoActionResult> {
   const actor = await requireSession();
+  if (!externalIntegrationRateLimiter.check(actor.id).allowed) {
+    return { ok: false, error: "Bạn đang thao tác quá nhanh — vui lòng thử lại sau ít phút." };
+  }
+  externalIntegrationRateLimiter.record(actor.id);
   const mediaId = String(formData.get("mediaId") ?? "");
   try {
     await youtubeService.refreshStatus(actor, mediaId);
