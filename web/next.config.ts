@@ -79,13 +79,21 @@ const CSP = [
 
 const SECURITY_HEADERS = [
   { key: "Content-Security-Policy", value: CSP },
-  // 2 years + preload — this domain is admin-cookie-bearing (see
-  // `docs/AUTHENTICATION.md`), so once HTTPS is live it should never be
-  // reachable over plain HTTP again, in this browser or any other that has
-  // ever loaded it. Harmless if the browser received it over plain HTTP
-  // during local dev — HSTS is only ever honored over a real TLS
-  // connection in the first place.
-  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  // 1 year, no `includeSubDomains`/`preload` — this app shares its VPS
+  // with other, independently-deployed apps (`/opt/hoinghi`,
+  // `/opt/daotaohsv`, docs/DEPLOYMENT.md). If this app ever ends up on a
+  // parent domain with those served from sibling subdomains,
+  // `includeSubDomains` would force HTTPS on *their* subdomains too as
+  // soon as a browser sees this header — breaking them instantly if their
+  // own HTTPS setup isn't confirmed ready, with no way to un-push it from
+  // an already-visited browser before `max-age` expires. `preload` is
+  // effectively irreversible (a public list every major browser ships
+  // with) and doesn't make sense to opt into on this app's behalf without
+  // that being a deliberate, explicit decision. Add both back only once
+  // every subdomain of whatever domain this app actually lands on is
+  // confirmed to fully support HTTPS — see docs/DEPLOYMENT.md, "TLS and
+  // HSTS".
+  { key: "Strict-Transport-Security", value: "max-age=31536000" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-Frame-Options", value: "DENY" },

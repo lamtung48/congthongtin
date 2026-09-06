@@ -33,19 +33,22 @@ different Postgres role never fails on `ALTER ... OWNER TO`), writes
 atomically (`.partial` → `mv`), and rotates anything older than
 `BACKUP_RETENTION_DAYS` (default 14).
 
-**Set up the daily cron** (as the `hsv-portal` user, not root):
+**Set up the daily cron** (as the `congthongtin` user, not root — see
+docs/DEPLOYMENT.md for why this app runs as its own user, distinct from
+the VPS's existing `hoinghi`/`daotaohsv` apps):
 
 ```bash
-crontab -e
+sudo crontab -u congthongtin -e
 # Run every day at 02:15 server time, log output for troubleshooting.
-15 2 * * * /srv/hsv-portal/web/scripts/backupDatabase.sh >> /var/log/hsv-portal/backup.log 2>&1
+15 2 * * * /opt/congthongtin/web/scripts/backupDatabase.sh >> /var/log/congthongtin/backup.log 2>&1
 ```
 
 Environment variables `backupDatabase.sh` respects:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `BACKUP_DIR` | `/var/backups/hsv-portal` | Where dumps are written |
+| `BACKUP_DIR` | `/var/backups/congthongtin` | Where dumps are written |
+| `BACKUP_PREFIX` | `congthongtin` | Filename prefix — keeps dumps unambiguous if backups from `hoinghi`/`daotaohsv` ever land in a shared location |
 | `BACKUP_RETENTION_DAYS` | `14` | Older dumps are deleted after each run |
 | `ENV_FILE` | `<script dir>/../.env` | Where to read `DATABASE_URL` from if it's not already exported |
 
@@ -63,7 +66,7 @@ Destructive by nature (overwrites existing data in the target database),
 so it refuses to run without an explicit `--yes-i-am-sure` flag:
 
 ```bash
-./scripts/restoreDatabase.sh --yes-i-am-sure /var/backups/hsv-portal/hsv-portal-20260101T021500Z.sql.gz
+./scripts/restoreDatabase.sh --yes-i-am-sure /var/backups/congthongtin/congthongtin-20260101T021500Z.sql.gz
 ```
 
 What it does: `gunzip -c <file> | psql "$DATABASE_URL"` (with the same

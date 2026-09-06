@@ -14,10 +14,10 @@ one endpoint this task added for exactly this purpose.
 | What | How |
 |---|---|
 | Application health | `GET /api/health` — checks the app can reach Postgres (`SELECT 1`), returns `{"status":"ok"}`/200 or `{"status":"error"}`/503. No auth required (a monitoring agent has no admin session) and reveals nothing sensitive. Point an uptime checker (UptimeRobot, a cron `curl` + alert, nginx's own `proxy_next_upstream` health check) at this through the reverse proxy. |
-| HTTP 5xx | Reverse proxy access log (`nginx`'s default log format already includes status code) — `grep ' 5[0-9][0-9] ' /var/log/nginx/access.log` or point a log-shipping agent (Filebeat, Vector, whatever's already used for the training platform, if anything) at it. This app doesn't need its own separate 5xx counter — nginx sees every response regardless of what generated it. |
-| CPU/RAM | `pm2 monit` (if using PM2 — live view) or `systemctl status hsv-portal` + `top`/`htop` (if using systemd). `pm2 status` also shows per-process memory, useful for confirming the `max_memory_restart` cap (docs/DEPLOYMENT.md, section 2) isn't being hit repeatedly. |
-| Disk | `df -h` for the whole VPS, `du -sh /srv/hsv-portal /var/backups/hsv-portal /var/log/hsv-portal` for this app's own three growth points — see docs/DEPLOYMENT.md, section 6 for the budget each should stay under. |
-| Database | `psql -c "SELECT pg_size_pretty(pg_database_size('hsv_portal'));"` for total size; `SELECT * FROM pg_stat_activity;` for connection count/long-running queries if something feels slow. |
+| HTTP 5xx | Reverse proxy access log (`nginx`'s default log format already includes status code) — `grep ' 5[0-9][0-9] ' /var/log/nginx/access.log` or point a log-shipping agent (Filebeat, Vector, whatever's already used for `hoinghi`/`daotaohsv`, if anything) at it. This app doesn't need its own separate 5xx counter — nginx sees every response regardless of what generated it. |
+| CPU/RAM | `pm2 monit` (if using PM2 — live view) or `systemctl status congthongtin` + `top`/`htop` (if using systemd). `pm2 status` also shows per-process memory, useful for confirming the `max_memory_restart` cap (docs/DEPLOYMENT.md, section 2) isn't being hit repeatedly. |
+| Disk | `df -h` for the whole VPS, `du -sh /opt/congthongtin /var/backups/congthongtin /var/log/congthongtin` for this app's own three growth points — see docs/DEPLOYMENT.md, section 6 for the budget each should stay under (and `du -sh /opt/hoinghi /opt/daotaohsv` to see what the other two apps already use). |
+| Database | `psql -c "SELECT pg_size_pretty(pg_database_size('congthongtin'));"` for total size; `SELECT * FROM pg_stat_activity;` for connection count/long-running queries if something feels slow. |
 
 ### Memory
 
@@ -28,7 +28,7 @@ if brief, memory spike per concurrent upload, and it's the reason
 `max_memory_restart`/`MemoryMax` are set in docs/DEPLOYMENT.md's process
 manager config rather than left at PM2/systemd's defaults: a crash-and-
 restart on genuine memory pressure is preferable to an unbounded process
-eating into memory the training platform's own processes need.
+eating into memory `hoinghi`/`daotaohsv`'s own processes need.
 
 ### A simple daily check-in
 
@@ -36,8 +36,8 @@ If nothing more sophisticated is set up yet, a single cron line covers
 CPU/RAM/disk/health in one email:
 
 ```bash
-# /etc/cron.d/hsv-portal-daily-check
-0 8 * * * hsv-portal /srv/hsv-portal/scripts/dailyCheck.sh 2>&1 | mail -s "HSV Portal daily check" ops@your-domain.vn
+# /etc/cron.d/congthongtin-daily-check
+0 8 * * * congthongtin /opt/congthongtin/scripts/dailyCheck.sh 2>&1 | mail -s "Cong Thong Tin daily check" ops@your-domain.vn
 ```
 
 (No `dailyCheck.sh` is shipped in this repo — assemble one from the
@@ -63,21 +63,22 @@ by default (`/etc/systemd/journald.conf`'s `SystemMaxUse`); cap it
 explicitly if disk is tight:
 
 ```ini
-# /etc/systemd/journald.conf.d/hsv-portal.conf
+# /etc/systemd/journald.conf.d/congthongtin.conf
 [Journal]
 SystemMaxUse=500M
 ```
 
 **nginx**: already rotated by the distro's own `/etc/logrotate.d/nginx` —
-nothing app-specific needed here.
+nothing app-specific needed here (this covers `hoinghi`/`daotaohsv`'s
+access/error logs too, since they all share the one nginx instance).
 
-**This app's own backup log** (`/var/log/hsv-portal/backup.log`, if
+**This app's own backup log** (`/var/log/congthongtin/backup.log`, if
 following docs/BACKUP_RESTORE.md's cron example literally): add a
 `logrotate` config so it doesn't grow forever —
 
 ```
-# /etc/logrotate.d/hsv-portal
-/var/log/hsv-portal/*.log {
+# /etc/logrotate.d/congthongtin
+/var/log/congthongtin/*.log {
     weekly
     rotate 8
     compress

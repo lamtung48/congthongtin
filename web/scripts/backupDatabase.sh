@@ -32,10 +32,16 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
-BACKUP_DIR="${BACKUP_DIR:-/var/backups/hsv-portal}"
+# Defaults assume the `/opt/congthongtin` layout docs/DEPLOYMENT.md
+# suggests — override both if a different app name/directory was chosen
+# on the actual VPS (which already runs `hoinghi`/`daotaohsv` as siblings,
+# so this prefix also keeps dump filenames unambiguous if backups from
+# multiple apps ever land in the same place).
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/congthongtin}"
+BACKUP_PREFIX="${BACKUP_PREFIX:-congthongtin}"
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-14}"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-OUT_FILE="$BACKUP_DIR/hsv-portal-${TIMESTAMP}.sql.gz"
+OUT_FILE="$BACKUP_DIR/${BACKUP_PREFIX}-${TIMESTAMP}.sql.gz"
 
 mkdir -p "$BACKUP_DIR"
 
@@ -59,4 +65,4 @@ echo "Backup written to $OUT_FILE ($(du -h "$OUT_FILE" | cut -f1))"
 
 # Rotate: brief section 14's disk budget for "backups" is finite — keep
 # only the last $RETENTION_DAYS days' worth, matching docs/BACKUP_RESTORE.md.
-find "$BACKUP_DIR" -maxdepth 1 -name 'hsv-portal-*.sql.gz' -mtime "+${RETENTION_DAYS}" -print -delete
+find "$BACKUP_DIR" -maxdepth 1 -name "${BACKUP_PREFIX}-*.sql.gz" -mtime "+${RETENTION_DAYS}" -print -delete
