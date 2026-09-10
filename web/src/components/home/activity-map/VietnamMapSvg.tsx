@@ -30,7 +30,6 @@ interface Props {
   data: ActivityMapData | null;
   vnFeature: Feature<Geometry> | null;
   nearFeatures: Feature<Geometry>[];
-  filter: string;
   selectedSlug: string | null;
   selectedOverseasName: string | null;
   onSelectProvince: (slug: string | null) => void;
@@ -43,7 +42,6 @@ export function VietnamMapSvg({
   data,
   vnFeature,
   nearFeatures,
-  filter,
   selectedSlug,
   selectedOverseasName,
   onSelectProvince,
@@ -122,13 +120,13 @@ export function VietnamMapSvg({
   }
   if (state === "error" || state === "empty" || state === "geo") {
     const head =
-      state === "empty" ? "Chưa có dữ liệu hoạt động" : state === "geo" ? "Chưa hiển thị được nền bản đồ" : "Chưa tải được số liệu bản đồ";
+      state === "empty" ? "Chưa có dữ liệu bản đồ" : state === "geo" ? "Chưa hiển thị được nền bản đồ" : "Chưa tải được số liệu bản đồ";
     const body =
       state === "empty"
-        ? "Kỳ thống kê này chưa có đơn vị nào gửi số liệu. Bạn vẫn có thể mở danh sách tỉnh, thành ở dưới để xem từng đơn vị."
+        ? "Chưa có tỉnh, thành nào trong dữ liệu. Bạn vẫn có thể mở danh sách tỉnh, thành ở dưới để xem từng đơn vị."
         : state === "geo"
-          ? "Bản đồ cần nền địa lý để vẽ. Bạn có thể thử lại, hoặc mở danh sách tỉnh, thành ở dưới để xem hoạt động từng đơn vị."
-          : "Số liệu hoạt động tạm thời chưa tải được. Bạn có thể thử lại, hoặc mở danh sách tỉnh, thành ở dưới để xem hoạt động từng đơn vị.";
+          ? "Bản đồ cần nền địa lý để vẽ. Bạn có thể thử lại, hoặc mở danh sách tỉnh, thành ở dưới để xem tin bài từng đơn vị."
+          : "Số liệu bản đồ tạm thời chưa tải được. Bạn có thể thử lại, hoặc mở danh sách tỉnh, thành ở dưới để xem tin bài từng đơn vị.";
     return (
       <div className={styles.msgBox}>
         <span className={styles.msgLabel} style={{ color: state === "empty" ? "var(--text-faint)" : "var(--status-warning)" }}>
@@ -147,16 +145,16 @@ export function VietnamMapSvg({
   if (!data || !vnFeature) return null;
 
   const provinces = data.provinces ?? [];
-  const values = provinces.map((p) => provinceValue(p, filter)).filter((v): v is number => v != null);
+  const values = provinces.map((p) => provinceValue(p)).filter((v): v is number => v != null);
   const max = Math.max(1, ...values);
   const r = radiusScale(max);
-  const hasNone = provinces.some((p) => provinceValue(p, filter) == null);
+  const hasNone = provinces.some((p) => provinceValue(p) == null);
 
   const order = provinces
     .map((p, i) => i)
     .sort((a, b) => {
-      const va = provinceValue(provinces[a], filter);
-      const vb = provinceValue(provinces[b], filter);
+      const va = provinceValue(provinces[a]);
+      const vb = provinceValue(provinces[b]);
       return (vb == null ? -1 : vb) - (va == null ? -1 : va);
     });
 
@@ -183,7 +181,7 @@ export function VietnamMapSvg({
   function tooltipFor(p: ActivityMapProvince) {
     const xy = projectPoint(p.lon, p.lat);
     if (!xy) return null;
-    const v = provinceValue(p, filter);
+    const v = provinceValue(p);
     const none = v == null;
     const rad = none ? 4.6 : r(v);
     const tw = 232, th = none ? 90 : 150;
@@ -207,7 +205,7 @@ export function VietnamMapSvg({
       const p = provinces[i];
       const xy = projectPoint(p.lon, p.lat);
       if (!xy) return null;
-      const v = provinceValue(p, filter);
+      const v = provinceValue(p);
       const none = v == null;
       const rad = none ? 4.6 : r(v);
       return { p, x: xy[0], y: xy[1], v, none, rad, hitR: Math.max(rad + 9, 16) };
@@ -354,8 +352,8 @@ export function VietnamMapSvg({
               const sel = selectedSlug === p.slug;
               const hovered = hoverSlug === p.slug;
               const label = none
-                ? `${p.province_name}: chưa có số liệu${p.reported === false ? " — đơn vị chưa báo cáo kỳ này" : " cho chuyên mục đang chọn"}`
-                : `${p.province_name}: ${v} hoạt động${p.article_count != null ? `, ${p.article_count} tin bài` : ""}`;
+                ? `${p.province_name}: chưa có tin bài`
+                : `${p.province_name}: ${v} tin bài`;
               return (
                 <g
                   key={p.slug}
@@ -398,15 +396,12 @@ export function VietnamMapSvg({
             <h3 className={styles.tipHead}>{hoverProvince.province_name}</h3>
             {tip.none ? (
               <div className={styles.tipNone}>
-                {hoverProvince.reported === false ? "Đơn vị chưa báo cáo trong kỳ này." : "Chưa có dữ liệu cho chuyên mục đang chọn."}
+                Chưa có tin bài.
               </div>
             ) : (
               <>
                 <div className={styles.tipNums}>
-                  <div><b>{fmt(tip.v as number)}</b><span>hoạt động</span></div>
-                  {hoverProvince.article_count != null && (
-                    <div><b>{fmt(hoverProvince.article_count)}</b><span>tin bài</span></div>
-                  )}
+                  <div><b>{fmt(tip.v as number)}</b><span>tin bài</span></div>
                 </div>
                 {hoverProvince.latest_article && (
                   <p className={styles.tipArticle}>
@@ -467,7 +462,7 @@ export function VietnamMapSvg({
       </div>
 
       <div className={styles.legend}>
-        <span className={styles.legendLabel}>Mức hoạt động</span>
+        <span className={styles.legendLabel}>Số tin bài</span>
         <div className={styles.legendSizes}>
           {[0.15, 0.5, 1].map((f) => {
             const s = Math.round(r(max * f) * 2);

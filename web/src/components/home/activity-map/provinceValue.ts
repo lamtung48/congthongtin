@@ -1,15 +1,15 @@
 import type { ActivityMapProvince } from "@/domain/activity";
 
 /**
- * null = no figure yet (unit hasn't reported, or this category has no data
- * for it) — distinct from 0, which is a real reported zero.
+ * The figure the map keys on for a province: its count of published
+ * articles. `null` = no article yet (distinct from a real `0`), which the
+ * map renders as a hollow "chưa có tin bài" marker.
+ *
+ * Was previously a per-category lookup (`activity_count` / a
+ * `category_distribution` slice) driven by the map's filter chips. Those
+ * chips were removed — the map now always shows every unit's real article
+ * count.
  */
-export function provinceValue(p: ActivityMapProvince, filter: string): number | null {
-  if (p.reported === false) return null;
-  if (filter && filter !== "all") {
-    const d = p.category_distribution;
-    if (!d || d[filter] == null) return null;
-    return d[filter];
-  }
-  return p.activity_count;
+export function provinceValue(p: ActivityMapProvince): number | null {
+  return p.article_count;
 }

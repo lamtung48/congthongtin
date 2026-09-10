@@ -28,6 +28,9 @@ export interface StoryRailItem {
   place: string;
   publishedAt: string;
   headline: string;
+  /** Short standfirst — shown by the locality page's card list; the
+   *  homepage rail ignores it. */
+  lead?: string;
   category: Category;
   /** The article's own cover — the rail used to render one hardcoded
    *  placeholder for every card, so no story ever showed its real image. */
@@ -39,6 +42,10 @@ export interface LocalNewsEntry {
   slug: string;
   url: string;
   title: string;
+  /** Short standfirst (`Article.excerpt`, falling back to `subtitle`) — the
+   *  unit / locality pages show it under the headline; the homepage rail
+   *  doesn't and simply ignores it. */
+  lead?: string;
   publishedAt: string;
   level: OrganizationLevel;
   orgName: string;

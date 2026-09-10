@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import styles from "./page.module.css";
-import listStyles from "@/components/content/ArticleList.module.css";
 import { PageShell } from "@/components/ui/PageShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MediaImage } from "@/components/ui/MediaImage";
+import { ArticleRowList } from "@/components/content/ArticleRow";
 import { getLocalityBySlug, getLocalitySlugs } from "@/services/contentService";
 import { pageMetadata } from "@/lib/seo";
 import { localityHref, eventHref } from "@/lib/routes";
@@ -22,22 +22,15 @@ function fmt(n: number): string {
   return n.toLocaleString("vi-VN");
 }
 
-/** Item 2, "Summary" — also doubles as `PageShell`'s description and the
- *  page's meta description, so the three never say three different things. */
+/** Also doubles as `PageShell`'s description and the page's meta
+ *  description, so the three never say three different things. */
 function summaryText(locality: LocalityProfile): string {
   const { activity, name } = locality;
-  if (!activity) {
-    return `Tin tức và hoạt động sinh viên gắn với ${name}.`;
+  const count = activity?.articleCount ?? 0;
+  if (count > 0) {
+    return `${name} có ${fmt(count)} tin bài trên cổng.`;
   }
-  if (!activity.reported) {
-    return `${name} chưa gửi số liệu hoạt động trong kỳ thống kê ${activity.period}.`;
-  }
-  const parts: string[] = [];
-  if (activity.activityCount != null) parts.push(`${fmt(activity.activityCount)} hoạt động`);
-  if (activity.articleCount != null) parts.push(`${fmt(activity.articleCount)} tin bài`);
-  if (activity.studentCount != null) parts.push(`${fmt(activity.studentCount)} sinh viên tham gia`);
-  if (parts.length === 0) return `${name} — số liệu hoạt động đang được cập nhật.`;
-  return `${name} ghi nhận ${parts.join(", ")} trong kỳ thống kê ${activity.period}.`;
+  return `Tin tức và hoạt động sinh viên gắn với ${name}.`;
 }
 
 const EVENT_PLACEHOLDER: MediaAsset = { id: "locality-activity-fallback", provider: "local-placeholder", type: "image", status: "missing", placeholder: "Ảnh hoạt động" };
@@ -63,6 +56,7 @@ export default async function LocalityPage({ params }: Props) {
 
   const { activity, latestActivity, organizations, relatedMedia, localNews, stories } = locality;
   const hasNews = localNews.length > 0 || stories.length > 0;
+  const articleCount = activity?.articleCount ?? 0;
 
   return (
     <PageShell
@@ -72,49 +66,36 @@ export default async function LocalityPage({ params }: Props) {
       description={summaryText(locality)}
     >
       <div className={styles.stack}>
-        {/* Item 3 — Statistics */}
-        <section className={styles.section} aria-label="Số liệu hoạt động">
-          <h2 className={styles.sectionTitle}>Số liệu hoạt động</h2>
-          {!activity ? (
+        {/* Tin bài của địa phương — số liệu thật, đếm từ bài đã xuất bản */}
+        <section className={styles.section} aria-label="Tin bài của địa phương">
+          <h2 className={styles.sectionTitle}>Tin bài của địa phương</h2>
+          {articleCount === 0 ? (
             <EmptyState
-              title="Không áp dụng số liệu cấp tỉnh"
-              description="Địa phương này không phải là một trong 34 tỉnh, thành được Bản đồ hoạt động theo dõi, nên chưa có số liệu báo cáo theo tỉnh cho nơi này."
-            />
-          ) : !activity.reported ? (
-            <EmptyState
-              title="Chưa có số liệu báo cáo"
-              description={`${locality.name} chưa gửi số liệu hoạt động trong kỳ thống kê ${activity.period}. Số liệu sẽ hiển thị ngay khi đơn vị gửi báo cáo.`}
+              title="Chưa có tin bài"
+              description={`Chưa có tin bài nào được gắn với ${locality.name} trên cổng.`}
             />
           ) : (
             <>
-              <div data-l="locality-stats" className={styles.statsGrid}>
-                {activity.activityCount != null && (
+              <div data-l="locality-stats" className={styles.statsGrid} style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                <div className={styles.statCell}>
+                  <span className={styles.statValue}>{fmt(articleCount)}</span>
+                  <span className={styles.statLabel}>Tin bài</span>
+                </div>
+                {activity?.latestArticle && (
                   <div className={styles.statCell}>
-                    <span className={styles.statValue}>{fmt(activity.activityCount)}</span>
-                    <span className={styles.statLabel}>Hoạt động</span>
-                  </div>
-                )}
-                {activity.articleCount != null && (
-                  <div className={styles.statCell}>
-                    <span className={styles.statValue}>{fmt(activity.articleCount)}</span>
-                    <span className={styles.statLabel}>Tin bài</span>
-                  </div>
-                )}
-                {activity.studentCount != null && (
-                  <div className={styles.statCell}>
-                    <span className={styles.statValue}>{fmt(activity.studentCount)}</span>
-                    <span className={styles.statLabel}>Sinh viên tham gia</span>
+                    <span className={styles.statValue}>{formatDateVi(activity.latestArticle.publishedAt)}</span>
+                    <span className={styles.statLabel}>Tin mới nhất</span>
                   </div>
                 )}
               </div>
-              <p className={styles.updatedNote}>
-                Kỳ thống kê: {activity.period} · Cập nhật {formatDateVi(activity.updatedAt)}
-              </p>
+              {activity?.updatedAt && (
+                <p className={styles.updatedNote}>Cập nhật {formatDateVi(activity.updatedAt)}</p>
+              )}
             </>
           )}
         </section>
 
-        {/* Item 4 — Latest activities */}
+        {/* Hoạt động gần đây */}
         <section className={styles.section} aria-label="Hoạt động gần đây">
           <h2 className={styles.sectionTitle}>Hoạt động gần đây</h2>
           {latestActivity ? (
@@ -134,80 +115,63 @@ export default async function LocalityPage({ params }: Props) {
           )}
         </section>
 
-        {/* Item 5 — Latest news */}
+        {/* Tin tức mới nhất */}
         <section className={styles.section} aria-label="Tin tức mới nhất">
           <h2 className={styles.sectionTitle}>Tin tức mới nhất</h2>
           {!hasNews ? (
             <EmptyState
               title="Chưa có tin tức cho địa phương này"
-              description="Dữ liệu mẫu hiện chưa có tin từ cơ sở hoặc câu chuyện sinh viên nào gắn với địa phương này."
+              description="Chưa có tin từ cơ sở hoặc câu chuyện sinh viên nào gắn với địa phương này."
               action={{ label: "Xem tất cả tin tức", href: "/tin-tuc" }}
             />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-8)" }}>
               {localNews.length > 0 && (
                 <div>
-                  <h3 className={styles.sectionTitle} style={{ marginBottom: 8 }}>Tin từ cơ sở</h3>
-                  <ul className={listStyles.list}>
-                    {localNews.map((n) => (
-                      <li key={n.slug} className={listStyles.item}>
-                        <div className={listStyles.meta}>
-                          <span className={listStyles.date}>{formatDateVi(n.publishedAt)}</span>
-                          <span className={listStyles.place}>{n.orgName}</span>
-                        </div>
-                        <h3 className={listStyles.title}>
-                          <Link href={n.url}>{n.title}</Link>
-                        </h3>
-                      </li>
-                    ))}
-                  </ul>
+                  <h3 className={styles.sectionTitle} style={{ marginBottom: 12 }}>Tin từ cơ sở</h3>
+                  <ArticleRowList
+                    items={localNews.map((n) => ({
+                      url: n.url,
+                      title: n.title,
+                      lead: n.lead,
+                      media: n.media,
+                      meta: (
+                        <>
+                          <span>{n.orgName}</span>
+                          <span>·</span>
+                          <span>{formatDateVi(n.publishedAt)}</span>
+                        </>
+                      ),
+                    }))}
+                  />
                 </div>
               )}
 
               {stories.length > 0 && (
                 <div>
-                  <h3 className={styles.sectionTitle} style={{ marginBottom: 8 }}>Dòng chảy sinh viên</h3>
-                  <ul className={listStyles.list}>
-                    {stories.map((s) => (
-                      <li key={s.slug} className={listStyles.item}>
-                        <div className={listStyles.meta}>
-                          <span className={listStyles.cat}>{s.category.name}</span>
-                          <span className={listStyles.date}>{formatDateVi(s.publishedAt)}</span>
-                        </div>
-                        <h3 className={listStyles.title}>
-                          <Link href={s.url}>{s.headline}</Link>
-                        </h3>
-                      </li>
-                    ))}
-                  </ul>
+                  <h3 className={styles.sectionTitle} style={{ marginBottom: 12 }}>Dòng chảy sinh viên</h3>
+                  <ArticleRowList
+                    items={stories.map((s) => ({
+                      url: s.url,
+                      title: s.headline,
+                      lead: s.lead,
+                      media: s.media,
+                      meta: (
+                        <>
+                          <span>{s.category.name}</span>
+                          <span>·</span>
+                          <span>{formatDateVi(s.publishedAt)}</span>
+                        </>
+                      ),
+                    }))}
+                  />
                 </div>
               )}
             </div>
           )}
         </section>
 
-        {/* Item 6 — Category distribution, nếu có */}
-        {activity?.categoryDistribution && activity.categoryDistribution.length > 0 && (
-          <section className={styles.section} aria-label="Phân bố theo chuyên mục">
-            <h2 className={styles.sectionTitle}>Phân bố theo chuyên mục</h2>
-            <div className={styles.categoryBars}>
-              {(() => {
-                const max = Math.max(...activity.categoryDistribution.map((c) => c.count));
-                return activity.categoryDistribution.map((c) => (
-                  <div key={c.slug} className={styles.categoryRow}>
-                    <span className={styles.categoryLabel}>{c.label}</span>
-                    <span className={styles.categoryTrack}>
-                      <span className={styles.categoryFill} style={{ width: `${max > 0 ? Math.round((c.count / max) * 100) : 0}%` }} />
-                    </span>
-                    <span className={styles.categoryValue}>{fmt(c.count)}</span>
-                  </div>
-                ));
-              })()}
-            </div>
-          </section>
-        )}
-
-        {/* Item 7 — Organization list, nếu có */}
+        {/* Đơn vị Hội tại địa phương, nếu có */}
         {organizations.length > 0 && (
           <section className={styles.section} aria-label="Đơn vị Hội tại địa phương">
             <h2 className={styles.sectionTitle}>Đơn vị Hội tại địa phương</h2>
@@ -222,7 +186,7 @@ export default async function LocalityPage({ params }: Props) {
           </section>
         )}
 
-        {/* Item 8 — Related media */}
+        {/* Ảnh hoạt động liên quan */}
         <section className={styles.section} aria-label="Ảnh hoạt động liên quan">
           <h2 className={styles.sectionTitle}>Ảnh hoạt động liên quan</h2>
           {relatedMedia.length === 0 ? (

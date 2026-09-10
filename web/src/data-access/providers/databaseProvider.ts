@@ -616,6 +616,7 @@ export class DatabaseProvider implements ContentProvider {
       slug: a.slug,
       url: articleHref(a.slug),
       title: a.title,
+      lead: a.excerpt ?? a.subtitle ?? undefined,
       publishedAt: a.publishedAt!.toISOString(),
       level: ORG_TYPE_TO_LEVEL[a.organization!.type],
       orgName: a.organization!.name,
@@ -632,6 +633,7 @@ export class DatabaseProvider implements ContentProvider {
         place: province.name,
         publishedAt: a.publishedAt!.toISOString(),
         headline: a.title,
+        lead: a.excerpt ?? a.subtitle ?? undefined,
         category: mapCategory(a.category),
         media: a.coverMedia ? mapMedia(a.coverMedia) : placeholderMedia(`story-rail-${a.id}`, a.title),
       }));
@@ -648,9 +650,9 @@ export class DatabaseProvider implements ContentProvider {
           articleCount: provinceStat.article_count,
           activityCount: provinceStat.activity_count,
           studentCount: provinceStat.student_count,
-          categoryDistribution: provinceStat.category_distribution
-            ? Object.entries(provinceStat.category_distribution).map(([catSlug, count]) => ({ slug: catSlug, label: catSlug, count }))
-            : null,
+          // Category breakdown was retired with the activity-map filter
+          // chips — every figure is now a plain published-article count.
+          categoryDistribution: null,
           latestArticle: provinceStat.latest_article
             ? { title: provinceStat.latest_article.title, publishedAt: provinceStat.latest_article.published_at }
             : null,
@@ -689,6 +691,7 @@ export class DatabaseProvider implements ContentProvider {
         slug: a.slug,
         url: articleHref(a.slug),
         title: a.title,
+        lead: a.excerpt ?? a.subtitle ?? undefined,
         publishedAt: a.publishedAt!.toISOString(),
         level: ORG_TYPE_TO_LEVEL[org.type],
         orgName: org.name,

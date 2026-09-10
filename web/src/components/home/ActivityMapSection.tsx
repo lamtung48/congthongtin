@@ -24,58 +24,32 @@ function norm(v: string) {
     .toLowerCase();
 }
 
-const DEFAULT_CATEGORIES = [
-  { slug: "all", label: "Tất cả" },
-  { slug: "sv5tot", label: "Sinh viên 5 tốt" },
-  { slug: "tinhnguyen", label: "Tình nguyện" },
-  { slug: "nckh", label: "Nghiên cứu khoa học" },
-  { slug: "hoinhap", label: "Hội nhập" },
-];
-
 export function ActivityMapSection() {
   const { state, data, vnFeature, nearFeatures } = useActivityMapData();
   const { mobile } = useViewport();
-  const [filter, setFilter] = useState("all");
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [selectedOverseas, setSelectedOverseas] = useState<ActivityMapOverseasCountry | null>(null);
   const [listOpen, setListOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [retryTick, setRetryTick] = useState(0);
 
-  const categories = data?.categories ?? DEFAULT_CATEGORIES;
-  const allCats = filter === "all";
-  const catLabel = categories.find((c) => c.slug === filter)?.label ?? "Tất cả";
   const provinces = useMemo(() => data?.provinces ?? [], [data]);
+  const withData = useMemo(() => provinces.filter((p) => provinceValue(p) != null), [provinces]);
+  const totalArticles = withData.reduce((s, p) => s + (provinceValue(p) ?? 0), 0);
 
-  const withData = useMemo(
-    () => provinces.filter((p) => provinceValue(p, filter) != null),
-    [provinces, filter]
-  );
-  const catTotal = withData.reduce((s, p) => s + (provinceValue(p, filter) ?? 0), 0);
-  const period = data?.reporting_period?.label ?? "";
   const mapStats = !provinces.length
     ? []
-    : allCats
-      ? [
-          { value: fmt(catTotal), label: "Tổng hoạt động" },
-          { value: fmt(withData.reduce((s, p) => s + (p.article_count || 0), 0)), label: "Tin bài" },
-          { value: fmt(withData.reduce((s, p) => s + (p.student_count || 0), 0)), label: "Sinh viên tham gia" },
-          { value: `${withData.length}/${provinces.length}`, label: "Đơn vị đã báo cáo" },
-        ]
-      : [
-          { value: fmt(catTotal), label: `Hoạt động · ${catLabel}` },
-          { value: String(withData.length), label: "Tỉnh, thành có dữ liệu" },
-          { value: String(provinces.length - withData.length), label: "Chưa có dữ liệu" },
-        ];
+    : [
+        { value: fmt(totalArticles), label: "Tổng tin bài" },
+        { value: `${withData.length}/${provinces.length}`, label: "Tỉnh, thành có tin bài" },
+      ];
   const updatedAt =
-    data?.updated_at && state === "loaded"
-      ? formatDateTimeVi(data.updated_at)
-      : "";
-  const periodLine = [period ? `Kỳ thống kê: ${period}` : "", updatedAt ? `Cập nhật ${updatedAt}` : ""].filter(Boolean).join(" · ");
+    data?.updated_at && state === "loaded" ? formatDateTimeVi(data.updated_at) : "";
+  const periodLine = updatedAt ? `Cập nhật ${updatedAt}` : "";
 
   function byValue(a: (typeof provinces)[number], b: (typeof provinces)[number]) {
-    const va = provinceValue(a, filter);
-    const vb = provinceValue(b, filter);
+    const va = provinceValue(a);
+    const vb = provinceValue(b);
     if (va == null && vb == null) return a.province_name.localeCompare(b.province_name, "vi");
     if (va == null) return 1;
     if (vb == null) return -1;
@@ -93,17 +67,15 @@ export function ActivityMapSection() {
   const listShown = q ? listAll.filter((p) => norm(p.province_name).includes(q)) : listAll;
 
   const selP = selectedSlug ? provinces.find((p) => p.slug === selectedSlug) ?? null : null;
-  const selVal = selP ? provinceValue(selP, filter) : null;
+  const selVal = selP ? provinceValue(selP) : null;
   const selMetrics: { value: string; label: string }[] = [];
   if (selP && selVal != null) {
-    selMetrics.push({ value: fmt(selVal), label: allCats ? "hoạt động" : `hoạt động ${catLabel.toLowerCase()}` });
-    if (allCats && selP.article_count != null) selMetrics.push({ value: fmt(selP.article_count), label: "tin bài" });
-    if (allCats && selP.student_count != null) selMetrics.push({ value: fmt(selP.student_count), label: "sinh viên" });
+    selMetrics.push({ value: fmt(selVal), label: "tin bài" });
   }
   const selNews = selP?.latest_article && selVal != null ? [selP.latest_article] : [];
 
   const ovList = data?.overseas?.countries ?? [];
-  const ovVal = selectedOverseas && allCats ? selectedOverseas.activity_count : null;
+  const ovVal = selectedOverseas ? selectedOverseas.activity_count : null;
   const ovMetrics: { value: string; label: string }[] = [];
   if (selectedOverseas && ovVal != null) {
     const rank =
@@ -136,25 +108,16 @@ export function ActivityMapSection() {
   }
 
   const detailName = selectedOverseas ? selectedOverseas.name : selP ? selP.province_name : "";
-  const detailPeriodLine = selectedOverseas
-    ? `Khối ngoài nước${period ? ` · Kỳ thống kê: ${period}` : ""}`
-    : selP
-      ? `Kỳ thống kê: ${selP.period || period}`
-      : "";
+  const detailPeriodLine = selectedOverseas ? "Khối ngoài nước" : "";
   const activeMetrics = selectedOverseas ? ovMetrics : selMetrics;
   const noData = selectedOverseas ? ovMetrics.length === 0 : !!selP && selVal == null;
   const noDataMsg = selectedOverseas
-    ? allCats
-      ? "Hội này chưa gửi số liệu trong kỳ thống kê này."
-      : `Khối ngoài nước chỉ có số liệu tổng, chưa tách theo chuyên mục “${catLabel}”.`
+    ? "Hội này chưa có số liệu hoạt động."
     : selP
-      ? selP.reported === false
-        ? "Đơn vị chưa gửi báo cáo trong kỳ thống kê này."
-        : `Chuyên mục “${catLabel}” chưa có dữ liệu của đơn vị này.`
+      ? "Đơn vị này chưa có tin bài trên cổng."
       : "";
-  const activities = selectedOverseas ? (ovVal == null ? "—" : fmt(ovVal)) : selVal == null ? "—" : fmt(selVal);
   const articles = selectedOverseas ? "—" : selP && selP.article_count != null ? fmt(selP.article_count) : "—";
-  const latestTitle = !selectedOverseas && selNews.length ? selNews[0].title : "Chưa có tin bài trong kỳ này";
+  const latestTitle = !selectedOverseas && selNews.length ? selNews[0].title : "Chưa có tin bài";
   // A province click goes to its locality page — see docs/LOCALITY_PAGE.md —
   // while an overseas chapter (not a geographic locality) still goes to its
   // `/don-vi/[slug]` unit page, same as before.
@@ -173,21 +136,8 @@ export function ActivityMapSection() {
             <span className={styles.eyebrow}>Bản đồ phong trào</span>
             <h2 className={styles.title}>Hoạt động sinh viên trên toàn quốc</h2>
             <p className={styles.desc}>
-              Chọn một tỉnh, thành trên bản đồ để xem hoạt động, tin bài và tin mới nhất của đơn vị đó. Chọn chuyên mục để xem riêng từng mảng phong trào.
+              Chọn một tỉnh, thành trên bản đồ để xem số tin bài và tin mới nhất của đơn vị đó.
             </p>
-          </div>
-          <div role="group" aria-label="Lọc hoạt động theo chuyên mục" className={styles.filters}>
-            {categories.map((c) => (
-              <button
-                key={c.slug}
-                type="button"
-                onClick={() => setFilter(c.slug)}
-                aria-pressed={filter === c.slug}
-                className={filter === c.slug ? styles.filterBtnOn : styles.filterBtn}
-              >
-                {c.label}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -198,7 +148,6 @@ export function ActivityMapSection() {
               data={data}
               vnFeature={vnFeature}
               nearFeatures={nearFeatures}
-              filter={filter}
               selectedSlug={selectedSlug}
               selectedOverseasName={selectedOverseas?.name ?? null}
               onSelectProvince={selectProvince}
@@ -219,7 +168,7 @@ export function ActivityMapSection() {
                     </div>
                   ))}
                 </div>
-                <span className={styles.periodLine}>{periodLine}</span>
+                {periodLine && <span className={styles.periodLine}>{periodLine}</span>}
               </div>
             )}
 
@@ -229,7 +178,7 @@ export function ActivityMapSection() {
                   <span>
                     <span className={styles.detailEyebrow}>Đang chọn</span>
                     <div className={styles.detailName}>{detailName}</div>
-                    <span className={styles.detailPeriod}>{detailPeriodLine}</span>
+                    {detailPeriodLine && <span className={styles.detailPeriod}>{detailPeriodLine}</span>}
                   </span>
                   <button type="button" onClick={clearSelection} aria-label="Xem toàn quốc, bỏ chọn đơn vị" className={styles.detailCloseBtn}>
                     <IconClose size={15} />
@@ -264,7 +213,7 @@ export function ActivityMapSection() {
                       </span>
                     ))
                   ) : (
-                    <span className={styles.newsEmpty}>Đơn vị chưa có tin bài trong kỳ này.</span>
+                    <span className={styles.newsEmpty}>Đơn vị chưa có tin bài.</span>
                   )}
                 </div>
 
@@ -287,7 +236,7 @@ export function ActivityMapSection() {
                       <span className={styles.unselectedDate}>{p.latest_article?.published_at}</span>
                     </a>
                   ))}
-                  <span className={styles.unselectedHint}>Chọn một tỉnh, thành trên bản đồ để xem số liệu và tin bài của đơn vị đó.</span>
+                  <span className={styles.unselectedHint}>Chọn một tỉnh, thành trên bản đồ để xem số tin bài và tin mới nhất của đơn vị đó.</span>
                 </div>
               )
             )}
@@ -321,7 +270,7 @@ export function ActivityMapSection() {
 
               <div className={styles.listGrid}>
                 {listShown.map((p) => {
-                  const v = provinceValue(p, filter);
+                  const v = provinceValue(p);
                   const none = v == null;
                   return (
                     <button
@@ -333,7 +282,7 @@ export function ActivityMapSection() {
                     >
                       <span className={styles.listItemName}>{p.province_name}</span>
                       <span className={none ? styles.listItemNoValue : styles.listItemValue}>
-                        {none ? (p.reported === false ? "Chưa báo cáo" : "Chưa có dữ liệu") : `${fmt(v)} hoạt động`}
+                        {none ? "Chưa có tin bài" : `${fmt(v)} tin bài`}
                       </span>
                     </button>
                   );
@@ -361,10 +310,6 @@ export function ActivityMapSection() {
               </button>
             </span>
             <span className={styles.sheetStats}>
-              <span className={styles.sheetStat}>
-                <span className={styles.sheetStatValue}>{activities}</span>
-                <span className={styles.sheetStatLabel}>hoạt động</span>
-              </span>
               <span className={styles.sheetStat}>
                 <span className={styles.sheetStatValue}>{articles}</span>
                 <span className={styles.sheetStatLabel}>tin bài</span>

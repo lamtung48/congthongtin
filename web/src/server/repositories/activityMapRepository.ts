@@ -36,6 +36,31 @@ export const activityMapRepository = {
   },
 
   /**
+   * The map's real per-province figures: every published, already-live
+   * article that belongs to a province — either directly (`Article.provinceId`)
+   * or through its reporting unit (`Article.organization.provinceId`).
+   * One query for the whole map; the service reduces it per province.
+   * Ordered newest-first so the first row seen for a province is also its
+   * "tin mới nhất".
+   */
+  publishedArticlesForProvinceMap(now: Date) {
+    return prisma.article.findMany({
+      where: {
+        status: "PUBLISHED",
+        publishedAt: { not: null, lte: now },
+        OR: [{ provinceId: { not: null } }, { organization: { provinceId: { not: null } } }],
+      },
+      orderBy: { publishedAt: "desc" },
+      select: {
+        title: true,
+        publishedAt: true,
+        provinceId: true,
+        organization: { select: { provinceId: true } },
+      },
+    });
+  },
+
+  /**
    * `@@unique([provinceId, categoryId, period])` cannot be trusted to block
    * duplicate *aggregate* rows on its own: Postgres treats every NULL in a
    * unique index as distinct from every other NULL, so two aggregate rows
