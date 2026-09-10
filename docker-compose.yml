@@ -83,12 +83,21 @@ services:
       # but only the Data API returns a video's duration.
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
       YOUTUBE_ALLOW_CONTRIBUTOR_UPLOAD: "false"
+      # Persistent cache for the bytes /api/media/[id] serves
+      # (web/src/server/media/mediaCache.ts). Without it every image request
+      # — even a repeat — is a live Google Drive round trip (~1.5–4s); with
+      # it a repeat is ~1ms and the cache survives redeploys via the volume
+      # below. 512MB budget, LRU-evicted.
+      MEDIA_CACHE_DIR: /app/web/.media-cache
+      MEDIA_CACHE_MAX_BYTES: "536870912"
     volumes:
       # Persist the Next.js build across restarts (entrypoint rebuilds only
       # when source changes).
       - next_cache:/app/web/.next
       # `npm run db:backup` output (scripts/backupDatabase.sh).
       - backups_data:/app/web/backups
+      # Shared media-bytes cache (see MEDIA_CACHE_DIR above).
+      - media_cache:/app/web/.media-cache
     # localhost port for direct smoke-testing; public traffic comes via Caddy
     # over the `edge` network. 3000/3001/3100 are used by the other apps.
     ports:
@@ -161,6 +170,7 @@ volumes:
   postgres_data:
   next_cache:
   backups_data:
+  media_cache:
 
 networks:
   default:

@@ -4,7 +4,7 @@ import { documentRepository } from "@/server/repositories/documentRepository";
 import { documentExtensionOf } from "@/server/validation/documentUpload";
 import { slugify } from "@/lib/slug";
 import {
-  getDriveFileStream,
+  getDriveFileContent,
   GoogleDriveNotConfiguredError,
   GoogleDriveOperationError,
 } from "@/server/integrations/googleDrive";
@@ -51,14 +51,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 
   try {
-    const file = await getDriveFileStream(media.providerFileId);
+    // Content-only fetch — the MIME type is already on the `MediaAsset` row,
+    // so there is no need for Drive's metadata call as well.
+    const file = await getDriveFileContent(media.providerFileId);
     const extension = documentExtensionOf(media.filename ?? "") ?? "pdf";
+    const size = file.size ?? media.size ?? undefined;
     return new NextResponse(Readable.toWeb(file.stream as unknown as Readable) as ReadableStream<Uint8Array>, {
       headers: {
         ...cacheHeaders,
-        "Content-Type": media.mimeType ?? file.mimeType,
+        "Content-Type": media.mimeType ?? "application/octet-stream",
         "Content-Disposition": contentDisposition(document.title, extension),
-        ...(file.size ? { "Content-Length": String(file.size) } : {}),
+        ...(size ? { "Content-Length": String(size) } : {}),
         // The bytes are attacker-supplied only in the sense that an editor
         // uploaded them; `nosniff` still stops a browser from deciding a
         // .doc is really HTML and running it in our origin.

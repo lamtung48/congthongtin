@@ -17,6 +17,10 @@
 /.next/
 /out/
 
+# media-bytes cache (web/src/server/media/mediaCache.ts) — a Docker volume
+# in production, a local dir under dev
+/.media-cache/
+
 # production
 /build
 

@@ -199,3 +199,36 @@ export async function getDriveFileStream(fileId: string): Promise<DriveFileStrea
     throw new GoogleDriveOperationError(describeDriveError(err), { cause: err });
   }
 }
+
+export interface DriveFileContent {
+  stream: NodeJS.ReadableStream;
+  /** From the content response's `content-length`, when Drive sends it. */
+  size?: number;
+}
+
+/**
+ * Content-only fetch: a single `files.get?alt=media` call, with no companion
+ * metadata request. Every caller that already holds the file's MIME type —
+ * which is every caller that reaches this via a `MediaAsset`/`Document` row,
+ * since the type is stored at upload time — should use this instead of
+ * `getDriveFileStream` so a media request costs one Drive round trip, not
+ * two.
+ */
+export async function getDriveFileContent(fileId: string): Promise<DriveFileContent> {
+  const drive = getClient();
+  try {
+    const res = await drive.files.get(
+      { fileId, alt: "media", supportsAllDrives: true },
+      { responseType: "stream" },
+    );
+    const headers = (res.headers ?? {}) as Record<string, string | undefined>;
+    const len = Number(headers["content-length"]);
+    return {
+      stream: res.data as unknown as NodeJS.ReadableStream,
+      size: Number.isFinite(len) && len > 0 ? len : undefined,
+    };
+  } catch (err) {
+    if (err instanceof GoogleDriveNotConfiguredError) throw err;
+    throw new GoogleDriveOperationError(describeDriveError(err), { cause: err });
+  }
+}
