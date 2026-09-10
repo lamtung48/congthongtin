@@ -159,7 +159,13 @@ export async function uploadFileToDrive(buffer: Buffer, filename: string, mimeTy
 export async function deleteFileFromDrive(fileId: string): Promise<void> {
   const drive = getClient();
   try {
-    await drive.files.delete({ fileId, supportsAllDrives: true });
+    // Move to trash rather than `files.delete` (permanent). On a Shared
+    // Drive, permanent deletion needs the caller to be a *Manager*; the
+    // service account is only a Content Manager/Contributor, which can
+    // trash (`capabilities.canTrash`) but not hard-delete
+    // (`capabilities.canDelete`). Trash is also recoverable and the Shared
+    // Drive empties it automatically after 30 days.
+    await drive.files.update({ fileId, requestBody: { trashed: true }, supportsAllDrives: true });
   } catch (err) {
     if (err instanceof GoogleDriveNotConfiguredError) throw err;
     throw new GoogleDriveOperationError(describeDriveError(err), { cause: err });

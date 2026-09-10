@@ -64,9 +64,25 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
  */
 const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  // `'unsafe-inline'` is required, not optional: Next 16's streaming runtime
+  // emits its RSC-payload bootstrap as inline `<script>self.__next_f.push(...)`
+  // tags on every page. Under a bare `script-src 'self'` the browser blocks
+  // them, React never hydrates, and every interactive Server Action (the
+  // `/admin/login` form included) silently stops working. The strict
+  // alternative — a per-request nonce set from `proxy.ts` — would force every
+  // route to dynamic rendering and break the ISR/`generateStaticParams` the
+  // public site is built on (next.config's own reasoning, "Dynamic Rendering
+  // Requirement"). `object-src 'none'` + `base-uri 'self'` + `frame-ancestors
+  // 'none'` still stand; this CMS renders no user-authored HTML into a page.
+  "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://img.youtube.com",
+  // `https:` (any HTTPS host) is needed because the news collector
+  // hot-links article images straight from their source CDNs
+  // (`MediaProvider.EXTERNAL`, resolveMedia.ts) rather than copying them —
+  // an image can't execute, so this is a low-risk relaxation. `data:` for
+  // inline SVG/blur placeholders; the explicit youtube host is redundant
+  // now but kept for clarity.
+  "img-src 'self' data: https: https://img.youtube.com",
   "font-src 'self'",
   "connect-src 'self'",
   "frame-src https://www.youtube-nocookie.com",
@@ -109,6 +125,15 @@ const nextConfig: NextConfig = {
     // Still marked experimental by Next.js itself; scoped narrowly to just
     // this flag rather than a broader experimental opt-in.
     authInterrupts: true,
+    // Deploy-only knob: cap the number of `next build` static-generation
+    // workers. On a many-core shared VPS the default (cores − 1) fans out
+    // to ~15 workers, each loading the full server bundle + Prisma client,
+    // which OOM-kills the build inside a memory-limited container. Unset
+    // locally, so `npm run dev`/`npm run build` on a workstation are
+    // unaffected. See docker-compose.yml (`NEXT_BUILD_CPUS`).
+    ...(process.env.NEXT_BUILD_CPUS
+      ? { cpus: Number(process.env.NEXT_BUILD_CPUS) }
+      : {}),
   },
   images: {
     // No image loader/CDN has been chosen for the new (not-yet-decided)

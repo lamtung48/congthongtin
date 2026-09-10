@@ -11,6 +11,7 @@ import { IconArrowRight, IconChevronDown, IconClose, IconSearch } from "@/compon
 import type { ActivityMapOverseasCountry } from "@/domain/activity";
 import { localityHref, unitHref } from "@/lib/routes";
 import { slugifyOverseasName } from "@/lib/slug";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 function fmt(n: number) {
   return n.toLocaleString("vi-VN");
@@ -68,7 +69,7 @@ export function ActivityMapSection() {
         ];
   const updatedAt =
     data?.updated_at && state === "loaded"
-      ? new Date(data.updated_at).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+      ? formatDateTimeVi(data.updated_at)
       : "";
   const periodLine = [period ? `Kỳ thống kê: ${period}` : "", updatedAt ? `Cập nhật ${updatedAt}` : ""].filter(Boolean).join(" · ");
 
@@ -205,9 +206,6 @@ export function ActivityMapSection() {
               onRetry={() => setRetryTick((n) => n + 1)}
               key={retryTick}
             />
-            <p className={styles.mapFootnote}>
-              Quần đảo Hoàng Sa và quần đảo Trường Sa thuộc chủ quyền Việt Nam. Vị trí hai quần đảo trên bản đồ mang tính chất minh hoạ, không theo tỷ lệ và không phải đơn vị hành chính cấp tỉnh. Hội Sinh viên Việt Nam ở ngoài nước được tính riêng, ngoài 34 tỉnh, thành.
-            </p>
           </div>
 
           <aside aria-label="Số liệu hoạt động" className={styles.aside}>

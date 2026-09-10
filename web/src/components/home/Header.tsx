@@ -28,6 +28,11 @@ export function Header({
   const [moreOpen, setMoreOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  // Signed-in visitor (any role). `undefined` = not checked yet, `null` =
+  // signed out. Fetched client-side so the `(site)` pages stay static/ISR —
+  // see `src/app/api/session/route.ts`.
+  const [me, setMe] = useState<{ displayName: string; roleLabel: string } | null | undefined>(undefined);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const searchBtnRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const drawerCloseRef = useRef<HTMLButtonElement>(null);
@@ -51,10 +56,35 @@ export function Header({
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       setMoreOpen(false);
+      setUserMenuOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/session", { headers: { accept: "application/json" } })
+      .then((r) => (r.ok ? r.json() : { user: null }))
+      .then((d) => {
+        if (!cancelled) setMe(d?.user ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setMe(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleLogout() {
+    try {
+      await fetch("/api/logout", { method: "POST" });
+    } catch {
+      // ignore — redirect anyway; a stale cookie fails the next auth check
+    }
+    window.location.assign("/");
+  }
 
   useModalDialog(drawerOpen, drawerRef, () => setDrawerOpen(false), drawerCloseRef);
 
@@ -80,9 +110,16 @@ export function Header({
                 {navVisible.map((item) => {
                   if (item.soon) {
                     return (
-                      <span key={item.label} aria-disabled="true" title="Trang chưa có trong bản mẫu" className={styles.navLink}>
+                      <span key={item.label} aria-disabled="true" title="Trang đang được xây dựng" className={styles.navLink}>
                         {item.label}
                       </span>
+                    );
+                  }
+                  if (item.external) {
+                    return (
+                      <a key={item.label} href={item.href} target="_blank" rel="noopener noreferrer" className={styles.navLink}>
+                        {item.label}
+                      </a>
                     );
                   }
                   const active = item.href === "/" ? pathname === "/" : pathname?.startsWith(item.href);
@@ -101,9 +138,13 @@ export function Header({
                       <span className={styles.moreMenu}>
                         {navOverflow.map((item) =>
                           item.soon ? (
-                            <span key={item.label} aria-disabled="true" title="Trang chưa có trong bản mẫu" className={styles.moreMenuLink}>
+                            <span key={item.label} aria-disabled="true" title="Trang đang được xây dựng" className={styles.moreMenuLink}>
                               {item.label}
                             </span>
+                          ) : item.external ? (
+                            <a key={item.label} href={item.href} target="_blank" rel="noopener noreferrer" onClick={() => setMoreOpen(false)} className={styles.moreMenuLink}>
+                              {item.label}
+                            </a>
                           ) : (
                             <Link key={item.label} href={item.href} onClick={() => setMoreOpen(false)} className={styles.moreMenuLink}>
                               {item.label}
@@ -129,11 +170,44 @@ export function Header({
               </button>
               {/* On mobile the login pill doesn't fit next to search + the
                   hamburger — it moves into the drawer below instead. */}
-              {!mobile && (
-                <span aria-disabled="true" title="Đăng nhập chưa khả dụng trong bản mẫu" className={styles.loginBtn}>
-                  Đăng nhập
-                </span>
-              )}
+              {!mobile &&
+                (me ? (
+                  <span style={{ position: "relative", display: "inline-flex" }}>
+                    <button
+                      type="button"
+                      onClick={() => setUserMenuOpen((v) => !v)}
+                      aria-expanded={userMenuOpen}
+                      aria-haspopup="menu"
+                      className={styles.moreBtn}
+                      title={me.displayName}
+                    >
+                      <IconUser size={17} />
+                      <span style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me.displayName}</span>
+                      <IconChevronDown size={14} />
+                    </button>
+                    {userMenuOpen && (
+                      <span role="menu" className={styles.moreMenu}>
+                        <span style={{ padding: "4px 12px 6px", fontSize: 12.5, color: "var(--text-muted)" }}>{me.roleLabel}</span>
+                        <Link href="/admin/dashboard" role="menuitem" onClick={() => setUserMenuOpen(false)} className={styles.moreMenuLink}>
+                          Trang quản trị
+                        </Link>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={handleLogout}
+                          className={styles.moreMenuLink}
+                          style={{ border: 0, background: "transparent", cursor: "pointer", textAlign: "left", width: "100%" }}
+                        >
+                          Đăng xuất
+                        </button>
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  <Link href="/admin/login" className={styles.loginBtn}>
+                    Đăng nhập
+                  </Link>
+                ))}
               {narrow && (
                 <button type="button" onClick={() => setDrawerOpen(true)} aria-label="Mở menu" aria-expanded={drawerOpen} className={styles.iconBtn}>
                   <IconMenu size={19} />
@@ -157,9 +231,16 @@ export function Header({
           <div className={styles.drawerList}>
             {nav.map((item) =>
               item.soon ? (
-                <span key={item.label} aria-disabled="true" title="Trang chưa có trong bản mẫu" className={styles.drawerLink}>
+                <span key={item.label} aria-disabled="true" title="Trang đang được xây dựng" className={styles.drawerLink}>
                   {item.label}
                 </span>
+              ) : item.external ? (
+                <a key={item.label} href={item.href} target="_blank" rel="noopener noreferrer" onClick={() => setDrawerOpen(false)} className={styles.drawerLink}>
+                  {item.label}
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                    <path d="M5 12h13M13 6l6 6-6 6" />
+                  </svg>
+                </a>
               ) : (
                 <Link key={item.label} href={item.href} onClick={() => setDrawerOpen(false)} className={styles.drawerLink}>
                   {item.label}
@@ -169,12 +250,34 @@ export function Header({
                 </Link>
               )
             )}
-            {mobile && (
-              <span aria-disabled="true" title="Đăng nhập chưa khả dụng trong bản mẫu" className={styles.drawerLink}>
-                Đăng nhập
-                <IconUser size={18} />
-              </span>
-            )}
+            {mobile &&
+              (me ? (
+                <>
+                  <span className={styles.drawerLink} style={{ opacity: 0.65 }}>
+                    {me.displayName} · {me.roleLabel}
+                  </span>
+                  <Link href="/admin/dashboard" onClick={() => setDrawerOpen(false)} className={styles.drawerLink}>
+                    Trang quản trị
+                    <IconUser size={18} />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDrawerOpen(false);
+                      handleLogout();
+                    }}
+                    className={styles.drawerLink}
+                    style={{ border: 0, background: "transparent", cursor: "pointer", width: "100%", textAlign: "left" }}
+                  >
+                    Đăng xuất
+                  </button>
+                </>
+              ) : (
+                <Link href="/admin/login" onClick={() => setDrawerOpen(false)} className={styles.drawerLink}>
+                  Đăng nhập
+                  <IconUser size={18} />
+                </Link>
+              ))}
           </div>
         </div>
       )}

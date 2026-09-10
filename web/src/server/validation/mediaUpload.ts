@@ -196,7 +196,15 @@ export function validateImageUpload(buffer: Buffer, declaredFilename: string): U
  *  supplied name — the original name is kept only as display metadata
  *  (`MediaAsset.filename`). Guarantees a safe, collision-resistant name
  *  regardless of what a browser sends. */
-export function buildStorageFilename(mediaId: string, format: ImageFormat): string {
+/**
+ * `slugHint` (already slugified + length-capped by the caller — never a raw
+ * client filename, see brief section 9 "Không tin filename") lets an upload
+ * made from the article editor land in Drive as `<article-slug>-<id8>.<ext>`
+ * so the folder is browsable by article. Without it, the random media id is
+ * the whole name, as before.
+ */
+export function buildStorageFilename(mediaId: string, format: ImageFormat, slugHint?: string): string {
   const ext = MIME_TO_EXTENSIONS[FORMAT_TO_MIME[format]][0];
-  return `${mediaId}.${ext}`;
+  const base = slugHint ? `${slugHint}-${mediaId.replace(/-/g, "").slice(0, 8)}` : mediaId;
+  return `${base}.${ext}`;
 }

@@ -1,0 +1,13 @@
+.git
+.github
+project
+chats
+README.md
+web/node_modules
+web/.next
+web/out
+web/.env
+web/.env.*
+!web/.env.example
+**/*.log
+**/.DS_Store

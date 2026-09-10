@@ -28,6 +28,7 @@ import type {
 
 const MEDIA_PROVIDER_MAP: Record<PrismaMediaProvider, MediaAsset["provider"]> = {
   GOOGLE_DRIVE: "drive",
+  EXTERNAL: "external",
   YOUTUBE: "youtube",
   LOCAL_PLACEHOLDER: "local-placeholder",
 };
@@ -35,6 +36,7 @@ const MEDIA_PROVIDER_MAP: Record<PrismaMediaProvider, MediaAsset["provider"]> = 
 const MEDIA_TYPE_MAP: Record<PrismaMediaType, MediaAsset["type"]> = {
   IMAGE: "image",
   VIDEO: "video",
+  DOCUMENT: "document",
 };
 
 const MEDIA_STATUS_MAP: Record<PrismaMediaStatus, MediaAsset["status"]> = {

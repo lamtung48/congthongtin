@@ -3,7 +3,10 @@ import { fetchRaw } from "./httpClient";
 import { extractHashtags } from "./normalize";
 import type { SourceFetcher, SourceFetchInput, SourceFetchResult, NormalizedExternalPost } from "./types";
 
-const GRAPH_API_VERSION = "v19.0";
+// Meta expires each Graph API version ~2 years after release. v19.0 (the
+// value this shipped with) is long past end-of-life; v24.0 was released
+// 2025-10 and is supported until 2028-02. Bump this before that date.
+const GRAPH_API_VERSION = "v24.0";
 const FIELDS = "id,message,permalink_url,created_time";
 
 interface GraphPost {

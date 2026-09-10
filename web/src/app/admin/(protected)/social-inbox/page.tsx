@@ -6,8 +6,9 @@ import { taxonomyService } from "@/server/services/taxonomyService";
 import { userRepository } from "@/server/repositories/userRepository";
 import { hasPermission } from "@/server/auth/permissions";
 import { SOURCE_TYPE_LABELS, EXTERNAL_ITEM_STATUS_LABELS } from "@/lib/sourceLabels";
-import { ignoreExternalItemAction, assignExternalItemAction, convertExternalItemAction, createManualItemAction } from "./actions";
+import { ignoreExternalItemAction, restoreExternalItemAction, assignExternalItemAction, convertExternalItemAction, createManualItemAction } from "./actions";
 import type { ExternalItemStatus } from "@/generated/prisma/client";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 export const metadata: Metadata = { title: "Social Inbox" };
 
@@ -115,8 +116,16 @@ export default async function SocialInboxPage({ searchParams }: { searchParams: 
               </thead>
               <tbody>
                 {items.map((item) => {
-                  const canConvertThis =
-                    canManage || (hasPermission(session.role, "social_inbox.convert_own") && item.status === "ASSIGNED" && item.assignedToId === session.id);
+                  // Must mirror `socialInboxService.convertToArticle`'s own
+                  // rules, not just the role: this used to be plain
+                  // `canManage`, so a Manager saw "Chuyển thành bài" on
+                  // already-converted rows too, and clicking it threw an
+                  // unhandled error instead of doing anything.
+                  const isTriaged = item.status === "CONVERTED";
+                  const canConvertThis = isTriaged
+                    ? false
+                    : canManage ||
+                      (hasPermission(session.role, "social_inbox.convert_own") && item.status === "ASSIGNED" && item.assignedToId === session.id);
                   return (
                     <tr key={item.id}>
                       <td>
@@ -126,7 +135,7 @@ export default async function SocialInboxPage({ searchParams }: { searchParams: 
                       </td>
                       <td className="adminHint">{item.source.name} <br /> {SOURCE_TYPE_LABELS[item.source.type]}</td>
                       <td className="adminHint">{item.hashtags.length > 0 ? item.hashtags.map((h) => `#${h}`).join(" ") : "—"}</td>
-                      <td className="adminHint">{item.publishedAt ? item.publishedAt.toLocaleDateString("vi-VN") : "—"}</td>
+                      <td className="adminHint">{item.publishedAt ? formatDateTimeVi(item.publishedAt) : "—"}</td>
                       <td><span className={`adminBadge ${STATUS_BADGE[item.status]}`}>{EXTERNAL_ITEM_STATUS_LABELS[item.status]}</span></td>
                       <td className="adminHint">{item.assignedTo?.displayName ?? "—"}</td>
                       <td>
@@ -136,6 +145,17 @@ export default async function SocialInboxPage({ searchParams }: { searchParams: 
                               <input type="hidden" name="itemId" value={item.id} />
                               <button type="submit" className="adminButton adminButtonSmall">Bỏ qua</button>
                             </form>
+                          )}
+                          {canManage && item.status === "IGNORED" && (
+                            <form action={restoreExternalItemAction}>
+                              <input type="hidden" name="itemId" value={item.id} />
+                              <button type="submit" className="adminButton adminButtonSmall">Khôi phục</button>
+                            </form>
+                          )}
+                          {item.status === "CONVERTED" && item.articleId && (
+                            <Link href={`/admin/articles/${item.articleId}/edit`} className="adminButton adminButtonSmall">
+                              Mở bài viết
+                            </Link>
                           )}
                           {canManage && (item.status === "PENDING_REVIEW" || item.status === "ASSIGNED") && (
                             <form action={assignExternalItemAction} style={{ display: "flex", gap: 4 }}>

@@ -4,9 +4,12 @@ import { auditLogRepository } from "@/server/repositories/auditLogRepository";
 import { encryptSecret, decryptSecret } from "@/server/crypto/secretBox";
 import { getFetcherForSourceType } from "@/server/integrations/socialCollector/registry";
 import { normalizedContentHash, passesHashtagRules } from "@/server/integrations/socialCollector/normalize";
+import { fetchRaw } from "@/server/integrations/socialCollector/httpClient";
+import { extractArticle } from "@/server/integrations/socialCollector/articleExtractor";
 import type { NormalizedExternalPost } from "@/server/integrations/socialCollector/types";
 import { hasPermission } from "@/server/auth/permissions";
 import type { SessionUser } from "@/server/auth/session";
+import { Prisma } from "@/generated/prisma/client";
 import type { SourceType } from "@/generated/prisma/client";
 
 /**
@@ -52,6 +55,14 @@ export interface SourceFieldsInput {
   includeHashtags?: string[];
   excludeHashtags?: string[];
   categoryId?: string | null;
+  /** Auto-sync interval in minutes; `null` = manual only. */
+  syncEveryMinutes?: number | null;
+  /** Cap on items stored per run (newest first); `null` = no cap. */
+  maxItemsPerSync?: number | null;
+  /** Also fetch each item's article page and extract a real body. */
+  fetchFullBody?: boolean;
+  /** Optional CSS selector for the article body container. */
+  contentSelector?: string | null;
 }
 
 export const sourceService = {
@@ -76,6 +87,10 @@ export const sourceService = {
       includeHashtags: normalizeHashtagList(fields.includeHashtags),
       excludeHashtags: normalizeHashtagList(fields.excludeHashtags),
       categoryId: fields.categoryId ?? null,
+      syncEveryMinutes: fields.syncEveryMinutes ?? null,
+      maxItemsPerSync: fields.maxItemsPerSync ?? null,
+      fetchFullBody: fields.fetchFullBody ?? false,
+      contentSelector: fields.contentSelector ?? null,
       createdById: actor.id,
     });
     await auditLogRepository.record({ actorId: actor.id, action: "CREATE_SOURCE", entityType: "Source", entityId: source.id });
@@ -93,6 +108,10 @@ export const sourceService = {
     if (fields.includeHashtags !== undefined) data.includeHashtags = normalizeHashtagList(fields.includeHashtags);
     if (fields.excludeHashtags !== undefined) data.excludeHashtags = normalizeHashtagList(fields.excludeHashtags);
     if (fields.categoryId !== undefined) data.categoryId = fields.categoryId;
+    if (fields.syncEveryMinutes !== undefined) data.syncEveryMinutes = fields.syncEveryMinutes;
+    if (fields.maxItemsPerSync !== undefined) data.maxItemsPerSync = fields.maxItemsPerSync;
+    if (fields.fetchFullBody !== undefined) data.fetchFullBody = fields.fetchFullBody;
+    if (fields.contentSelector !== undefined) data.contentSelector = fields.contentSelector;
 
     const updated = await sourceRepository.update(source.id, data);
     await auditLogRepository.record({
@@ -134,38 +153,75 @@ export const sourceService = {
    */
   async sync(actor: SessionUser, source: PublicSource): Promise<{ ok: true; fetched: number; stored: number } | { ok: false; reason: string; message: string }> {
     assertHasPermission(actor, "source.manage");
+    return syncSourceCore(source, actor.id);
+  },
 
-    const fetcher = getFetcherForSourceType(source.type);
-    if (!fetcher) {
-      const message = "Nguồn này không có adapter đồng bộ tự động (chỉ nhập thủ công).";
-      await sourceRepository.recordSyncFailure(source.id, message);
-      await auditLogRepository.record({ actorId: actor.id, action: "SYNC_SOURCE", entityType: "Source", entityId: source.id, metadata: { ok: false, reason: "invalid_source" } });
-      return { ok: false, reason: "invalid_source", message };
+  /** Actor-less sync for the scheduled `collector` sidecar
+   *  (`scripts/runDueSourceSyncs.ts`). Audit rows get `actorId: null` +
+   *  `metadata.via = "cron"`. No permission check — it isn't user-invoked. */
+  syncSystem(source: PublicSource) {
+    return syncSourceCore(source, null);
+  },
+};
+
+export async function syncSourceCore(
+  source: PublicSource,
+  actorId: string | null,
+): Promise<{ ok: true; fetched: number; stored: number } | { ok: false; reason: string; message: string }> {
+  const via = actorId === null ? "cron" : undefined;
+  const fetcher = getFetcherForSourceType(source.type);
+  if (!fetcher) {
+    const message = "Nguồn này không có adapter đồng bộ tự động (chỉ nhập thủ công).";
+    await sourceRepository.recordSyncFailure(source.id, message);
+    await auditLogRepository.record({ actorId, action: "SYNC_SOURCE", entityType: "Source", entityId: source.id, metadata: { ok: false, reason: "invalid_source", ...(via ? { via } : {}) } });
+    return { ok: false, reason: "invalid_source", message };
+  }
+
+  const withCredential = await sourceRepository.findByIdWithCredential(source.id);
+  const credential = withCredential?.encryptedCredential ? decryptSecret(withCredential.encryptedCredential) : null;
+
+  const result = await fetcher.fetchPosts({ externalUrl: source.externalUrl, externalId: source.externalId, credential });
+  if (!result.ok) {
+    await sourceRepository.recordSyncFailure(source.id, result.message);
+    await auditLogRepository.record({
+      actorId,
+      action: "SYNC_SOURCE",
+      entityType: "Source",
+      entityId: source.id,
+      metadata: { ok: false, reason: result.reason, message: result.message, ...(via ? { via } : {}) },
+    });
+    return { ok: false, reason: result.reason, message: result.message };
+  }
+
+  const hashtagOk = result.posts.filter((p) => passesHashtagRules(p.hashtags, source.includeHashtags, source.excludeHashtags));
+  // Newest first (feeds already are); keep only the N most recent per run.
+  const filtered = source.maxItemsPerSync != null ? hashtagOk.slice(0, source.maxItemsPerSync) : hashtagOk;
+
+  let stored = 0;
+  for (const post of filtered) {
+    const hash = normalizedContentHash(post.contentText);
+    const duplicate = await findDuplicate(source.id, post, hash);
+    if (duplicate) continue;
+
+    // Full-body extraction: fetch the article page and pull real
+    // paragraphs/headings/images. Images stay hot-linked (not downloaded).
+    let bodyBlocks: NormalizedExternalPost["bodyBlocks"];
+    let coverImageUrl: string | undefined;
+    if (source.fetchFullBody) {
+      try {
+        const page = await fetchRaw(post.url);
+        if (page.kind === "success" && page.ok) {
+          const extracted = extractArticle(page.text, post.url, { contentSelector: source.contentSelector ?? undefined });
+          if (extracted.blocks.length > 0) bodyBlocks = extracted.blocks;
+          coverImageUrl = extracted.coverImageUrl;
+        }
+      } catch {
+        // extraction is best-effort — the item is still stored with its summary
+      }
+      await new Promise((r) => setTimeout(r, 800)); // be polite to the source
     }
 
-    const withCredential = await sourceRepository.findByIdWithCredential(source.id);
-    const credential = withCredential?.encryptedCredential ? decryptSecret(withCredential.encryptedCredential) : null;
-
-    const result = await fetcher.fetchPosts({ externalUrl: source.externalUrl, externalId: source.externalId, credential });
-    if (!result.ok) {
-      await sourceRepository.recordSyncFailure(source.id, result.message);
-      await auditLogRepository.record({
-        actorId: actor.id,
-        action: "SYNC_SOURCE",
-        entityType: "Source",
-        entityId: source.id,
-        metadata: { ok: false, reason: result.reason, message: result.message },
-      });
-      return { ok: false, reason: result.reason, message: result.message };
-    }
-
-    const filtered = result.posts.filter((p) => passesHashtagRules(p.hashtags, source.includeHashtags, source.excludeHashtags));
-
-    let stored = 0;
-    for (const post of filtered) {
-      const hash = normalizedContentHash(post.contentText);
-      const duplicate = await findDuplicate(source.id, post, hash);
-      if (duplicate) continue;
+    try {
       await externalItemRepository.create({
         sourceId: source.id,
         externalId: post.externalId,
@@ -176,21 +232,30 @@ export const sourceService = {
         normalizedContentHash: hash,
         hashtags: post.hashtags,
         publishedAt: post.publishedAt,
+        bodyBlocks: (bodyBlocks ?? undefined) as Prisma.InputJsonValue | undefined,
+        coverImageUrl: coverImageUrl ?? null,
       });
       stored += 1;
+    } catch (err) {
+      // A unique-constraint hit here means the row was inserted between this
+      // run's dedup check and its insert — either the same feed carrying two
+      // items with one `externalId`, or a second sync (manual + scheduled)
+      // racing this one. Both are "already have it", not a sync failure.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") continue;
+      throw err;
     }
+  }
 
-    await sourceRepository.recordSyncSuccess(source.id, stored);
-    await auditLogRepository.record({
-      actorId: actor.id,
-      action: "SYNC_SOURCE",
-      entityType: "Source",
-      entityId: source.id,
-      metadata: { ok: true, fetched: result.posts.length, filteredOut: result.posts.length - filtered.length, stored },
-    });
-    return { ok: true, fetched: result.posts.length, stored };
-  },
-};
+  await sourceRepository.recordSyncSuccess(source.id, stored);
+  await auditLogRepository.record({
+    actorId,
+    action: "SYNC_SOURCE",
+    entityType: "Source",
+    entityId: source.id,
+    metadata: { ok: true, fetched: result.posts.length, filteredOut: result.posts.length - filtered.length, stored, ...(via ? { via } : {}) },
+  });
+  return { ok: true, fetched: result.posts.length, stored };
+}
 
 /** Dedup (brief section 7), checked in the order the brief lists:
  *  externalId -> URL -> source+normalized content within a time window

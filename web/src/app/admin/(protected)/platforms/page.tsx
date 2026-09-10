@@ -6,6 +6,7 @@ import { hasPermission } from "@/server/auth/permissions";
 import { PLATFORM_CATEGORY_LABELS, PLATFORM_STATUS_LABELS, PLATFORM_INTEGRATION_TYPE_LABELS } from "@/lib/platformLabels";
 import { setPlatformEnabledAction, deletePlatformAction } from "./actions";
 import { RefreshActivityButton } from "./RefreshActivityButton";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 export const metadata: Metadata = { title: "Nền tảng" };
 
@@ -68,7 +69,7 @@ export default async function AdminPlatformsPage() {
                     <td className="adminHint">
                       {p.currentActivity || "—"}
                       {p.currentActivityUpdatedAt && (
-                        <div className="adminHint">Làm mới lúc {p.currentActivityUpdatedAt.toLocaleString("vi-VN")}</div>
+                        <div className="adminHint">Làm mới lúc {formatDateTimeVi(p.currentActivityUpdatedAt)}</div>
                       )}
                     </td>
                     <td>

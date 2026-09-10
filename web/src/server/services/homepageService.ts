@@ -1,5 +1,8 @@
 import { cache } from "react";
 import { homepageRepository } from "@/server/repositories/homepageRepository";
+import { homepagePlacementRepository, type ArticleSectionKey } from "@/server/repositories/homepagePlacementRepository";
+import { hasPermission } from "@/server/auth/permissions";
+import type { SessionUser } from "@/server/auth/session";
 import { articleRepository, type ArticleWithRelations } from "@/server/repositories/articleRepository";
 import type { HomepagePlacement, HomepageSectionKey } from "@/generated/prisma/client";
 
@@ -86,6 +89,19 @@ async function resolveGalleryPlacement(placements: HomepagePlacement[]) {
 }
 
 /**
+ * CMS pins first, automatic fallback filling whatever room is left — the
+ * "Tự động, admin ghim đè được" rule the Hero brief settled on, applied to
+ * every article section. Pinning one article into "Tin tiêu điểm" therefore
+ * puts it at the top of that section rather than shrinking the section to a
+ * single item, which is what an editor ticking one box actually means.
+ * Deduped by id so an article that is both pinned and recent appears once.
+ */
+function pinnedThenAuto<T extends { id: string }>(pinned: T[], auto: T[], limit: number): T[] {
+  const seen = new Set(pinned.map((p) => p.id));
+  return [...pinned, ...auto.filter((a) => !seen.has(a.id))].slice(0, limit);
+}
+
+/**
  * Returns the resolved content for every homepage section — each key maps
  * to either its configured `HomepagePlacement`s (fully joined to their real
  * Article/Video/Event/Platform/Gallery rows, CMS's choice, in `order`) or
@@ -109,17 +125,20 @@ const resolveHomepage = cache(async () => {
     const config = await homepageRepository.findActiveConfiguration();
     const sections = config?.sections ?? [];
 
+    // Editorial Image Canvas Hero: up to 4 slides. CMS-pinned HERO
+    // placements win (in order); otherwise the 4 most-recent published
+    // articles, matching the single-Hero fallback this replaced.
     const heroSection = await resolveSection(sections, "HERO");
-    const heroArticles = await resolveArticlePlacements(heroSection.placements);
-    const hero = heroArticles[0] ?? (await homepageRepository.fallback.heroArticle());
+    const heroPinned = await resolveArticlePlacements(heroSection.placements);
+    const heroSlides = pinnedThenAuto(heroPinned, await homepageRepository.fallback.featuredArticles(4), 4);
 
     const featuredSection = await resolveSection(sections, "FEATURED_ARTICLES");
     const featuredArticles = await resolveArticlePlacements(featuredSection.placements);
-    const featured = featuredArticles.length ? featuredArticles : await homepageRepository.fallback.featuredArticles(6);
+    const featured = pinnedThenAuto(featuredArticles, await homepageRepository.fallback.featuredArticles(6), 6);
 
     const storyRailSection = await resolveSection(sections, "STORY_RAIL");
     const storyRailArticles = await resolveArticlePlacements(storyRailSection.placements);
-    const storyRail = storyRailArticles.length ? storyRailArticles : await homepageRepository.fallback.storyRailArticles(10);
+    const storyRail = pinnedThenAuto(storyRailArticles, await homepageRepository.fallback.storyRailArticles(STORY_RAIL_LIMIT), STORY_RAIL_LIMIT);
 
     const videoSection = await resolveSection(sections, "VIDEO_FEATURE");
     const videoPlacements = await resolveVideoPlacements(videoSection.placements);
@@ -139,11 +158,91 @@ const resolveHomepage = cache(async () => {
 
     const localNewsSection = await resolveSection(sections, "LOCAL_NEWS");
     const localNewsArticles = await resolveArticlePlacements(localNewsSection.placements);
-    const localNews = localNewsArticles.length ? localNewsArticles : await homepageRepository.fallback.localNewsArticles(6);
+    const localNews = pinnedThenAuto(localNewsArticles, await homepageRepository.fallback.localNewsArticles(6), 6);
 
-    return { hero, featured, storyRail, video, platforms, events, gallery, localNews };
+    return { heroSlides, featured, storyRail, video, platforms, events, gallery, localNews };
 });
+
+/** Up to four Hero slides render; pinning more is allowed but only the
+ *  first four (by placement order) are shown. */
+export const HERO_SLIDE_LIMIT = 4;
+
+/** "Dòng chảy sinh viên" holds up to ten stories — CMS pins first, most
+ *  recent published articles filling the rest. The rail scrolls
+ *  continuously, so a longer list costs nothing but gives the loop more to
+ *  circulate through before it repeats. */
+export const STORY_RAIL_LIMIT = 10;
 
 export const homepageService = {
   resolveHomepage,
+
+  listPinnedArticleIds: homepagePlacementRepository.listPinnedArticleIds,
+
+  /** Which gallery, if any, is pinned into the homepage's "Ảnh hoạt động"
+   *  slot. `null` means the section falls back to the most recent gallery. */
+  async getPinnedGalleryId(): Promise<string | null> {
+    const row = await homepagePlacementRepository.findPinnedContentId("GALLERY", "GALLERY");
+    return row;
+  },
+
+  /** The section shows exactly one gallery, so pinning a new one replaces
+   *  whatever was pinned before rather than queueing behind it. */
+  async setGalleryPinned(actor: SessionUser, galleryId: string, pinned: boolean): Promise<void> {
+    if (!hasPermission(actor.role, "homepage.manage")) {
+      throw new Error(`Role ${actor.role} lacks permission "homepage.manage".`);
+    }
+    await homepagePlacementRepository.setSingleContent("GALLERY", "GALLERY", pinned ? galleryId : null);
+  },
+
+  /**
+   * The videos an editor pinned to the homepage, in display order.
+   * `DatabaseProvider.getVideos` sorts by this, which is what makes the
+   * admin list and the public section agree — there is one ordering, stored
+   * once, not two that have to be kept in step by hand.
+   */
+  listPinnedVideoIds(): Promise<string[]> {
+    return homepagePlacementRepository.listPinnedContentIds("VIDEO_FEATURE", "VIDEO");
+  },
+
+  /**
+   * Pin or unpin one video on the homepage. Unlike the gallery slot this
+   * section holds many: pinning a second video does not displace the first,
+   * it goes in front of it, and everything unpinned follows in the usual
+   * newest-first order.
+   */
+  async setVideoPinned(actor: SessionUser, videoId: string, pinned: boolean): Promise<void> {
+    if (!hasPermission(actor.role, "homepage.manage")) {
+      throw new Error(`Role ${actor.role} lacks permission "homepage.manage".`);
+    }
+    await homepagePlacementRepository.setContentPinned("VIDEO_FEATURE", "VIDEO", videoId, pinned);
+  },
+
+  /**
+   * Pin or unpin one article in one homepage section — what the article
+   * list's "Đưa lên Hero / Gỡ khỏi Hero" toggle calls. `homepage.manage`
+   * (ADMIN + MANAGER) gates it here rather than in the Server Action, same
+   * discipline as every other service in this app.
+   *
+   * Only a currently-public article may be pinned: `resolveHomepage` would
+   * drop a draft placement anyway (the Production Data Policy applies to
+   * pins too), so accepting one would silently do nothing.
+   *
+   * Deliberately does not revalidate: that belongs to the Server Action that
+   * called it (`revalidatePath` needs a request context and would throw from
+   * a script or cron), keeping this callable from anywhere.
+   */
+  async setArticlePinned(
+    actor: SessionUser,
+    article: { id: string; status: string; publishedAt: Date | null },
+    key: ArticleSectionKey,
+    pinned: boolean,
+  ): Promise<void> {
+    if (!hasPermission(actor.role, "homepage.manage")) {
+      throw new Error(`Role ${actor.role} lacks permission "homepage.manage".`);
+    }
+    if (pinned && !(article.status === "PUBLISHED" && article.publishedAt && article.publishedAt <= new Date())) {
+      throw new Error("Chỉ có thể ghim bài đã xuất bản lên trang chủ.");
+    }
+    await homepagePlacementRepository.setArticleSection(article.id, key, pinned);
+  },
 };

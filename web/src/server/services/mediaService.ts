@@ -136,6 +136,36 @@ export const mediaService = {
     return asset;
   },
 
+  /**
+   * Registers a hot-linked image (`provider: EXTERNAL`, `providerFileId` =
+   * the absolute source URL) — used by the news collector's
+   * convert-to-article path so imported article images keep pointing at
+   * their source CDN instead of being copied into Drive. Deduped by URL.
+   * No `media.manage.any` gate: whoever reaches this has already passed
+   * `socialInboxService.convertToArticle`'s own permission check.
+   */
+  async registerExternalImage(actor: SessionUser, data: { url: string; alt?: string; caption?: string }) {
+    const existing = await mediaRepository.findByExternalUrl(data.url);
+    if (existing) return existing;
+    const asset = await mediaRepository.create({
+      provider: "EXTERNAL",
+      providerFileId: data.url,
+      type: "IMAGE",
+      status: "READY",
+      alt: data.alt,
+      caption: data.caption,
+      createdBy: { connect: { id: actor.id } },
+    });
+    await auditLogRepository.record({
+      actorId: actor.id,
+      action: "UPLOAD_MEDIA",
+      entityType: "MediaAsset",
+      entityId: asset.id,
+      metadata: { external: true, url: data.url },
+    });
+    return asset;
+  },
+
   /** Brief: Admin/Manager may edit any asset's alt/caption; Contributor
    *  only their own ("nếu policy cho phép" — the policy here is exactly
    *  "own uploads only", the same boundary `media.manage.own` already

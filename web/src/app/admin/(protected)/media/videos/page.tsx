@@ -4,12 +4,17 @@ import { requireSession } from "@/server/auth/session";
 import { hasPermission } from "@/server/auth/permissions";
 import { mediaService } from "@/server/services/mediaService";
 import { youtubeService } from "@/server/services/youtubeService";
-import { startYoutubeConnectAction, disconnectYoutubeAction } from "./actions";
+import { isYoutubeApiKeyConfigured, isYoutubeConnected } from "@/server/integrations/youtube";
 import { userRepository } from "@/server/repositories/userRepository";
+import { videoRepository } from "@/server/repositories/videoRepository";
+import { homepageService } from "@/server/services/homepageService";
+import { sortVideosByPin } from "@/lib/videoOrder";
 import type { MediaAdminFilter, MediaUsageDetail } from "@/server/repositories/mediaRepository";
 import type { MediaStatus, YoutubeVisibility } from "@/generated/prisma/client";
 import { AddVideoPanel } from "./AddVideoPanel";
 import { VideoRowActions } from "./VideoRowActions";
+import { VideoPinButton } from "./VideoPinButton";
+import { formatDateVi } from "@/lib/formatDate";
 
 export const metadata: Metadata = { title: "Video (YouTube)" };
 
@@ -82,6 +87,9 @@ export default async function AdminVideosPage({ searchParams }: { searchParams: 
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const canManageAny = hasPermission(session.role, "media.manage.any");
+  // Pinning is a homepage decision, not a media one — same permission the
+  // article list's Hero/Dòng chảy toggles use.
+  const canManageHomepage = hasPermission(session.role, "homepage.manage");
   const isAdmin = session.role === "ADMIN";
   const canUpload = youtubeService.canUploadVideo(session);
 
@@ -119,20 +127,39 @@ export default async function AdminVideosPage({ searchParams }: { searchParams: 
     usageByMediaId = new Map(usageEntries);
   }
 
-  const uploaders = await userRepository.list({ take: 200 });
-  const connectionStatus = isAdmin ? await youtubeService.getConnectionStatus(session) : null;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // Homepage pin state for the rows on this page. `Video` is the record the
+  // public section reads; the list here is of `MediaAsset`s, so the two are
+  // bridged by `mediaId`. A media asset never published as a video simply has
+  // no entry, and gets no pin button.
+  const pinnedVideoIds = await homepageService.listPinnedVideoIds();
+  const videosByMediaId = new Map(
+    (await Promise.all(pageAssets.map(async (a) => [a.id, await videoRepository.findByMediaId(a.id)] as const)))
+      .filter((entry): entry is [string, NonNullable<Awaited<ReturnType<typeof videoRepository.findByMediaId>>>] => entry[1] !== null),
+  );
+  const pinRankByVideoId = new Map(pinnedVideoIds.map((id, i) => [id, i + 1]));
 
-  // Extracted ahead of the JSX (rather than narrowed inline in a ternary)
-  // because TypeScript does not reliably propagate `&&`-narrowing of a
-  // nullable discriminated union into a ternary's consequent branch.
-  let connectionBanner: { channelLabel: string; connectedAtLabel: string } | null = null;
-  if (connectionStatus && connectionStatus.connected) {
-    connectionBanner = {
-      channelLabel: connectionStatus.channelTitle || connectionStatus.channelId,
-      connectedAtLabel: connectionStatus.connectedAt.toLocaleDateString("vi-VN"),
-    };
-  }
+  // Same sort the public side runs (`sortVideosByPin`), applied to this
+  // page's rows so the admin list reads in the homepage's order. It sorts
+  // what is on screen, not the whole catalogue: with pagination, a pinned
+  // video that falls on a later page stays there — which is why every pinned
+  // row also carries its rank ("★ Trang chủ #2"), so the true homepage order
+  // is legible even then.
+  const items = sortVideosByPin(
+    // Keyed by the *video* id, since that is what a placement points at; the
+    // asset rides along untouched. An asset with no video gets a key that
+    // matches no pin, so it sorts with the rest.
+    pageAssets.map((asset) => ({ id: videosByMediaId.get(asset.id)?.id ?? `chua-dang-${asset.id}`, asset })),
+    pinnedVideoIds,
+  ).map((row) => row.asset);
+
+  const uploaders = await userRepository.list({ take: 200 });
+  const hasYoutubeApiKey = isYoutubeApiKeyConfigured();
+  // Uploading and browsing a channel both need an OAuth channel connection.
+  // The CMS attaches public videos by link instead, so those two only appear
+  // if a connection happens to exist — otherwise they would be dead buttons
+  // that fail at submit with "chưa kết nối kênh".
+  const channelConnected = await isYoutubeConnected();
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const filterQueryOnly: Record<string, string | undefined> = {
     uploader: params.uploader,
@@ -166,38 +193,23 @@ export default async function AdminVideosPage({ searchParams }: { searchParams: 
       )}
 
       {isAdmin && (
-        <div className="adminCard adminCardPad" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          {connectionBanner ? (
-            <>
-              <div>
-                <strong>Kênh đã kết nối:</strong> {connectionBanner.channelLabel}
-                <span className="adminHint" style={{ marginLeft: 8 }}>
-                  từ {connectionBanner.connectedAtLabel}
-                </span>
-              </div>
-              <form action={disconnectYoutubeAction}>
-                <button type="submit" className="adminButton adminButtonSmall adminButtonDanger">Ngắt kết nối</button>
-              </form>
-            </>
-          ) : (
-            <>
-              <div>
-                <strong>Chưa kết nối kênh YouTube.</strong>{" "}
-                {!youtubeService.isConfigured() && (
-                  <span className="adminHint">Hệ thống chưa cấu hình OAuth client (xem biến môi trường YOUTUBE_OAUTH_*).</span>
-                )}
-              </div>
-              <form action={startYoutubeConnectAction}>
-                <button type="submit" className="adminButton adminButtonSmall adminButtonPrimary" disabled={!youtubeService.isConfigured()}>
-                  Kết nối kênh YouTube
-                </button>
-              </form>
-            </>
-          )}
+        <div className="adminCard adminCardPad">
+          <strong>Video được thêm bằng cách dán link YouTube công khai.</strong>
+          <p className="adminHint" style={{ margin: "4px 0 0" }}>
+            Không cần kết nối kênh: dán URL (hoặc video ID) của bất kỳ video công khai nào ở ô bên dưới, hệ thống tự lấy
+            tiêu đề và ảnh đại diện.{" "}
+            {hasYoutubeApiKey
+              ? "Đã cấu hình YouTube API key nên lấy được cả thời lượng video."
+              : "Chưa cấu hình YOUTUBE_API_KEY nên chưa lấy được thời lượng video (hiển thị “—”); thêm khoá là có ngay."}
+          </p>
         </div>
       )}
 
-      <AddVideoPanel canUpload={canUpload} canManageAny={canManageAny} />
+      <AddVideoPanel
+        canUpload={canUpload && channelConnected}
+        canManageAny={canManageAny}
+        canBrowseChannel={canManageAny && channelConnected}
+      />
 
       <form className="adminFilterGrid adminCard adminCardPad" method="get">
         <div className="adminField" style={{ marginBottom: 0 }}>
@@ -256,6 +268,7 @@ export default async function AdminVideosPage({ searchParams }: { searchParams: 
                   <th>Chế độ</th>
                   <th>Thời lượng</th>
                   <th>Trạng thái</th>
+                  <th>Trang chủ</th>
                   <th>Sử dụng</th>
                   <th>Người upload</th>
                   <th>Ngày tạo</th>
@@ -263,7 +276,7 @@ export default async function AdminVideosPage({ searchParams }: { searchParams: 
                 </tr>
               </thead>
               <tbody>
-                {pageAssets.map((m) => {
+                {items.map((m) => {
                   const usage = usageByMediaId.get(m.id) ?? [];
                   const canManageThis = canManageAny || m.createdById === session.id;
                   const videoId = m.providerFileId;
@@ -300,6 +313,17 @@ export default async function AdminVideosPage({ searchParams }: { searchParams: 
                         </div>
                       </td>
                       <td>
+                        <VideoPinButton
+                          mediaId={m.id}
+                          videoId={videosByMediaId.get(m.id)?.id ?? null}
+                          pinRank={(() => {
+                            const vid = videosByMediaId.get(m.id)?.id;
+                            return vid ? pinRankByVideoId.get(vid) ?? null : null;
+                          })()}
+                          canManage={canManageHomepage}
+                        />
+                      </td>
+                      <td>
                         {usage.length === 0 ? (
                           <span className="adminBadge adminBadgeNeutral">Chưa dùng</span>
                         ) : (
@@ -309,7 +333,7 @@ export default async function AdminVideosPage({ searchParams }: { searchParams: 
                         )}
                       </td>
                       <td className="adminHint">{m.createdBy?.displayName ?? "—"}</td>
-                      <td className="adminHint">{m.createdAt.toLocaleDateString("vi-VN")}</td>
+                      <td className="adminHint">{formatDateVi(m.createdAt)}</td>
                       <td>
                         <VideoRowActions
                           mediaId={m.id}

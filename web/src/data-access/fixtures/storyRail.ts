@@ -26,4 +26,6 @@ export const STORY_RAIL: StoryRailItem[] = RAW.map((r) => ({
   publishedAt: r.date,
   headline: r.headline,
   category: categoryByName(r.category),
+  // Prototype fixture — these stories have no real cover file behind them.
+  media: { id: `story-rail-${r.slug}`, provider: "local-placeholder", type: "image", status: "missing", placeholder: "Ảnh phóng sự địa phương" },
 }));

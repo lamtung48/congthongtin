@@ -8,6 +8,7 @@ import { eventService } from "@/server/services/eventService";
 import { auditLogRepository } from "@/server/repositories/auditLogRepository";
 import { externalItemRepository } from "@/server/repositories/externalItemRepository";
 import { ROLE_LABELS, hasPermission } from "@/server/auth/permissions";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 /** "Media issues" — brief section 5: an asset the CMS knows about but whose
  *  file is gone/never arrived (`MediaStatus.MISSING`) is the one media
@@ -180,7 +181,7 @@ function RecentAudit({ items }: { items: { id: string; actor: string; action: st
           <tbody>
             {items.map((item) => (
               <tr key={item.id}>
-                <td>{item.createdAt.toLocaleString("vi-VN")}</td>
+                <td>{formatDateTimeVi(item.createdAt)}</td>
                 <td>{item.actor}</td>
                 <td>{item.action}</td>
                 <td>{item.entityType}</td>

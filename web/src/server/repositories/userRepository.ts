@@ -1,4 +1,6 @@
+import { randomBytes } from "node:crypto";
 import { prisma } from "@/server/db/client";
+import { hashPassword } from "@/server/auth/password";
 import type { AdminRole, Prisma, UserStatus } from "@/generated/prisma/client";
 
 const publicUserSelect = {
@@ -27,6 +29,47 @@ export const userRepository = {
   findByEmailOrUsernameWithHash(identifier: string) {
     return prisma.user.findFirst({
       where: { OR: [{ email: identifier }, { username: identifier }] },
+    });
+  },
+
+  /** Just the fields the shared-identity (`hsv-id`) sync needs — used by
+   *  the login lazy-sync and the Admin password-reset path. `identityUserId`
+   *  is deliberately kept out of `publicUserSelect` (it has no place in any
+   *  list/detail view). */
+  findIdentitySyncFields(id: string) {
+    return prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, displayName: true, identityUserId: true },
+    });
+  },
+
+  setIdentityUserId(id: string, identityUserId: string) {
+    return prisma.user.update({ where: { id }, data: { identityUserId } });
+  },
+
+  findByEmailOrIdentityUserId(email: string, identityUserId: string) {
+    return prisma.user.findFirst({ where: { OR: [{ email }, { identityUserId }] } });
+  },
+
+  /** Auto-provision path (`authService.login`): a person who authenticates
+   *  against `hsv-id` but has no CMS account gets a CONTRIBUTOR row linked
+   *  to their `hsv-id` id. There is no local password — `hsv-id` is the
+   *  only credential authority for these accounts — so `passwordHash` is a
+   *  throwaway random value that can never verify anything (if `hsv-id` is
+   *  ever unreachable, such an account simply can't sign in until it's
+   *  back; documented in docs/AUTHENTICATION.md). */
+  async createFromIdentityAsContributor(input: { email: string; displayName: string; identityUserId: string }): Promise<PublicUser> {
+    const passwordHash = await hashPassword(`hsv-id:${randomBytes(24).toString("hex")}`);
+    return prisma.user.create({
+      data: {
+        email: input.email,
+        displayName: input.displayName,
+        role: "CONTRIBUTOR",
+        status: "ACTIVE",
+        identityUserId: input.identityUserId,
+        passwordHash,
+      },
+      select: publicUserSelect,
     });
   },
 

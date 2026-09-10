@@ -4,6 +4,8 @@ import "./globals.css";
 import { Header } from "@/components/home/Header";
 import { Footer } from "@/components/home/Footer";
 import { getHomepage } from "@/services/homepageService";
+import { siteAppearanceService } from "@/server/services/siteAppearanceService";
+import { backgroundCss } from "@/lib/appearance";
 import { organizationJsonLd } from "@/lib/structuredData";
 import { SITE_DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/siteConfig";
 
@@ -77,6 +79,14 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const homepage = await getHomepage();
   const orgJsonLd = organizationJsonLd(homepage.footer);
+  // Site-wide background override (/admin/appearance). Empty string when the
+  // site is on the design system's default white, so the overwhelmingly
+  // common case ships no extra bytes at all. Rendered here rather than in
+  // `globals.css` because it is CMS data, and placed inside <body> so it
+  // comes after the stylesheet in document order and therefore wins at equal
+  // specificity — no `!important` needed.
+  const appearance = await siteAppearanceService.get();
+  const appearanceCss = backgroundCss(appearance.pageBackground);
 
   return (
     <html
@@ -84,6 +94,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${beVietnamPro.variable} ${newsreader.variable} ${jetbrainsMono.variable}`}
     >
       <body>
+        {appearanceCss && <style dangerouslySetInnerHTML={{ __html: appearanceCss }} />}
         <div style={{ background: "var(--surface-page)", minHeight: "100vh", overflowX: "hidden" }}>
           <Header nav={homepage.nav} searchTopics={homepage.trendingTopics} searchCorpus={homepage.search.corpus} />
           <main>{children}</main>

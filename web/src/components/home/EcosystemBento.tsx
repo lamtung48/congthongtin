@@ -13,8 +13,15 @@ import { buildPlatformView, type PlatformView } from "@/lib/view/platformView";
  */
 function PlatformCta({ view, ctaClass, noteClass }: { view: PlatformView; ctaClass: string; noteClass: string }) {
   if (view.hasCta && view.url !== "#") {
+    // A platform on its own domain (Hội nghị, Đào tạo, …) opens in a new
+    // tab; an in-site link (e.g. a topic page) navigates normally.
+    const isExternal = /^https?:\/\//.test(view.url);
     return (
-      <a href={view.url} className={ctaClass}>
+      <a
+        href={view.url}
+        className={ctaClass}
+        {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      >
         {view.cta}
         <IconArrowRight size={15} />
       </a>
@@ -68,164 +75,171 @@ function DataIcon() {
  * Ecosystem integration task, brief section 4/6: reads the real Platform
  * Registry (`getPlatforms()` → `DatabaseProvider`, ordered by the admin's
  * `order` field) by *category*, not array position — the DB order can
- * change (an Admin re-orders platforms, or disables one), and this grid's
- * five cells are each hand-designed for one specific category, not "the
- * Nth platform returned." A category with no enabled platform (brief
- * section 7: an Admin/Manager turned it off, or it was never seeded) never
- * crashes the homepage — brief section 6, "External platform chết: Portal
- * vẫn hoạt động" — it renders the same cell with a neutral "chưa cấu hình"
- * placeholder instead of `buildPlatformView` throwing on `undefined`.
+ * change, and each cell's chrome (icon, badge vocabulary, card treatment) is
+ * hand-designed for one specific category, not "the Nth platform returned".
+ *
+ * A platform an Admin has disabled (`Platform.isEnabled = false`, brief
+ * section 7's "display state") never reaches this component: both
+ * `homepageRepository.fallback.platforms` and `resolvePlatformPlacements`
+ * filter it out. This used to render its cell anyway with a grey
+ * "Chưa được cấu hình hoặc đang tạm ẩn." placeholder, which meant turning a
+ * platform off left an empty card sitting on the homepage instead of
+ * removing it. Now an absent platform means **no cell at all**, and a
+ * homepage with no enabled platform drops the whole section rather than
+ * showing an empty grid under a heading.
+ *
+ * Because cells can now disappear, the column spans can no longer be
+ * hard-coded per cell — a missing one would tear a hole in the 4-column
+ * grid. `SPANS` assigns them by how many cells actually render, so every
+ * row stays full at any count.
  */
 function findByCategory(platforms: Platform[], category: Platform["category"]): Platform | undefined {
   return platforms.find((p) => p.category === category);
 }
 
+/** Per-category chrome, in the order the bento reads. `conference` is the
+ *  featured cell and is handled separately below. */
+const CARD_DEFS: {
+  category: Platform["category"];
+  fallbackName: string;
+  icon: React.ReactNode;
+  iconBoxClass: string;
+  cardClass?: string;
+  badges: (v: PlatformView) => React.ReactNode;
+}[] = [
+  {
+    category: "training",
+    fallbackName: "Nền tảng Đào tạo",
+    icon: <TrainingIcon />,
+    iconBoxClass: "iconBoxSoft",
+    badges: (v) => <span className={`${styles.badge} ${styles.badgeSoft}`}>Đang hoạt động · {v.metric}</span>,
+  },
+  {
+    category: "sv5tot",
+    fallbackName: "Sinh viên 5 tốt",
+    icon: <StarIcon />,
+    iconBoxClass: "iconBoxBrand",
+    cardClass: "cardSoft",
+    badges: () => null,
+  },
+  {
+    category: "volunteer",
+    fallbackName: "Tình nguyện",
+    icon: <VolunteerIcon />,
+    iconBoxClass: "iconBoxSoft",
+    badges: (v) => (
+      <>
+        {v.isOpen && <span className={`${styles.badge} ${styles.badgeSuccess}`}>Đang mở đăng ký</span>}
+        {v.isMaint && <span className={`${styles.badge} ${styles.badgeWarn}`}>Đang bảo trì</span>}
+        {v.isDown && <span className={`${styles.badge} ${styles.badgeDown}`}>Tạm không truy cập</span>}
+      </>
+    ),
+  },
+  {
+    category: "data",
+    fallbackName: "Dữ liệu & Báo cáo",
+    icon: <DataIcon />,
+    iconBoxClass: "iconBoxMuted",
+    cardClass: "cardDashed",
+    badges: (v) => (
+      <>
+        {v.isSoon && <span className={`${styles.badge} ${styles.badgeWarn}`}>Sắp ra mắt</span>}
+        {v.isActive && <span className={`${styles.badge} ${styles.badgeSoft}`}>Đang hoạt động</span>}
+      </>
+    ),
+  },
+];
+
+/**
+ * Column spans for the non-featured cards, keyed by how many render. The
+ * grid is 4 columns and the featured cell occupies 2 of them across 2 rows,
+ * so the two tables differ: with the featured cell present, the first two
+ * rows only have 2 free columns each.
+ */
+const SPANS: Record<"withFeatured" | "plain", Record<number, number[]>> = {
+  withFeatured: { 1: [2], 2: [2, 2], 3: [2, 1, 1], 4: [2, 1, 1, 2] },
+  plain: { 1: [4], 2: [2, 2], 3: [2, 1, 1], 4: [1, 1, 1, 1] },
+};
+
+/** The featured cell is 2 columns wide and normally 2 rows tall, which only
+ *  works when there are enough cards to fill the 2 columns beside it on both
+ *  rows. With one card it would leave a visibly empty half-row, and with
+ *  none it would leave half the grid empty — so it shortens/widens instead. */
+function featuredShapeClass(cardCount: number): string {
+  if (cardCount === 0) return styles.featuredFull;
+  if (cardCount === 1) return styles.featuredShort;
+  return "";
+}
+
+const SPAN_CLASS: Record<number, string> = {
+  1: styles.cardSpan1,
+  2: styles.cardSpan2,
+  4: styles.cardSpan4,
+};
+
 export function EcosystemBento({ platforms }: { platforms: Platform[] }) {
   const conference = findByCategory(platforms, "conference");
-  const training = findByCategory(platforms, "training");
-  const sv5tot = findByCategory(platforms, "sv5tot");
-  const volunteer = findByCategory(platforms, "volunteer");
-  const data = findByCategory(platforms, "data");
-  const p1 = conference && buildPlatformView(conference);
-  const p2 = training && buildPlatformView(training);
-  const p3 = sv5tot && buildPlatformView(sv5tot);
-  const p4 = volunteer && buildPlatformView(volunteer);
-  const p5 = data && buildPlatformView(data);
+  const featured = conference ? buildPlatformView(conference) : null;
+
+  const cards = CARD_DEFS.flatMap((def) => {
+    const platform = findByCategory(platforms, def.category);
+    return platform ? [{ def, view: buildPlatformView(platform) }] : [];
+  });
+
+  // Nothing enabled at all: no heading, no empty grid, no section.
+  if (!featured && cards.length === 0) return null;
+
+  const spans = SPANS[featured ? "withFeatured" : "plain"][cards.length] ?? cards.map(() => 1);
 
   return (
     <section aria-label="Hệ sinh thái số Hội Sinh viên Việt Nam" className={styles.section}>
       <div className={styles.head}>
         <span className={styles.eyebrow}>Nền tảng số</span>
         <h2 className={styles.title}>Hệ sinh thái số Hội Sinh viên Việt Nam</h2>
-        <p className={styles.desc}>
-          Năm nền tảng phục vụ sinh viên và cán bộ Hội: hội nghị, đào tạo, Sinh viên 5 tốt, tình nguyện và dữ liệu phong trào. Mỗi ô cho biết nền tảng đang ở trạng thái nào và cần đăng nhập hay không.
-        </p>
+        <p className={styles.desc}>Các nền tảng phục vụ sinh viên và cán bộ Hội.</p>
       </div>
 
       <div data-l="bento" className={styles.grid}>
-        {/* Hội nghị — ô nổi bật */}
-        <Reveal className={styles.featured}>
-          <span className={styles.featuredGlow} />
-          {p1 ? (
-            <>
-              <span className={styles.cardTop}>
-                <span className={`${styles.iconBox} ${styles.iconBoxDark}`}><ConferenceIcon /></span>
-                {p1.isLive && (
-                  <span className={`${styles.badge} ${styles.badgeLive}`}>
-                    <span className={styles.badgeDot} />Đang diễn ra
-                  </span>
-                )}
-                {p1.isActive && <span className={`${styles.badge} ${styles.badgeNeutralDark}`}>Đang hoạt động</span>}
-                {p1.isMaint && <span className={`${styles.badge} ${styles.badgeWarn}`}>Đang bảo trì</span>}
-              </span>
-              <span className={styles.featuredBody}>
-                <span className={styles.featuredName}>{p1.name}</span>
-                {p1.isLive && <span className={styles.featuredActivity}>{p1.activity}</span>}
-                <span className={styles.featuredDesc}>{p1.desc}</span>
-                <PlatformCta view={p1} ctaClass={styles.ctaWhite} noteClass={styles.noteDark} />
-                <span className={styles.accessDark}>{p1.access}</span>
-              </span>
-            </>
-          ) : (
+        {featured && (
+          <Reveal className={`${styles.featured} ${featuredShapeClass(cards.length)}`}>
+            <span className={styles.featuredGlow} />
+            <span className={styles.cardTop}>
+              <span className={`${styles.iconBox} ${styles.iconBoxDark}`}><ConferenceIcon /></span>
+              {featured.isLive && (
+                <span className={`${styles.badge} ${styles.badgeLive}`}>
+                  <span className={styles.badgeDot} />Đang diễn ra
+                </span>
+              )}
+              {featured.isActive && <span className={`${styles.badge} ${styles.badgeNeutralDark}`}>Đang hoạt động</span>}
+              {featured.isMaint && <span className={`${styles.badge} ${styles.badgeWarn}`}>Đang bảo trì</span>}
+            </span>
             <span className={styles.featuredBody}>
-              <span className={styles.iconBox} style={{ marginBottom: 8 }}><ConferenceIcon /></span>
-              <span className={styles.featuredName}>Nền tảng Hội nghị</span>
-              <span className={styles.featuredDesc}>Chưa được cấu hình hoặc đang tạm ẩn.</span>
+              <span className={styles.featuredName}>{featured.name}</span>
+              {featured.isLive && <span className={styles.featuredActivity}>{featured.activity}</span>}
+              <span className={styles.featuredDesc}>{featured.desc}</span>
+              <PlatformCta view={featured} ctaClass={styles.ctaWhite} noteClass={styles.noteDark} />
+              <span className={styles.accessDark}>{featured.access}</span>
             </span>
-          )}
-        </Reveal>
+          </Reveal>
+        )}
 
-        {/* Đào tạo */}
-        <Reveal className={`${styles.card} ${styles.cardSpan2}`}>
-          {p2 ? (
-            <>
-              <span className={styles.cardTop}>
-                <span className={`${styles.iconBox} ${styles.iconBoxSoft}`}><TrainingIcon /></span>
-                <span className={`${styles.badge} ${styles.badgeSoft}`}>Đang hoạt động · {p2.metric}</span>
-              </span>
-              <span className={styles.cardBody}>
-                <span className={styles.cardName}>{p2.name}</span>
-                <span className={styles.cardDesc}>{p2.desc}</span>
-                <PlatformCta view={p2} ctaClass={styles.ctaLink} noteClass={styles.noteLight} />
-                <span className={styles.accessLight}>{p2.access}</span>
-              </span>
-            </>
-          ) : (
-            <span className={styles.cardBody}>
-              <span className={styles.cardName}>Nền tảng Đào tạo</span>
-              <span className={styles.cardDesc}>Chưa được cấu hình hoặc đang tạm ẩn.</span>
+        {cards.map(({ def, view }, i) => (
+          <Reveal
+            key={def.category}
+            className={`${styles.card} ${SPAN_CLASS[spans[i]] ?? styles.cardSpan1} ${def.cardClass ? styles[def.cardClass] : ""}`}
+          >
+            <span className={styles.cardTop}>
+              <span className={`${styles.iconBox} ${styles[def.iconBoxClass]}`}>{def.icon}</span>
+              {def.badges(view)}
             </span>
-          )}
-        </Reveal>
-
-        {/* Sinh viên 5 tốt */}
-        <Reveal className={`${styles.card} ${styles.cardSpan1} ${styles.cardSoft}`}>
-          {p3 ? (
-            <>
-              <span className={`${styles.iconBox} ${styles.iconBoxBrand}`}><StarIcon /></span>
-              <span className={styles.cardBody}>
-                <span className={styles.cardName}>{p3.name}</span>
-                <span className={styles.cardDesc}>{p3.desc}</span>
-                <PlatformCta view={p3} ctaClass={styles.ctaLink} noteClass={styles.noteLight} />
-                <span className={styles.accessLight}>{p3.access}</span>
-              </span>
-            </>
-          ) : (
             <span className={styles.cardBody}>
-              <span className={styles.cardName}>Sinh viên 5 tốt</span>
-              <span className={styles.cardDesc}>Chưa được cấu hình hoặc đang tạm ẩn.</span>
+              <span className={styles.cardName}>{view.name}</span>
+              <span className={styles.cardDesc}>{view.desc}</span>
+              <PlatformCta view={view} ctaClass={styles.ctaLink} noteClass={styles.noteLight} />
+              <span className={styles.accessLight}>{view.access}</span>
             </span>
-          )}
-        </Reveal>
-
-        {/* Tình nguyện */}
-        <Reveal className={`${styles.card} ${styles.cardSpan1}`}>
-          {p4 ? (
-            <>
-              <span className={styles.cardTop}>
-                <span className={`${styles.iconBox} ${styles.iconBoxSoft}`}><VolunteerIcon /></span>
-                {p4.isOpen && <span className={`${styles.badge} ${styles.badgeSuccess}`}>Đang mở đăng ký</span>}
-                {p4.isMaint && <span className={`${styles.badge} ${styles.badgeWarn}`}>Đang bảo trì</span>}
-                {p4.isDown && <span className={`${styles.badge} ${styles.badgeDown}`}>Tạm không truy cập</span>}
-              </span>
-              <span className={styles.cardBody}>
-                <span className={styles.cardName}>{p4.name}</span>
-                <span className={styles.cardDesc}>{p4.desc}</span>
-                <PlatformCta view={p4} ctaClass={styles.ctaLink} noteClass={styles.noteLight} />
-                <span className={styles.accessLight}>{p4.access}</span>
-              </span>
-            </>
-          ) : (
-            <span className={styles.cardBody}>
-              <span className={styles.cardName}>Tình nguyện</span>
-              <span className={styles.cardDesc}>Chưa được cấu hình hoặc đang tạm ẩn.</span>
-            </span>
-          )}
-        </Reveal>
-
-        {/* Dữ liệu & Báo cáo */}
-        <Reveal className={`${styles.card} ${styles.cardSpan2} ${styles.cardDashed}`}>
-          {p5 ? (
-            <>
-              <span className={styles.cardTop}>
-                <span className={`${styles.iconBox} ${styles.iconBoxMuted}`}><DataIcon /></span>
-                {p5.isSoon && <span className={`${styles.badge} ${styles.badgeWarn}`}>Sắp ra mắt</span>}
-                {p5.isActive && <span className={`${styles.badge} ${styles.badgeSoft}`}>Đang hoạt động</span>}
-              </span>
-              <span className={styles.cardBody}>
-                <span className={styles.cardName}>{p5.name}</span>
-                <span className={styles.cardDesc}>{p5.desc}</span>
-                <PlatformCta view={p5} ctaClass={styles.ctaLink} noteClass={styles.noteLight} />
-                <span className={styles.accessLight}>{p5.access}</span>
-              </span>
-            </>
-          ) : (
-            <span className={styles.cardBody}>
-              <span className={styles.cardName}>Dữ liệu & Báo cáo</span>
-              <span className={styles.cardDesc}>Chưa được cấu hình hoặc đang tạm ẩn.</span>
-            </span>
-          )}
-        </Reveal>
+          </Reveal>
+        ))}
       </div>
     </section>
   );

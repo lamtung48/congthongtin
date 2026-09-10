@@ -9,11 +9,14 @@ import {
   isYoutubeConfigured,
   uploadVideoToYoutube,
   getVideoStatus,
+  getPublicVideoInfo,
   updateVideoMetadata as updateYoutubeVideoMetadata,
   listChannelUploads,
   type YoutubePrivacyStatus,
 } from "@/server/integrations/youtube";
 import { parseYoutubeVideoId } from "@/server/validation/youtubeUrl";
+import { videoRepository } from "@/server/repositories/videoRepository";
+import { slugify } from "@/lib/slug";
 import { hasPermission } from "@/server/auth/permissions";
 import type { SessionUser } from "@/server/auth/session";
 import type { MediaAsset, MediaStatus, YoutubeVisibility } from "@/generated/prisma/client";
@@ -211,7 +214,7 @@ export const youtubeService = {
     if (!videoId) {
       throw new Error("Không nhận diện được URL hoặc video ID YouTube hợp lệ.");
     }
-    return importChannelVideoById(actor, videoId, "LINK_VIDEO");
+    return attachPublicVideoById(actor, videoId, "LINK_VIDEO");
   },
 
   /** Brief section 2: "Chọn video đã có trên kênh" — browsing the raw
@@ -233,7 +236,7 @@ export const youtubeService = {
     if (!hasPermission(actor.role, "media.manage.any")) {
       throw new Error("Chỉ Admin/Quản trị viên mới có thể chọn video từ kênh YouTube.");
     }
-    return importChannelVideoById(actor, videoId, "LINK_VIDEO");
+    return attachPublicVideoById(actor, videoId, "LINK_VIDEO");
   },
 
   /** Pushes the change to the real YouTube video (title/description/
@@ -278,7 +281,7 @@ export const youtubeService = {
     if (!asset.providerFileId || asset.provider !== "YOUTUBE") {
       throw new Error("Media này không phải video YouTube.");
     }
-    const status = await getVideoStatus(asset.providerFileId);
+    const status = await getPublicVideoInfo(asset.providerFileId);
     if (!status) {
       return mediaRepository.updateVideoDetails(mediaId, { status: "REMOVED", errorReason: "removed" });
     }
@@ -294,10 +297,10 @@ export const youtubeService = {
   },
 };
 
-async function importChannelVideoById(actor: SessionUser, videoId: string, auditAction: "LINK_VIDEO"): Promise<MediaAsset> {
-  const status = await getVideoStatus(videoId);
+async function attachPublicVideoById(actor: SessionUser, videoId: string, auditAction: "LINK_VIDEO"): Promise<MediaAsset> {
+  const status = await getPublicVideoInfo(videoId);
   if (!status) {
-    throw new Error("Không tìm thấy video này trên YouTube (có thể riêng tư, đã bị xoá, hoặc ID không đúng).");
+    throw new Error("Không tìm thấy video công khai với ID này (có thể video riêng tư, đã bị xoá, tắt nhúng, hoặc ID không đúng).");
   }
   const mapped = mapUploadStatusToMedia(status.uploadStatus, status.privacyStatus, status.embeddable);
   const asset = await mediaRepository.create({
@@ -312,6 +315,21 @@ async function importChannelVideoById(actor: SessionUser, videoId: string, audit
     errorReason: mapped.errorReason,
     createdBy: { connect: { id: actor.id } },
   });
+  // Also publish it to the public site — the homepage's "Video và phóng sự"
+  // section and /video read `Video` rows, not raw media. Gated on
+  // `video.manage` (ADMIN/MANAGER) so a Contributor pasting a link still gets
+  // an embeddable asset for their article without that link appearing on the
+  // public homepage by itself.
+  if (mapped.status === "READY" && !mapped.errorReason && hasPermission(actor.role, "video.manage")) {
+    await videoRepository.publishFromMedia({
+      mediaId: asset.id,
+      title: status.title || videoId,
+      description: status.description || "",
+      durationSeconds: status.durationSeconds ?? null,
+      slug: `${slugify(status.title || videoId).slice(0, 70) || "video"}-${videoId.slice(0, 6).toLowerCase()}`,
+    });
+  }
+
   await auditLogRepository.record({
     actorId: actor.id,
     action: auditAction,

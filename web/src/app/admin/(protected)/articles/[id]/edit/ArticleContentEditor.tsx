@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
-import type { JSONContent } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
 import type { MediaOption } from "../../MediaPicker";
 import type { VideoOption } from "../../VideoPicker";
-import { ArticleImage, ArticleGallery, ArticleYoutube, ArticleQuote, ArticleTable, ArticleEmbed, ArticleMediaRegistry } from "./tiptap/nodes";
+import { uploadImageFile, importImageFromUrl } from "@/lib/media/uploadImageClient";
+import { ArticleImage, ArticleGallery, ArticleYoutube, ArticleQuote, ArticleTable, ArticleEmbed, ArticleMediaRegistry, registerMediaOption } from "./tiptap/nodes";
 import { blocksToDoc, docToBlocks, type EditorBlock } from "./tiptap/blockConversion";
 
 export type { EditorBlock, ArticleBlockType } from "./tiptap/blockConversion";
@@ -44,6 +45,7 @@ export function ArticleContentEditor({
   canManageMediaAny,
   canUploadVideo,
   editable = true,
+  nameHint,
 }: {
   blocks: EditorBlock[];
   onChange: (blocks: EditorBlock[]) => void;
@@ -52,6 +54,9 @@ export function ArticleContentEditor({
   canManageMediaAny: boolean;
   canUploadVideo: boolean;
   editable?: boolean;
+  /** Slug hint so images dropped/pasted into the body are named after the
+   *  article in Drive (see `MediaPicker`'s `nameHint`). */
+  nameHint?: string;
 }) {
   // Captured once, at mount, via the lazy-initializer form of `useState` —
   // never updated again (same contract as `blocks` itself, see this
@@ -76,6 +81,38 @@ export function ArticleContentEditor({
 
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
+
+  // ---- drag-drop / paste image ingest ----
+  const editorRef = useRef<Editor | null>(null);
+  const nameHintRef = useRef(nameHint);
+  useEffect(() => {
+    nameHintRef.current = nameHint;
+  });
+  const [ingest, setIngest] = useState<{ pending: number; error: string | null }>({ pending: 0, error: null });
+
+  const ingestImages = useCallback(async (sources: Array<File | string>, atPos: number | null) => {
+    const ed = editorRef.current;
+    const list = sources.slice(0, 20);
+    if (!ed || list.length === 0) return;
+    setIngest((s) => ({ pending: s.pending + list.length, error: null }));
+    let pos = atPos ?? ed.state.selection.to;
+    for (const src of list) {
+      try {
+        const opt = typeof src === "string" ? await importImageFromUrl(src, nameHintRef.current) : await uploadImageFile(src, nameHintRef.current);
+        registerMediaOption(ed, opt);
+        ed.chain().focus().insertContentAt(pos, { type: "articleImage", attrs: { mediaId: opt.id, caption: opt.caption ?? "" } }).run();
+        pos = ed.state.selection.to;
+      } catch (e) {
+        setIngest((s) => ({ ...s, error: e instanceof Error ? e.message : "Không thêm được ảnh." }));
+      } finally {
+        setIngest((s) => ({ ...s, pending: Math.max(0, s.pending - 1) }));
+      }
+    }
+  }, []);
+  const ingestRef = useRef(ingestImages);
+  useEffect(() => {
+    ingestRef.current = ingestImages;
+  });
 
   const extensions = useMemo(
     () => [
@@ -117,9 +154,47 @@ export function ArticleContentEditor({
     onUpdate({ editor: e }) {
       onChangeRef.current(docToBlocks(e.getJSON()));
     },
+    editorProps: {
+      handleDrop(view, event) {
+        const files = Array.from((event as DragEvent).dataTransfer?.files ?? []).filter((f) => f.type.startsWith("image/"));
+        if (files.length === 0) return false;
+        event.preventDefault();
+        const pos = view.posAtCoords({ left: (event as DragEvent).clientX, top: (event as DragEvent).clientY })?.pos ?? null;
+        void ingestRef.current(files, pos);
+        return true;
+      },
+      handlePaste(view, event) {
+        const cd = (event as ClipboardEvent).clipboardData;
+        if (!cd) return false;
+        const imgFiles = Array.from(cd.files ?? []).filter((f) => f.type.startsWith("image/"));
+        if (imgFiles.length > 0) {
+          event.preventDefault();
+          void ingestRef.current(imgFiles, view.state.selection.to);
+          return true;
+        }
+        // Pasting a whole article (Word / Docs / a web page): let TipTap
+        // paste the text natively, then pull every <img> it dropped into
+        // Drive and append them as image blocks.
+        const html = cd.getData("text/html");
+        if (html && /<img\s/i.test(html)) {
+          const urls: string[] = [];
+          try {
+            new DOMParser().parseFromString(html, "text/html").querySelectorAll("img").forEach((img) => {
+              const s = img.getAttribute("src") ?? "";
+              if (s.startsWith("data:image/") || /^https?:\/\//i.test(s)) urls.push(s);
+            });
+          } catch {
+            /* malformed clipboard HTML — just skip the images */
+          }
+          if (urls.length > 0) setTimeout(() => void ingestRef.current(urls, null), 0);
+        }
+        return false;
+      },
+    },
   });
 
   useEffect(() => {
+    editorRef.current = editor ?? null;
     editor?.setEditable(editable);
   }, [editor, editable]);
 
@@ -287,6 +362,22 @@ export function ArticleContentEditor({
             </button>
           )}
         </div>
+      )}
+
+      {editable && (
+        <p className="adminHint" style={{ margin: "6px 0 0" }}>
+          Kéo-thả ảnh vào khung, dán ảnh chụp màn hình, hoặc dán cả bài viết (kèm ảnh) — ảnh sẽ tự tải lên.
+        </p>
+      )}
+      {ingest.pending > 0 && (
+        <p className="adminHint" style={{ margin: "4px 0 0" }}>
+          Đang tải {ingest.pending} ảnh…
+        </p>
+      )}
+      {ingest.error && (
+        <p className="adminErrorText" role="alert" style={{ margin: "4px 0 0" }}>
+          {ingest.error}
+        </p>
       )}
 
       <EditorContent editor={editor} className="richEditorContent" />

@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { adminImagePreviewUrl } from "@/lib/media/adminPreview";
 import { requireSession } from "@/server/auth/session";
 import { mediaService } from "@/server/services/mediaService";
 
@@ -56,7 +57,7 @@ export async function linkMediaAction(formData: FormData): Promise<LinkMediaResu
     return {
       id: asset.id,
       label: asset.alt || asset.caption || asset.providerFileId || asset.id,
-      previewUrl: asset.provider === "GOOGLE_DRIVE" && asset.status === "READY" ? `/api/media/${asset.id}` : undefined,
+      previewUrl: adminImagePreviewUrl(asset),
     };
   } catch (err) {
     return { id: "", label: "", error: err instanceof Error ? err.message : "Không thể thêm media." };

@@ -28,6 +28,13 @@ export async function ignoreExternalItemAction(formData: FormData): Promise<void
   revalidateInbox();
 }
 
+export async function restoreExternalItemAction(formData: FormData): Promise<void> {
+  const actor = await requireSession();
+  const item = await loadOr404(String(formData.get("itemId")));
+  await socialInboxService.restore(actor, item);
+  revalidateInbox();
+}
+
 export async function assignExternalItemAction(formData: FormData): Promise<void> {
   const actor = await requireSession();
   const item = await loadOr404(String(formData.get("itemId")));

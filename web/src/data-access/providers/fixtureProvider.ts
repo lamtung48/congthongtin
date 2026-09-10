@@ -31,15 +31,15 @@ import { HOMEPAGE_GALLERY } from "../fixtures/gallery";
 import { PROVINCES, provinceBySlug } from "../fixtures/provinces";
 import { OVERSEAS_ORGANIZATIONS, overseasOrganizationBySlug } from "../fixtures/overseasOrganizations";
 import { HERO, HERO_SLUG, SEARCH_CORPUS } from "../fixtures/homepage";
+import { buildHeroSlide } from "@/lib/view/heroSlide";
 import {
   SITE_NAV,
   SITE_FOOTER_COLUMNS,
   SITE_FOOTER_SOCIALS,
-  SITE_FOOTER_POLICIES,
   SITE_FOOTER_ORG_NAME,
   SITE_FOOTER_ORG_DESCRIPTION,
   SITE_FOOTER_ADDRESS,
-  SITE_FOOTER_CONTACT_NOTE,
+  SITE_FOOTER_CONTACT_EMAIL,
   SITE_FOOTER_COPYRIGHT_LINE,
   SITE_FOOTER_GOVERNING_BODY_LINE,
 } from "@/lib/siteChrome";
@@ -277,16 +277,29 @@ export class FixtureProvider implements ContentProvider {
   async getHomepage(): Promise<HomepageConfiguration> {
     return {
       nav: SITE_NAV,
-      hero: HERO,
+      hero: [
+        buildHeroSlide({
+          id: HERO_SLUG,
+          category: HERO.eyebrow,
+          title: [HERO.headline, HERO.headlineAccent].filter(Boolean).join(" "),
+          summary: HERO.lead,
+          articleUrl: HERO.articleUrl,
+          media: HERO.media,
+          alt: HERO.media.alt ?? HERO.headline,
+          publishedAt: HERO.publishedAt,
+          author: HERO.author.name,
+          readingTimeMinutes: HERO.readingTimeMinutes,
+          overrides: { titleAccent: HERO.headlineAccent },
+        }),
+      ],
       trendingTopics: TOPICS,
       footer: {
         columns: SITE_FOOTER_COLUMNS,
         socials: SITE_FOOTER_SOCIALS,
-        policies: SITE_FOOTER_POLICIES,
         orgName: SITE_FOOTER_ORG_NAME,
         orgDescription: SITE_FOOTER_ORG_DESCRIPTION,
         address: SITE_FOOTER_ADDRESS,
-        contactNote: SITE_FOOTER_CONTACT_NOTE,
+        contactEmail: SITE_FOOTER_CONTACT_EMAIL,
         copyrightLine: SITE_FOOTER_COPYRIGHT_LINE,
         governingBodyLine: SITE_FOOTER_GOVERNING_BODY_LINE,
       },
@@ -407,7 +420,7 @@ export class FixtureProvider implements ContentProvider {
 
   async getLocalityBySlug(slug: string): Promise<LocalityProfile | null> {
     const province = provinceBySlug(slug);
-    const localNews = LOCAL_NEWS.filter((n) => slugify(n.place) === slug);
+    const localNews = LOCAL_NEWS.filter((n) => !!n.place && slugify(n.place) === slug);
     const stories = STORY_RAIL.filter((s) => slugify(s.place) === slug);
     if (!province && localNews.length === 0 && stories.length === 0) return null;
     const name = province?.name ?? localNews[0]?.place ?? stories[0]?.place ?? slug;
@@ -439,7 +452,7 @@ export class FixtureProvider implements ContentProvider {
   async getLocalitySlugs(): Promise<string[]> {
     const slugs = [
       ...PROVINCES.map((p) => p.slug),
-      ...LOCAL_NEWS.map((n) => slugify(n.place)),
+      ...LOCAL_NEWS.flatMap((n) => (n.place ? [slugify(n.place)] : [])),
       ...STORY_RAIL.map((s) => slugify(s.place)),
     ];
     return [...new Set(slugs)];

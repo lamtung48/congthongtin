@@ -25,12 +25,14 @@ export function publisherRef(orgName: string) {
 /**
  * Site-wide `Organization` schema, rendered once from the root layout. Built
  * from `FooterConfiguration` — the same real org name/description/address
- * already fetched for the footer, not a second data source. Deliberately
- * omits `sameAs` (social profile links) and `telephone`/`email`: the footer
- * itself says those accounts and contact channels are "chờ xác nhận — chưa
- * gắn liên kết" (pending confirmation, not yet linked) — there is no real
- * URL or number to put there, and inventing one would be exactly the fake
- * schema field this task explicitly rules out.
+ * already shown in the footer, not a second data source, so the two can
+ * never say different things.
+ *
+ * `sameAs` and `email` used to be omitted on purpose: the accounts were
+ * still "chờ xác nhận" and the footer rendered them as inert text, so there
+ * was no real URL to put here and inventing one would have been a fake
+ * schema field. They are real now, and they are the same values the footer
+ * links to. `telephone` stays out — there is still no published number.
  */
 export function organizationJsonLd(footer: FooterConfiguration) {
   return {
@@ -40,6 +42,8 @@ export function organizationJsonLd(footer: FooterConfiguration) {
     description: footer.orgDescription,
     url: SITE_URL,
     logo: DEFAULT_OG_IMAGE.url,
+    email: footer.contactEmail,
+    sameAs: footer.socials.map((s) => s.url),
     address: {
       "@type": "PostalAddress",
       streetAddress: footer.address,

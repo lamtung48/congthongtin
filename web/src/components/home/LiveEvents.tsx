@@ -7,13 +7,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { IconArrowLeft, IconArrowRight, IconMapPin, IconOffline } from "@/components/icons";
 import type { Event } from "@/domain/event";
 import { buildEventView } from "@/lib/eventView";
-
-function dd(d: Date) {
-  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
-}
-function hh(d: Date) {
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
+import { formatDateVi, formatTimeVi } from "@/lib/formatDate";
 
 export function LiveEvents({ events }: { events: Event[] }) {
   const railRef = useRef<HTMLDivElement>(null);
@@ -106,13 +100,25 @@ export function LiveEvents({ events }: { events: Event[] }) {
     else if (e.key === "End" && vp) { e.preventDefault(); vp.scrollTo({ left: vp.scrollWidth, behavior: "smooth" }); }
   }
 
+  // No events at all: no heading, no empty rail, no "Trang lịch sự kiện chưa
+  // có" notice over nothing. Gated on the `events` prop rather than on
+  // `eventViews` (which is empty until `now` is set after mount) so the
+  // section does not flash in and out between the server render and
+  // hydration. Same rule the platform bento and Tài liệu sections follow.
+  if (events.length === 0) return null;
+
   return (
     <section aria-label="Đang diễn ra" className={styles.section}>
       <div className={styles.head}>
         <div className={styles.headText}>
           <span className={styles.eyebrow}>Sự kiện</span>
           <h2 className={styles.title}>Đang diễn ra</h2>
-          <span className={styles.clock}>{now ? `Mốc thời gian: ${hh(now)} · ${dd(now)}` : ""}</span>
+          {/* Vietnam time, like every other timestamp on the site. This
+              block renders only on the client (`now` is null during SSR), so
+              the local-clock helpers it used to call showed the *visitor's*
+              zone — a reader in Tokyo saw a "Mốc thời gian" two hours ahead
+              of the events listed under it. */}
+          <span className={styles.clock}>{now ? `Mốc thời gian: ${formatTimeVi(now)} · ${formatDateVi(now)}` : ""}</span>
         </div>
         <div className={styles.controls}>
           <span className={styles.noCalendar}>

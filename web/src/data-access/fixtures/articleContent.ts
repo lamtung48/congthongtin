@@ -127,7 +127,7 @@ export const ARTICLE_CONTENT: Record<string, ArticleContentExtra> = {
     author: { id: "phong-thi-dua-khen-thuong", name: "Ban Thi đua – Khen thưởng Trung ương Hội" },
     readingTimeMinutes: 4,
     tags: [
-      { id: "sinh-vien-5-tot", slug: "sinh-vien-5-tot", name: "Sinh viên 5 tốt" },
+      { id: "phong-trao-sinh-vien-5-tot", slug: "phong-trao-sinh-vien-5-tot", name: "Phong trào Sinh viên 5 tốt" },
       { id: "tuyen-duong", slug: "tuyen-duong", name: "Tuyên dương" },
     ],
     topics: [topicBySlug("sinh-vien-5-tot")].filter((t): t is Topic => !!t),

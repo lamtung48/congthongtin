@@ -6,6 +6,7 @@ import { changeRoleAction, setStatusAction } from "./actions";
 import { CreateUserForm } from "./CreateUserForm";
 import { ResetPasswordButton } from "./ResetPasswordButton";
 import type { AdminRole, UserStatus } from "@/generated/prisma/client";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 export const metadata: Metadata = { title: "Người dùng" };
 
@@ -99,7 +100,7 @@ export default async function AdminUsersPage({
                       {u.status === "ACTIVE" ? "Đang hoạt động" : "Đã khoá"}
                     </span>
                   </td>
-                  <td className="adminHint">{u.lastLoginAt ? u.lastLoginAt.toLocaleString("vi-VN") : "Chưa đăng nhập"}</td>
+                  <td className="adminHint">{u.lastLoginAt ? formatDateTimeVi(u.lastLoginAt) : "Chưa đăng nhập"}</td>
                   <td>
                     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                       <form action={setStatusAction}>

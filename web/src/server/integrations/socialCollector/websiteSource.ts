@@ -1,6 +1,7 @@
 import "server-only";
 import { fetchRaw } from "./httpClient";
 import { rssSource } from "./rssSource";
+import { htmlToPlainText } from "./htmlText";
 import { extractHashtags } from "./normalize";
 import type { SourceFetcher, SourceFetchInput, SourceFetchResult, NormalizedExternalPost } from "./types";
 
@@ -15,15 +16,6 @@ function extractMeta(html: string, prop: string): string | undefined {
 
 function extractTitleTag(html: string): string | undefined {
   return html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim();
-}
-
-function decodeEntities(text: string): string {
-  return text
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
 }
 
 /**
@@ -72,14 +64,14 @@ export const websiteSource: SourceFetcher = {
 
     const title = extractMeta(outcome.text, "og:title") ?? extractTitleTag(outcome.text);
     const description = extractMeta(outcome.text, "og:description") ?? extractMeta(outcome.text, "description");
-    const contentText = decodeEntities(description ?? title ?? "");
+    const contentText = htmlToPlainText(description ?? title ?? "");
     if (!contentText) {
       return { ok: false, reason: "invalid_source", message: "Không tìm thấy tiêu đề/mô tả (Open Graph hoặc <title>) trên trang." };
     }
 
     const post: NormalizedExternalPost = {
       url: input.externalUrl,
-      title: title ? decodeEntities(title) : undefined,
+      title: htmlToPlainText(title) || undefined,
       excerpt: contentText.length > 200 ? `${contentText.slice(0, 200)}…` : contentText,
       contentText,
       hashtags: extractHashtags(contentText),

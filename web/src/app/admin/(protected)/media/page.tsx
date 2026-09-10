@@ -6,13 +6,15 @@ import { mediaService } from "@/server/services/mediaService";
 import { userRepository } from "@/server/repositories/userRepository";
 import type { MediaAdminFilter, MediaUsageDetail } from "@/server/repositories/mediaRepository";
 import type { MediaStatus, MediaType } from "@/generated/prisma/client";
+import { adminImagePreviewUrl } from "@/lib/media/adminPreview";
 import { MediaRowActions } from "./MediaRowActions";
+import { formatDateVi } from "@/lib/formatDate";
 
 export const metadata: Metadata = { title: "Media" };
 
 const PAGE_SIZE = 20;
 
-const TYPE_LABELS: Record<MediaType, string> = { IMAGE: "Ảnh", VIDEO: "Video" };
+const TYPE_LABELS: Record<MediaType, string> = { IMAGE: "Ảnh", VIDEO: "Video", DOCUMENT: "Tài liệu" };
 const STATUS_LABELS: Record<MediaStatus, string> = {
   READY: "Sẵn sàng",
   MISSING: "Thiếu tệp",
@@ -191,7 +193,7 @@ export default async function AdminMediaPage({ searchParams }: { searchParams: P
                 {pageAssets.map((m) => {
                   const usage = usageByMediaId.get(m.id) ?? [];
                   const canManageThis = canManageAny || m.createdById === session.id;
-                  const previewUrl = m.provider === "GOOGLE_DRIVE" && m.status === "READY" ? `/api/media/${m.id}` : null;
+                  const previewUrl = adminImagePreviewUrl(m) ?? null;
                   return (
                     <tr key={m.id}>
                       <td>
@@ -216,7 +218,7 @@ export default async function AdminMediaPage({ searchParams }: { searchParams: P
                         )}
                       </td>
                       <td className="adminHint">{m.createdBy?.displayName ?? "—"}</td>
-                      <td className="adminHint">{m.createdAt.toLocaleDateString("vi-VN")}</td>
+                      <td className="adminHint">{formatDateVi(m.createdAt)}</td>
                       <td>
                         <MediaRowActions mediaId={m.id} alt={m.alt ?? ""} caption={m.caption ?? ""} canManage={canManageThis} isAdmin={isAdmin} />
                       </td>

@@ -26,6 +26,10 @@ export function resolveImageUrl(media: MediaAsset): string | undefined {
   if (media.status !== "ready" || !media.sourceId) return undefined;
   if (media.provider === "drive") return `/api/media/${media.id}`;
   if (media.provider === "youtube") return `https://img.youtube.com/vi/${media.sourceId}/hqdefault.jpg`;
+  // Hot-linked from the original source (news collector) — `sourceId` is the
+  // absolute image URL. Served straight from the source CDN; `img-src https:`
+  // in next.config.ts's CSP allows it.
+  if (media.provider === "external") return media.sourceId;
   return undefined;
 }
 

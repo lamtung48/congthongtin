@@ -1,6 +1,7 @@
 import "server-only";
 import { fetchRaw } from "./httpClient";
 import { extractHashtags } from "./normalize";
+import { htmlToPlainText } from "./htmlText";
 import type { SourceFetcher, SourceFetchInput, SourceFetchResult, NormalizedExternalPost } from "./types";
 
 interface SearchItem {
@@ -66,12 +67,15 @@ export const youtubeChannelSource: SourceFetcher = {
     const posts: NormalizedExternalPost[] = rows
       .filter((i): i is SearchItem & { id: { videoId: string }; snippet: { title: string } } => !!i.id?.videoId && !!i.snippet?.title)
       .map((i) => {
-        const description = i.snippet.description ?? "";
-        const contentText = `${i.snippet.title}${description ? `\n\n${description}` : ""}`;
+        // The YouTube Data API HTML-escapes snippet text (`&amp;`, `&#39;`,
+        // `&quot;`), so it needs the same decode a feed does.
+        const title = htmlToPlainText(i.snippet.title) || i.snippet.title;
+        const description = htmlToPlainText(i.snippet.description);
+        const contentText = `${title}${description ? `\n\n${description}` : ""}`;
         return {
           externalId: i.id.videoId,
           url: `https://www.youtube.com/watch?v=${i.id.videoId}`,
-          title: i.snippet.title,
+          title,
           excerpt: description.length > 200 ? `${description.slice(0, 200)}…` : description || undefined,
           contentText,
           publishedAt: i.snippet.publishedAt ? new Date(i.snippet.publishedAt) : undefined,

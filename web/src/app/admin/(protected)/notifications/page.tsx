@@ -4,6 +4,7 @@ import { requireSession } from "@/server/auth/session";
 import { notificationService } from "@/server/services/notificationService";
 import { markNotificationReadAction, markAllNotificationsReadAction } from "./actions";
 import type { NotificationType } from "@/generated/prisma/client";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 export const metadata: Metadata = { title: "Thông báo" };
 
@@ -89,7 +90,7 @@ export default async function NotificationsPage() {
                     <p style={{ margin: "4px 0", fontSize: 13.5 }}>
                       {href ? <Link href={href}>{n.message}</Link> : n.message}
                     </p>
-                    <span className="adminHint">{n.createdAt.toLocaleString("vi-VN")}</span>
+                    <span className="adminHint">{formatDateTimeVi(n.createdAt)}</span>
                   </div>
                   {!n.isRead && (
                     <form action={markNotificationReadAction}>

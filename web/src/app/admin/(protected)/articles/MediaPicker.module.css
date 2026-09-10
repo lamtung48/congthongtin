@@ -1,0 +1,117 @@
+.selectedRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.thumb {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--admin-border, #e3e6ea);
+  background: var(--admin-surface-sunken, #f4f5f7);
+  display: grid;
+  place-items: center;
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.thumb[data-empty] {
+  border-style: dashed;
+}
+.thumbTxt {
+  font-size: 9px;
+  color: var(--admin-text-muted, #7a828c);
+  text-align: center;
+  padding: 2px;
+  line-height: 1.2;
+}
+
+.selMeta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.selLabel {
+  font-size: 12.5px;
+  color: var(--admin-text, #2a2f36);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.selActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.picker {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--admin-border, #e3e6ea);
+  border-radius: 10px;
+  background: var(--admin-surface-sunken, #f7f8f9);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.tile {
+  position: relative;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+  background: #fff;
+  aspect-ratio: 4 / 3;
+  display: block;
+}
+.tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tile[data-on] {
+  border-color: var(--blue-600, #1a56c4);
+}
+.tile:focus-visible {
+  outline: 2px solid var(--blue-600, #1a56c4);
+  outline-offset: 1px;
+}
+.tileTxt {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+  font-size: 10px;
+  color: var(--admin-text-muted, #6b727c);
+  text-align: center;
+  line-height: 1.25;
+  background: var(--admin-surface-sunken, #f0f1f3);
+}
+.tileLabel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 3px 5px;
+  font-size: 9.5px;
+  line-height: 1.2;
+  color: #fff;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.72), transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}

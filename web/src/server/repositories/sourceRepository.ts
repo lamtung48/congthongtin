@@ -23,6 +23,10 @@ const publicSelect = {
   categoryId: true,
   lastSyncedAt: true,
   lastSyncItemCount: true,
+  syncEveryMinutes: true,
+  maxItemsPerSync: true,
+  fetchFullBody: true,
+  contentSelector: true,
   lastError: true,
   createdById: true,
   createdAt: true,
@@ -49,6 +53,25 @@ export const sourceRepository = {
 
   findById(id: string): Promise<PublicSource | null> {
     return prisma.source.findUnique({ where: { id }, select: publicSelect });
+  },
+
+  /** Enabled RSS/WEBSITE sources whose auto-sync interval has elapsed —
+   *  polled by the `collector` sidecar. `MANUAL_EXTERNAL` and any source
+   *  with `syncEveryMinutes = null` are never returned. */
+  async listDueForAutoSync(now: Date): Promise<PublicSource[]> {
+    const rows = await prisma.source.findMany({
+      where: {
+        isEnabled: true,
+        type: { in: ["RSS", "WEBSITE"] },
+        syncEveryMinutes: { not: null },
+      },
+      select: { ...publicSelect },
+    });
+    return rows.filter(
+      (s) =>
+        s.syncEveryMinutes != null &&
+        (s.lastSyncedAt === null || s.lastSyncedAt.getTime() + s.syncEveryMinutes * 60_000 <= now.getTime()),
+    );
   },
 
   /** The one credential-bearing read in the whole app — see this file's

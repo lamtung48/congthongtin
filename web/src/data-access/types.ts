@@ -29,6 +29,9 @@ export interface StoryRailItem {
   publishedAt: string;
   headline: string;
   category: Category;
+  /** The article's own cover — the rail used to render one hardcoded
+   *  placeholder for every card, so no story ever showed its real image. */
+  media: MediaAsset;
 }
 
 /** `getLocalNews()` item. */
@@ -39,7 +42,10 @@ export interface LocalNewsEntry {
   publishedAt: string;
   level: OrganizationLevel;
   orgName: string;
-  place: string;
+  /** Omitted for an article pinned into this section with only a Province
+   *  and no reporting unit — `orgName` already carries the province name
+   *  there, so the card would otherwise print it twice. */
+  place?: string;
   unitUrl?: string;
   media: MediaAsset;
 }

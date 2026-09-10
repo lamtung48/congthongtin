@@ -134,6 +134,69 @@ be imported into a Client Component even by mistake).
   `userService.resetPassword()` (an old password shouldn't leave old
   sessions valid).
 
+## Shared identity (hsv-id)
+
+The password behind `/admin/login` is shared with the other HSV platforms
+(`hoinghi`, `daotaohsv`) through the internal identity service `hsv-id`
+(`/opt/hsv-id` on the VPS). One person, one password, everywhere.
+
+**This is not SSO.** This CMS keeps everything in "Session lifecycle" above
+exactly as-is — its own `admin_session` cookie, its own `Session` table,
+its own 7-day expiry, its own immediate disabled-account check. `hsv-id`
+only owns the canonical password + root profile; it never issues a session
+or a token this app trusts.
+
+`src/server/integrations/hsvId.ts` is the client — same fault-tolerant
+contract as `hoinghi`/`daotaohsv`'s own `lib/hsv-id.ts`: every call returns
+`null`/`false` instead of throwing, and every caller falls back to the
+local `User.passwordHash`. If `hsv-id` is down, login/reset/create all keep
+working against local data. Config: `HSV_ID_URL` + `HSV_ID_INTERNAL_KEY`
+(the shared `X-Internal-Key`); absent ⇒ the integration is simply inert.
+
+`User.identityUserId` links a local row to its `hsv-id` account. It is
+backfilled lazily, never in a bulk migration:
+
+| Event | What happens |
+|---|---|
+| Login, account already linked | `hsv-id` verifies the password; local hash used only if `hsv-id` is unreachable |
+| Login, not yet linked | local hash verified, then — on success — the account is created in `hsv-id` with the password from that request, and `identityUserId` stored |
+| Admin creates a user (`userService.create`) | synced to `hsv-id` immediately with the temp password |
+| Admin resets a password (`userService.resetPassword`) | new password pushed to `hsv-id` (or the account created there if still unlinked) |
+
+### Auto-provisioning
+
+If someone signs in with credentials that `hsv-id` accepts but has no
+local `User` row, `authService.login` creates one: role **CONTRIBUTOR**,
+status **ACTIVE**, linked by `identityUserId`, email + display name taken
+from the `hsv-id` account. They can immediately draft and submit their own
+articles and upload their own media (`ROLE_PERMISSIONS.CONTRIBUTOR` —
+nothing more: no publish, no approve, no admin). An Admin promotes them via
+`/admin/users` if they need `MANAGER`/`ADMIN`.
+
+Practical effect: anyone with a `hoinghi` or `daotaohsv` account can log
+into this CMS as a Contributor. That is the intended behaviour ("tài khoản
+không có quyền ở nền tảng khác → giữ vai trò cộng tác viên"), not a leak —
+Contributor is a deliberately small role and nothing they create is public
+until a Manager/Admin publishes it.
+
+Provisioned accounts have **no local password** (`passwordHash` is a random
+throwaway) — `hsv-id` is their only credential authority. If `hsv-id` is
+unreachable, such an account can't sign in until it's back (a plain
+`hoinghi`/`daotaohsv`-style account that was later linked still falls back
+to its real local hash; a provisioned-only one has nothing to fall back
+to). Provisioning is skipped for a phone-only `hsv-id` account (this CMS is
+email-keyed) and for a `LOCKED` one. The flow is idempotent — a race or a
+retry reuses the existing row.
+
+An Admin who wants to keep a specific person out disables their `User` row
+(`status = DISABLED`); the generic-error login path and the immediate
+session kill both apply exactly as for any other account.
+
+A `409` from `hsv-id` (the email already belongs to a different `hsv-id`
+account) is left unlinked on purpose — auto-linking would replace the
+person's working local password with another platform's. An Admin resolves
+those by hand via the `hsv-id` API.
+
 ## Brute-force / rate limiting
 
 `src/server/auth/rateLimit.ts` — an in-memory sliding window, 5 failed

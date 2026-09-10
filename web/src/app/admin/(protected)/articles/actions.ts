@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/server/auth/session";
 import { articleService } from "@/server/services/articleService";
+import { homepageService } from "@/server/services/homepageService";
+import { ARTICLE_SECTION_KEYS, type ArticleSectionKey } from "@/server/repositories/homepagePlacementRepository";
 import { hasPermission } from "@/server/auth/permissions";
 
 /**
@@ -104,6 +106,30 @@ export async function restoreFromArchiveAction(formData: FormData): Promise<void
   const article = await loadOr404(String(formData.get("articleId")));
   await articleService.restoreFromArchive(actor, article);
   revalidateArticleViews(article.id);
+}
+
+/** The article list's two-state "Đưa lên Hero / Gỡ khỏi Hero" button.
+ *  `homepageService.setArticlePinned` re-checks `homepage.manage` and that
+ *  the article is actually public. */
+/**
+ * The article list's per-row homepage toggles. `sectionKey` is validated
+ * against `ARTICLE_SECTION_KEYS` rather than trusted from the form: it
+ * arrives in a hidden input, and `setArticlePinned` would otherwise accept
+ * any `HomepageSectionKey` — including the ones that hold videos or
+ * galleries, where an ARTICLE placement would be silently dropped at render
+ * and look like the button simply did nothing.
+ */
+export async function toggleSectionPlacementAction(formData: FormData): Promise<void> {
+  const actor = await requireSession();
+  const article = await loadOr404(String(formData.get("articleId")));
+  const pinned = String(formData.get("pinned")) === "true";
+  const raw = String(formData.get("sectionKey"));
+  const sectionKey = (ARTICLE_SECTION_KEYS as readonly string[]).includes(raw) ? (raw as ArticleSectionKey) : null;
+  if (!sectionKey) throw new Error("Khu vực trang chủ không hợp lệ.");
+  await homepageService.setArticlePinned(actor, article, sectionKey, pinned);
+  revalidateArticleViews(article.id);
+  // The pin changes what the public homepage shows, not just this listing.
+  revalidatePath("/", "layout");
 }
 
 export async function deleteArticleAction(formData: FormData): Promise<void> {

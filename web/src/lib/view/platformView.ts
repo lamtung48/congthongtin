@@ -48,7 +48,10 @@ export function buildPlatformView(p: Platform): PlatformView {
         id: p.id,
         name: p.name,
         url: p.url,
-        metric: p.metric,
+        // Live figure from the platform's API (refreshPlatformActivity /
+        // trainingAdapter, e.g. "1 khoá đang mở") when available, otherwise
+        // the editor's static `metric`.
+        metric: p.currentActivity ?? p.metric,
         desc: p.description,
         cta: p.ctaLabel ?? "Truy cập nền tảng",
         access: p.accessLevel,

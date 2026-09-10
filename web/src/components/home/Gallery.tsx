@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./Gallery.module.css";
 import { MediaImage } from "@/components/ui/MediaImage";
-import { IconArrowLeft, IconArrowRight, IconClose, IconImageBroken, IconOffline } from "@/components/icons";
+import { IconArrowLeft, IconArrowRight, IconClose, IconOffline } from "@/components/icons";
 import type { Gallery as GalleryDomain, MediaAsset } from "@/domain/media";
 import { formatDateVi } from "@/lib/formatDate";
 
@@ -75,6 +75,14 @@ export function Gallery({ gallery }: { gallery: GalleryDomain }) {
 
   const item = openIndex != null ? gallerySource[openIndex] : null;
 
+  // A gallery with no photos renders nothing at all. The homepage already
+  // skips this section when it's empty, but the guard belongs here too: the
+  // grid below indexes `gallerySource[0]` directly, so an empty list used to
+  // throw *during prerender* and fail the whole `next build` — one deleted
+  // photo group taking the entire site down. Placed after every hook so the
+  // hook order stays constant.
+  if (!feature) return null;
+
   return (
     <section aria-label="Ảnh hoạt động" className={styles.section}>
       <div className={styles.head}>
@@ -87,10 +95,6 @@ export function Gallery({ gallery }: { gallery: GalleryDomain }) {
           Trang thư viện ảnh chưa có
         </span>
       </div>
-      <p className={styles.notice}>
-        <IconImageBroken size={17} className={styles.noticeIcon} />
-        Các ô dưới đây đang chờ ảnh tư liệu chính thức. Chú thích, địa điểm và ngày là nội dung mẫu; nguồn ảnh sẽ được điền khi ban biên tập cung cấp tệp gốc.
-      </p>
 
       <div data-l="gallery" className={styles.grid}>
         <button

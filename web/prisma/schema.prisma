@@ -102,11 +102,17 @@ enum MediaProvider {
   GOOGLE_DRIVE
   YOUTUBE
   LOCAL_PLACEHOLDER
+  /// Image hot-linked from its original source (news-site CDN). `sourceId`
+  /// holds the absolute URL; never downloaded/stored by this app.
+  EXTERNAL
 }
 
 enum MediaType {
   IMAGE
   VIDEO
+  /// Van ban dinh kem (PDF / Word / Excel / PowerPoint) — luu tren Google
+  /// Drive nhu anh, nhung khong bao gio di qua sharp va khong co width/height.
+  DOCUMENT
 }
 
 enum MediaStatus {
@@ -378,6 +384,14 @@ model User {
   email         String     @unique
   username      String?    @unique
   passwordHash  String
+  /// Shared-identity link: the `hsv-id` (/opt/hsv-id) account this CMS user
+  /// maps to. Null until the account is first synced (on Admin-create, on
+  /// Admin password-reset, or lazily on the first successful local login
+  /// after the integration was enabled). Once set, `hsv-id` is the primary
+  /// password authority and the local `passwordHash` is only a fallback for
+  /// when `hsv-id` is unreachable — see src/server/integrations/hsvId.ts and
+  /// docs/AUTHENTICATION.md, "Shared identity (hsv-id)".
+  identityUserId String?   @unique
   displayName   String
   avatarMediaId String?
   role          AdminRole  @default(CONTRIBUTOR)
@@ -406,6 +420,7 @@ model User {
   assignedExternalItems      ExternalItem[]           @relation("ExternalItemAssignedTo")
   ignoredExternalItems       ExternalItem[]           @relation("ExternalItemIgnoredBy")
   createdExternalItems       ExternalItem[]           @relation("ExternalItemCreatedBy")
+  createdDocuments           Document[]              @relation("DocumentCreatedBy")
 
   @@index([role])
 }
@@ -664,6 +679,7 @@ model MediaAsset {
   usedAsOrgLogo      Organization[]  @relation("OrganizationLogo")
   usedAsTopicCover   Topic[]         @relation("TopicCover")
   usedAsArticleCover Article[]       @relation("ArticleCover")
+  usedAsDocumentFile Document[]     @relation("DocumentFile")
   usedAsArticleOg    Article[]       @relation("ArticleOg")
   usedAsEventCover   Event[]         @relation("EventCover")
   usedAsPlatformIcon Platform[]      @relation("PlatformIcon")
@@ -803,6 +819,16 @@ model Article {
   seoDescription String?
   canonicalUrl   String?
   ogMediaId      String?
+  /// Per-article overrides for the homepage "Editorial Image Canvas" Hero
+  /// when this article is one of the (up to 4) Hero slides — focal point
+  /// (desktop/mobile, 0–100 % → object-position), overlay strength, text
+  /// theme, an optional caption, an optional mobile-specific image id, and
+  /// a title-accent phrase. `null` (the default) means the Hero renders
+  /// this slide from safe auto-defaults. Shape:
+  /// `{ focalDesktop?: {x,y}, focalMobile?: {x,y}, overlay?: "soft"|"medium"|"strong",
+  ///    theme?: "light"|"dark", caption?: string, mobileMediaId?: string, titleAccent?: string }`
+  /// Written by the (not-yet-built) Hero editor — see docs/HERO.md.
+  heroConfig     Json?
 
   category     Category       @relation(fields: [categoryId], references: [id])
   author       AuthorProfile? @relation(fields: [authorId], references: [id])
@@ -1199,6 +1225,19 @@ model Source {
   categoryId          String?
   lastSyncedAt        DateTime?
   lastSyncItemCount   Int?
+  /// Auto-sync interval in minutes. `null` = manual-only ("Sync" button).
+  /// The `collector` sidecar (docker-compose.yml) runs every RSS/WEBSITE
+  /// source whose `lastSyncedAt + syncEveryMinutes` has passed. See
+  /// `scripts/runDueSourceSyncs.ts` and `docs/SOCIAL_COLLECTOR.md`.
+  syncEveryMinutes    Int?
+  /// Cap on items stored per sync run (newest first). `null` = no cap.
+  maxItemsPerSync     Int?
+  /// When true, the collector also fetches each item's article page and
+  /// extracts a real body (paragraphs/headings/images) — see
+  /// `socialCollector/articleExtractor.ts`. Images stay hot-linked.
+  fetchFullBody       Boolean      @default(false)
+  /// Optional CSS selector for the article body container; blank = auto.
+  contentSelector     String?
   /// Brief section 10's four failure kinds, already rendered as a
   /// human-readable Vietnamese message by the adapter that hit them — see
   /// `socialCollector/types.ts`'s `SourceFetchFailure`. Cleared on the
@@ -1232,6 +1271,14 @@ model ExternalItem {
   title                  String?
   excerpt                String?
   contentText            String
+  /// Extracted article body as an ArticleBlockInput-shaped JSON array
+  /// (only when the Source has `fetchFullBody`). Used by convertToArticle
+  /// to build real blocks instead of one paragraph. Image blocks carry an
+  /// `externalUrl` (hot-linked).
+  bodyBlocks             Json?
+  /// og:image of the source article — becomes the DRAFT's cover (as an
+  /// EXTERNAL MediaAsset) on convert.
+  coverImageUrl          String?
   /// Lowercased, whitespace-collapsed `contentText` — never displayed,
   /// only compared for near-duplicate detection (see model comment).
   normalizedContentHash  String
@@ -1289,4 +1336,79 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([actorId, createdAt])
+}
+
+/// Site-wide appearance settings — currently just the public site's
+/// background colour. A singleton, using the same fixed-id-row pattern as
+/// `YoutubeConnection` (`id: "default"`): there is exactly one public site,
+/// so a table of many rows would only ever have one meaningful member.
+///
+/// `updatedById` is an unconstrained scalar rather than a `User` relation on
+/// purpose — a singleton settings row does not need a back-relation field
+/// added to `User`, and the authoritative "who changed what, when" record is
+/// the `AuditLog` entry this write also creates. It exists only so the admin
+/// screen can show the last editor without a second lookup path.
+model SiteAppearance {
+  id             String   @id @default("default")
+  /// Canonical lowercase `#rrggbb`. `#ffffff` means "no override" — the
+  /// design system's own `--surface-page` — and is what a missing row
+  /// resolves to as well. See `src/lib/appearance.ts`.
+  pageBackground String   @default("#ffffff")
+  updatedAt      DateTime @updatedAt
+  updatedById    String?
+}
+
+// ============================================================
+// Tai lieu (van ban dieu hanh) — muc "Tài liệu" tren trang chu
+// ============================================================
+
+/// Nhan phan loai tai lieu ("Thông báo", "Kế hoạch", ...). Mot bang rieng
+/// chu khong phai enum: yeu cau la nguoi quan tri phai TU THEM duoc nhan moi,
+/// ma them mot gia tri enum thi phai sua schema + chay migration. Sau nhan
+/// dau tien duoc chen san trong migration
+/// `20260908100000_documents`.
+model DocumentLabel {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  /// Thu tu hien thi trong bo loc; nho truoc.
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents Document[]
+}
+
+/// Mot van ban tai ve duoc. Noi dung nam o MOT trong hai cho, khong bao gio
+/// ca hai va khong bao gio khong cai nao (rang buoc nay do
+/// `documentService` giu, khong phai schema — Prisma khong dien dat duoc
+/// "chinh xac mot trong hai" o tang bang):
+///   - `mediaId`: tep da tai len, di qua dung duong ong Drive nhu anh
+///     (`MediaAsset` type DOCUMENT), phuc vu qua `/api/tai-lieu/[id]`.
+///   - `externalUrl`: lien ket Drive/URL ngoai, mo thang o tab moi.
+model Document {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  title          String
+  description    String?
+  /// So/ky hieu van ban, vd "1234-KH/TWHSV". Text tu do vi moi cap ban hanh
+  /// mot kieu.
+  documentNumber String?
+  /// Ngay ban hanh — khac `createdAt` (ngay dua len cong).
+  issuedAt       DateTime?
+  labelId        String?
+  mediaId        String?
+  externalUrl    String?
+  /// An/hien tren trang cong khai ma khong phai xoa ban ghi.
+  isPublished    Boolean   @default(true)
+  createdById    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  label     DocumentLabel? @relation(fields: [labelId], references: [id], onDelete: SetNull)
+  media     MediaAsset?    @relation("DocumentFile", fields: [mediaId], references: [id], onDelete: SetNull)
+  createdBy User?          @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+
+  @@index([isPublished, issuedAt])
+  @@index([labelId])
 }

@@ -6,6 +6,7 @@ import { hasPermission } from "@/server/auth/permissions";
 import { SOURCE_TYPE_LABELS, SOURCE_STATUS_LABELS } from "@/lib/sourceLabels";
 import { setSourceEnabledAction, deleteSourceAction } from "./actions";
 import { SyncSourceButton } from "./SyncSourceButton";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 export const metadata: Metadata = { title: "Nguồn" };
 
@@ -78,7 +79,7 @@ export default async function AdminSourcesPage() {
                       </span>
                     </td>
                     <td className="adminHint">
-                      {s.lastSyncedAt ? `${s.lastSyncedAt.toLocaleString("vi-VN")} (${s.lastSyncItemCount ?? 0} mục mới)` : "Chưa đồng bộ"}
+                      {s.lastSyncedAt ? `${formatDateTimeVi(s.lastSyncedAt)} (${s.lastSyncItemCount ?? 0} mục mới)` : "Chưa đồng bộ"}
                     </td>
                     <td className="adminHint" style={{ color: s.lastError ? "var(--admin-danger)" : undefined }}>
                       {s.lastError ?? "—"}

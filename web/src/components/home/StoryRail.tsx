@@ -6,235 +6,260 @@ import styles from "./StoryRail.module.css";
 import { MediaImage } from "@/components/ui/MediaImage";
 import { IconArrowLeft, IconArrowRight } from "@/components/icons";
 import type { StoryRailItem } from "@/data-access/types";
-import type { MediaAsset } from "@/domain/media";
 import { formatDateVi } from "@/lib/formatDate";
 
-const CARD_MEDIA: MediaAsset = { id: "story-rail-card", provider: "local-placeholder", type: "image", status: "missing", placeholder: "Ảnh phóng sự địa phương" };
+/** Drift speed in CSS pixels per second. Slow enough that a headline stays
+ *  readable while it crosses — a ~470px card takes about twelve seconds to
+ *  pass — and fast enough that the rail never looks stuck. */
+const DRIFT_PX_PER_SEC = 40;
+
+/** After a button press the browser runs its own smooth-scroll animation;
+ *  writing `scrollLeft` during it would cancel it mid-way. Drift stays out of
+ *  the way for this long, then picks up from wherever the rail landed. */
+const NUDGE_PAUSE_MS = 900;
+
+/** Below this many stories the duplicate copy that makes the loop seamless
+ *  would be visible as an obvious repeat rather than a continuation. */
+const MIN_STORIES_FOR_LOOP = 3;
 
 /**
- * Signature "Dòng chảy sinh viên" section. Desktop (>=1024px, motion on):
- * the section pins via sticky while the vertical scroll it consumes is
- * mapped onto horizontal translateX of the track. Below that breakpoint, or
- * with reduced motion, it's a plain native horizontal scroller with snap.
+ * "Dòng chảy sinh viên" — a rail that drifts sideways at a constant speed,
+ * the way the section's name suggests, instead of sitting still and jumping
+ * one card every few seconds.
  *
- * Only the data source changed here (`stories` prop instead of a fixture
- * import) — the sticky-pin/scroll-progress logic below is untouched.
+ * The loop is seamless rather than a rewind: the cards are rendered twice and
+ * the scroll position is folded back by exactly one copy's width the moment
+ * it passes it. Because the two copies are identical at that point, the fold
+ * is invisible — no snap back to the start, no dead end at the right-hand
+ * edge. The clone is `aria-hidden` and its links are removed from the tab
+ * order, so assistive technology and keyboard users see each story once.
+ *
+ * It stays a **native** horizontal scroller underneath, so a trackpad swipe,
+ * a touch drag, the arrow keys and the two nav buttons all keep working; the
+ * drift simply advances the same `scrollLeft` those do. Motion pauses
+ * whenever someone is actually using the rail (pointer over it, focus inside
+ * it, mid-drag), while the tab is in the background, and entirely under
+ * `prefers-reduced-motion`.
+ *
+ * It deliberately does NOT hijack vertical scrolling — the section used to
+ * pin itself and map page scroll onto the track, which forced it to reserve
+ * page height that showed up as a large empty band below the cards.
  */
 export function StoryRail({ stories }: { stories: StoryRailItem[] }) {
-  const outerRef = useRef<HTMLElement>(null);
-  const stickyRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const countRef = useRef<HTMLSpanElement>(null);
-  const hintRef = useRef<HTMLSpanElement>(null);
   const prevRef = useRef<HTMLButtonElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
-  const fadeRef = useRef<HTMLSpanElement>(null);
 
-  const pinRef = useRef(false);
-  const rangeRef = useRef(0);
-  const travelRef = useRef(0);
-  const activeRef = useRef(0);
+  const pausedRef = useRef(false);
+  const nudgeUntilRef = useRef(0);
 
   const reducedMotion = useCallback(
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     []
   );
 
+  const total = stories.length;
+  const looping = total >= MIN_STORIES_FOR_LOOP;
+
   useEffect(() => {
-    const cards = () => (trackRef.current ? Array.from(trackRef.current.children) as HTMLElement[] : []);
+    const vp = viewportRef.current;
+    const track = trackRef.current;
+    if (!vp || !track) return;
 
-    function layoutFlow() {
-      const outer = outerRef.current, sticky = stickyRef.current, vp = viewportRef.current, track = trackRef.current;
-      if (!outer || !sticky || !vp || !track) return;
-      outer.style.height = "";
-      sticky.style.position = "";
-      sticky.style.top = "";
-      track.style.transform = "";
-      const travel = Math.max(track.scrollWidth - vp.clientWidth, 0);
-      travelRef.current = travel;
-      const pin = window.innerWidth >= 1024 && !reducedMotion() && travel > 120;
-      pinRef.current = pin;
-      if (pin) {
-        sticky.style.position = "sticky";
-        sticky.style.top = "var(--header-h-compact)";
-        vp.style.overflowX = "hidden";
-        vp.style.scrollSnapType = "none";
-        vp.scrollLeft = 0;
-        // Vertical travel = 0.55x the horizontal travel (clamped 280–900px):
-        // an even mapping that's shorter than a naive 1:1 and never leaves a
-        // dead zone after the rail finishes.
-        rangeRef.current = Math.min(Math.max(Math.round(travel * 0.55), 280), 900);
-        outer.style.height = `${sticky.offsetHeight + rangeRef.current}px`;
-        if (hintRef.current) hintRef.current.textContent = "Cuộn để khám phá";
-      } else {
-        vp.style.overflowX = "auto";
-        vp.style.scrollSnapType = "x mandatory";
-        rangeRef.current = 0;
-        if (hintRef.current) hintRef.current.textContent = "Vuốt ngang để xem";
-      }
-      updateFlow();
-    }
+    const cards = () => Array.from(track.children) as HTMLElement[];
 
-    function flowProgress() {
-      const outer = outerRef.current, vp = viewportRef.current;
-      if (!outer || !vp) return 0;
-      if (pinRef.current) {
-        if (!rangeRef.current) return 0;
-        const top = outer.getBoundingClientRect().top;
-        return Math.min(Math.max((64 - top) / rangeRef.current, 0), 1);
-      }
-      const max = vp.scrollWidth - vp.clientWidth;
-      return max > 0 ? Math.min(Math.max(vp.scrollLeft / max, 0), 1) : 0;
-    }
-
-    function updateFlow() {
-      const vp = viewportRef.current, track = trackRef.current;
-      if (!vp || !track) return;
+    /** Width of exactly one copy of the story list, measured from the DOM so
+     *  the flex `gap` between the last real card and the first cloned one is
+     *  included. `0` when there is no clone to fold back to. */
+    function loopWidth(): number {
       const list = cards();
-      if (!list.length) return;
-      const p = flowProgress();
-      if (pinRef.current) track.style.transform = `translate3d(${(-p * travelRef.current).toFixed(1)}px,0,0)`;
+      if (!looping || list.length < total * 2) return 0;
+      return list[total].offsetLeft - list[0].offsetLeft;
+    }
 
-      let active: number;
-      if (pinRef.current) {
-        active = Math.round(p * (list.length - 1));
-      } else {
-        const mid = vp.getBoundingClientRect().left + vp.clientWidth / 2;
-        let bestD = Infinity;
-        active = 0;
-        list.forEach((c, i) => {
-          const cr = c.getBoundingClientRect();
-          const d = Math.abs(cr.left + cr.width / 2 - mid);
-          if (d < bestD) { bestD = d; active = i; }
-        });
-      }
-      activeRef.current = active;
-      const reduced = reducedMotion();
+    /** Index of the card nearest the viewport's centre, mapped back onto the
+     *  real list so the counter never reads "13 / 09" inside the clone. */
+    function activeIndex(): number {
+      const list = cards();
+      if (!list.length) return 0;
+      const mid = vp!.getBoundingClientRect().left + vp!.clientWidth / 2;
+      let best = 0;
+      let bestD = Infinity;
       list.forEach((c, i) => {
-        const on = i === active;
-        c.style.transform = reduced ? "" : on ? "scale(1)" : "scale(.99)";
-        c.style.opacity = on ? "1" : ".9";
+        const r = c.getBoundingClientRect();
+        const d = Math.abs(r.left + r.width / 2 - mid);
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
       });
-      if (barRef.current) barRef.current.style.width = `${(p * 100).toFixed(1)}%`;
-      if (countRef.current) countRef.current.textContent = `${String(active + 1).padStart(2, "0")} / ${String(list.length).padStart(2, "0")}`;
-      if (fadeRef.current) fadeRef.current.style.opacity = p > 0.98 ? "0" : "1";
-      if (prevRef.current) { prevRef.current.disabled = active === 0; prevRef.current.style.opacity = active === 0 ? ".38" : "1"; }
-      if (nextRef.current) { const last = active >= list.length - 1; nextRef.current.disabled = last; nextRef.current.style.opacity = last ? ".38" : "1"; }
+      return best % total;
     }
 
-    function goToCard(i: number) {
-      const vp = viewportRef.current, outer = outerRef.current;
-      const list = cards();
-      if (!vp || !list.length) return;
-      const idx = Math.min(Math.max(i, 0), list.length - 1);
-      const behavior: ScrollBehavior = reducedMotion() ? "auto" : "smooth";
-      if (pinRef.current && outer) {
-        const base = outer.getBoundingClientRect().top + window.scrollY - 64;
-        window.scrollTo({ top: base + (idx / (list.length - 1)) * rangeRef.current, behavior });
-      } else {
-        vp.scrollTo({ left: list[idx].offsetLeft - list[0].offsetLeft, behavior });
+    function render() {
+      const active = activeIndex();
+      if (countRef.current) {
+        countRef.current.textContent = `${String(active + 1).padStart(2, "0")} / ${String(total).padStart(2, "0")}`;
+      }
+      if (barRef.current) {
+        // Position within one lap rather than "how far to the end" — with a
+        // seamless loop there is no end to be a fraction of.
+        const lap = loopWidth();
+        const max = lap || vp!.scrollWidth - vp!.clientWidth;
+        const p = max > 0 ? (vp!.scrollLeft % max) / max : 0;
+        barRef.current.style.width = `${(p * 100).toFixed(1)}%`;
       }
     }
 
-    function railStep(dir: number) {
-      goToCard((activeRef.current || 0) + dir);
+    /** Folds the position back by one copy once it has passed it. Identical
+     *  pixels either side, so nothing visible happens. */
+    function foldIfNeeded() {
+      const lap = loopWidth();
+      if (lap <= 0) return;
+      if (vp!.scrollLeft >= lap) vp!.scrollLeft -= lap;
+      else if (vp!.scrollLeft < 0) vp!.scrollLeft += lap;
     }
 
+    // --- constant-speed drift ----------------------------------------
+    // `scrollLeft` reads back rounded in several browsers, so sub-pixel
+    // movement would be lost every frame and the rail would never advance at
+    // this speed. `carry` keeps the fraction between frames.
+    let carry = 0;
+    let last = 0;
     let raf = 0;
-    const onScroll = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => { raf = 0; updateFlow(); });
-    };
-    // Native rail scroll (non-pinned/mobile) fires far more often than window
-    // scroll during touch momentum — route it through the same rAF gate so
-    // updateFlow's per-card getBoundingClientRect scan runs at most once a frame.
-    let railRaf = 0;
-    const onRailScroll = () => {
-      if (pinRef.current || railRaf) return;
-      railRaf = requestAnimationFrame(() => { railRaf = 0; updateFlow(); });
-    };
-    // layoutFlow() re-measures scrollWidth and toggles sticky/pin state — too
-    // costly to run on every resize tick, so debounce it like the
-    // ResizeObserver below already does.
-    let resizeTimer: ReturnType<typeof setTimeout> | undefined;
-    const onResize = () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(layoutFlow, 140);
-    };
-    const onFlowFocus = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      const card = target.closest?.("[data-flow-card]") as HTMLElement | null;
-      if (!card) return;
-      const i = cards().indexOf(card);
-      if (i >= 0) {
-        if (pinRef.current && viewportRef.current) viewportRef.current.scrollLeft = 0;
-        goToCard(i);
+
+    function frame(now: number) {
+      raf = requestAnimationFrame(frame);
+      const dt = last ? Math.min(now - last, 100) : 0; // clamp: tab wake-ups
+      last = now;
+      if (dt <= 0) return;
+      if (pausedRef.current || now < nudgeUntilRef.current) return;
+      if (document.visibilityState !== "visible" || reducedMotion()) return;
+      if (vp!.scrollWidth <= vp!.clientWidth) return;
+
+      const move = (DRIFT_PX_PER_SEC * dt) / 1000 + carry;
+      const px = Math.floor(move);
+      carry = move - px;
+      if (px > 0) {
+        vp!.scrollLeft += px;
+        foldIfNeeded();
       }
-    };
-
-    const flowTimer = setTimeout(layoutFlow, 420);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onResize);
-    window.addEventListener("load", layoutFlow);
-    const vpEl = viewportRef.current;
-    vpEl?.addEventListener("scroll", onRailScroll, { passive: true });
-    vpEl?.addEventListener("focusin", onFlowFocus);
-
-    let ro: ResizeObserver | undefined;
-    let roTimer: ReturnType<typeof setTimeout> | undefined;
-    if (window.ResizeObserver && trackRef.current) {
-      ro = new ResizeObserver(() => {
-        clearTimeout(roTimer);
-        roTimer = setTimeout(layoutFlow, 140);
-      });
-      ro.observe(trackRef.current);
     }
 
-    const prevBtn = prevRef.current, nextBtn = nextRef.current;
-    const onPrev = () => railStep(-1);
-    const onNext = () => railStep(1);
-    prevBtn?.addEventListener("click", onPrev);
-    nextBtn?.addEventListener("click", onNext);
+    // --- manual controls ----------------------------------------------
+    /** One card further along, using the browser's own smooth scroll; drift
+     *  steps aside for the duration so the two don't fight. */
+    function nudge(dir: number) {
+      const list = cards();
+      if (list.length < 2) return;
+      const stepPx = list[1].offsetLeft - list[0].offsetLeft;
+      nudgeUntilRef.current = performance.now() + NUDGE_PAUSE_MS;
+      vp!.scrollBy({ left: dir * stepPx, behavior: reducedMotion() ? "auto" : "smooth" });
+    }
+
+    let scrollRaf = 0;
+    const onScroll = () => {
+      // A manual drag can also cross the fold point.
+      foldIfNeeded();
+      if (scrollRaf) return;
+      scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = 0;
+        render();
+      });
+    };
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") { e.preventDefault(); railStep(1); }
-      else if (e.key === "ArrowLeft") { e.preventDefault(); railStep(-1); }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        nudge(1);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        nudge(-1);
+      }
     };
-    vpEl?.addEventListener("keydown", onKey);
+
+    const pause = () => {
+      pausedRef.current = true;
+    };
+    const resume = () => {
+      pausedRef.current = false;
+    };
+    const onPrev = () => nudge(-1);
+    const onNext = () => nudge(1);
+
+    const prevBtn = prevRef.current;
+    const nextBtn = nextRef.current;
+
+    vp.addEventListener("scroll", onScroll, { passive: true });
+    vp.addEventListener("keydown", onKey);
+    vp.addEventListener("pointerenter", pause);
+    vp.addEventListener("pointerleave", resume);
+    vp.addEventListener("pointerdown", pause);
+    vp.addEventListener("focusin", pause);
+    vp.addEventListener("focusout", resume);
+    prevBtn?.addEventListener("click", onPrev);
+    nextBtn?.addEventListener("click", onNext);
+    window.addEventListener("resize", onScroll);
+
+    render();
+    raf = requestAnimationFrame(frame);
 
     return () => {
-      clearTimeout(flowTimer);
-      clearTimeout(roTimer);
-      clearTimeout(resizeTimer);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("load", layoutFlow);
-      vpEl?.removeEventListener("scroll", onRailScroll);
-      vpEl?.removeEventListener("focusin", onFlowFocus);
-      vpEl?.removeEventListener("keydown", onKey);
+      cancelAnimationFrame(raf);
+      if (scrollRaf) cancelAnimationFrame(scrollRaf);
+      vp.removeEventListener("scroll", onScroll);
+      vp.removeEventListener("keydown", onKey);
+      vp.removeEventListener("pointerenter", pause);
+      vp.removeEventListener("pointerleave", resume);
+      vp.removeEventListener("pointerdown", pause);
+      vp.removeEventListener("focusin", pause);
+      vp.removeEventListener("focusout", resume);
       prevBtn?.removeEventListener("click", onPrev);
       nextBtn?.removeEventListener("click", onNext);
-      ro?.disconnect();
-      if (raf) cancelAnimationFrame(raf);
-      if (railRaf) cancelAnimationFrame(railRaf);
+      window.removeEventListener("resize", onScroll);
     };
-  }, [reducedMotion]);
+  }, [reducedMotion, total, looping]);
+
+  function card(s: StoryRailItem, i: number, clone: boolean) {
+    return (
+      <Link
+        key={clone ? `${s.slug}-clone` : s.slug}
+        href={s.url}
+        data-flow-card
+        className={styles.card}
+        {...(clone ? { tabIndex: -1, "aria-hidden": true } : {})}
+      >
+        <span className={styles.cardMedia}>
+          <MediaImage media={s.media} sizes="(max-width: 700px) 88vw, 470px" />
+          <span className={styles.cardNumber}>{String(i + 1).padStart(2, "0")}</span>
+        </span>
+        <span className={styles.cardBody}>
+          <span className={styles.cardMetaRow}>
+            <span className={styles.cardPlace}>{s.place}</span>
+            <span className={styles.cardDot} />
+            <span className={styles.cardDate}>{formatDateVi(s.publishedAt)}</span>
+          </span>
+          <span className={styles.cardHeadline}>{s.headline}</span>
+          <span className={styles.cardCategory}>{s.category.name}</span>
+        </span>
+      </Link>
+    );
+  }
 
   return (
-    <section ref={outerRef} aria-labelledby="storyrail-title" className={styles.section}>
-      <div ref={stickyRef} className={styles.sticky}>
+    <section aria-labelledby="storyrail-title" className={styles.section}>
+      <div className={styles.inner}>
         <div className={styles.headRow}>
           <div className={styles.headText}>
-            <span className={styles.eyebrow}>Phóng sự địa phương</span>
             <h2 id="storyrail-title" className={styles.title}>Dòng chảy sinh viên</h2>
             <p className={styles.desc}>
-              Sáu câu chuyện từ các địa phương và du học sinh Việt Nam — mỗi nơi một cách sinh viên có mặt trong đời sống cộng đồng.
+              Những câu chuyện từ các địa phương và du học sinh Việt Nam — mỗi nơi một cách sinh viên có mặt trong đời sống cộng đồng.
             </p>
           </div>
           <div className={styles.controls}>
-            <span ref={hintRef} className={styles.hint}>Cuộn để khám phá</span>
             <div className={styles.btnRow}>
               <button ref={prevRef} type="button" aria-label="Câu chuyện trước" className={styles.navBtn}>
                 <IconArrowLeft size={18} />
@@ -249,33 +274,20 @@ export function StoryRail({ stories }: { stories: StoryRailItem[] }) {
         <div className={styles.railWrap}>
           <div ref={viewportRef} role="group" aria-label="Danh sách phóng sự địa phương" className={`hsvRail ${styles.viewport}`} tabIndex={0}>
             <div ref={trackRef} className={styles.track}>
-              {stories.map((s, i) => (
-                <Link key={s.slug} href={s.url} data-flow-card className={styles.card}>
-                  <span className={styles.cardMedia}>
-                    <MediaImage media={CARD_MEDIA} />
-                    <span className={styles.cardNumber}>{String(i + 1).padStart(2, "0")}</span>
-                  </span>
-                  <span className={styles.cardBody}>
-                    <span className={styles.cardMetaRow}>
-                      <span className={styles.cardPlace}>{s.place}</span>
-                      <span className={styles.cardDot} />
-                      <span className={styles.cardDate}>{formatDateVi(s.publishedAt)}</span>
-                    </span>
-                    <span className={styles.cardHeadline}>{s.headline}</span>
-                    <span className={styles.cardCategory}>{s.category.name}</span>
-                  </span>
-                </Link>
-              ))}
+              {stories.map((s, i) => card(s, i, false))}
+              {looping && stories.map((s, i) => card(s, i, true))}
             </div>
           </div>
-          <span ref={fadeRef} className={styles.fade} />
+          <span className={styles.fade} />
         </div>
 
         <div className={styles.progressRow}>
           <div className={styles.progressTrack}>
             <div ref={barRef} className={styles.progressBar} />
           </div>
-          <span ref={countRef} aria-live="off" className={styles.counter}>01 / 06</span>
+          <span ref={countRef} aria-live="off" className={styles.counter}>
+            01 / {String(total).padStart(2, "0")}
+          </span>
         </div>
       </div>
     </section>

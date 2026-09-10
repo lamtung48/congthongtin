@@ -184,3 +184,26 @@ audit action.
 Chạy: `npm test` (`node --conditions=react-server
 --experimental-test-module-mocks --import tsx --test
 'src/**/__tests__/**/*.test.mts'`).
+
+## 11. Đồng bộ tự động định kỳ (`collector` sidecar)
+
+`Source.syncEveryMinutes` (null = chỉ chạy tay). Container `collector`
+(docker-compose.yml) lặp mỗi ~5 phút, chạy `scripts/runDueSourceSyncs.ts`
+→ `sourceRepository.listDueForAutoSync()` lấy mọi `Source` `isEnabled`,
+loại `RSS`/`WEBSITE`, có `syncEveryMinutes`, và `lastSyncedAt +
+syncEveryMinutes ≤ now` → `syncSourceCore(source, null)` cho từng cái
+(bản `sync()` không cần `SessionUser`; audit `actorId: null`,
+`metadata.via = "cron"`). Không có `revalidatePath` (Social Inbox là trang
+admin động, không cache). Nút "Sync" tay ở `/admin/sources` vẫn chạy ngay
+bất kể lịch. Đặt tần suất trong form tạo/sửa nguồn ("Tự động đồng bộ mỗi
+(giờ)").
+
+Nguồn đang bật (seed thủ công qua SQL, 6 giờ/lần):
+- `svvn.tienphong.vn/rss/svvn-doan-hoi-358.rss` → "Phong trào"
+- `svvn.tienphong.vn/rss/svvn-guong-mat-sinh-vien-392.rss` → "Dòng chảy sinh viên"
+
+Feed Tiền Phong không có `<content:encoded>` → item chỉ có tiêu đề + tóm
+tắt + link (không có thân bài đầy đủ). Chuyển thành bài = DRAFT với tiêu
+đề + đoạn tóm tắt + trích dẫn nguồn; biên tập viên bổ sung thân bài. Ảnh
+thumbnail trong feed là `.avif` — nếu muốn dùng làm ảnh bìa phải bổ sung
+bước chuyển AVIF→WebP ở pipeline import (chưa làm).

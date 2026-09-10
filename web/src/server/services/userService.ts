@@ -3,6 +3,7 @@ import { userRepository, type PublicUser } from "@/server/repositories/userRepos
 import { auditLogRepository } from "@/server/repositories/auditLogRepository";
 import { hashPassword } from "@/server/auth/password";
 import { destroyAllSessionsForUser } from "@/server/auth/session";
+import { hsvIdChangePassword, hsvIdConfigured, hsvIdCreateUser } from "@/server/integrations/hsvId";
 import type { SessionUser } from "@/server/auth/session";
 import type { AdminRole, UserStatus } from "@/generated/prisma/client";
 
@@ -41,6 +42,18 @@ export const userService = {
       passwordHash,
       createdBy: { connect: { id: actor.id } },
     });
+    // Sync to the shared identity service straight away, while the real
+    // password is still in hand (best-effort — a `hsv-id` outage must not
+    // fail account creation; the login lazy-sync will catch it later).
+    const identityUserId = await hsvIdCreateUser({
+      email: user.email,
+      password: input.password,
+      fullName: user.displayName,
+      platformUserId: user.id,
+    });
+    if (identityUserId) {
+      await userRepository.setIdentityUserId(user.id, identityUserId);
+    }
     await auditLogRepository.record({
       actorId: actor.id,
       action: "CREATE_USER",
@@ -115,9 +128,36 @@ export const userService = {
   async resetPassword(actor: SessionUser, userId: string): Promise<{ temporaryPassword: string }> {
     assertIsAdmin(actor);
     const temporaryPassword = randomBytes(9).toString("base64url");
+
+    // Push the new password to the shared identity (`hsv-id`) FIRST. For a linked
+    // account, if `hsv-id` doesn't take it (service down), abort the whole reset —
+    // never leave the local hash ahead of `hsv-id`, or the user's next login
+    // verifies the old password against `hsv-id` and is rejected outright.
+    const syncTarget = await userRepository.findIdentitySyncFields(userId);
+    if (syncTarget?.identityUserId) {
+      const synced = await hsvIdChangePassword(syncTarget.identityUserId, temporaryPassword);
+      if (!synced && hsvIdConfigured()) {
+        throw new Error("Dịch vụ tài khoản dùng chung đang tạm gián đoạn, chưa đặt lại được mật khẩu. Vui lòng thử lại sau ít phút.");
+      }
+    }
+
     const passwordHash = await hashPassword(temporaryPassword);
     await userRepository.updatePasswordHash(userId, passwordHash);
     await destroyAllSessionsForUser(userId);
+
+    // Account never synced yet -> create it in `hsv-id` now (best-effort; login re-syncs).
+    if (syncTarget && !syncTarget.identityUserId) {
+      const identityUserId = await hsvIdCreateUser({
+        email: syncTarget.email,
+        password: temporaryPassword,
+        fullName: syncTarget.displayName,
+        platformUserId: syncTarget.id,
+      });
+      if (identityUserId) {
+        await userRepository.setIdentityUserId(syncTarget.id, identityUserId);
+      }
+    }
+
     await auditLogRepository.record({ actorId: actor.id, action: "RESET_PASSWORD", entityType: "User", entityId: userId });
     return { temporaryPassword };
   },

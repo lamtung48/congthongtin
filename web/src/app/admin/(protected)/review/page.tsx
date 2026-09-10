@@ -5,6 +5,7 @@ import { articleService } from "@/server/services/articleService";
 import { auditLogRepository } from "@/server/repositories/auditLogRepository";
 import { hasPermission } from "@/server/auth/permissions";
 import { approveAction, returnForRevisionAction, publishAction, scheduleAction } from "../articles/actions";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 export const metadata: Metadata = { title: "Duyệt bài" };
 
@@ -81,7 +82,7 @@ export default async function ReviewQueuePage() {
                       <td className="adminHint">{a.createdBy?.displayName ?? a.author?.displayName ?? "—"}</td>
                       <td className="adminHint">{a.category.name}</td>
                       <td className="adminHint">{a.organization?.name ?? "—"}</td>
-                      <td className="adminHint">{submittedAt ? submittedAt.toLocaleString("vi-VN") : "—"}</td>
+                      <td className="adminHint">{submittedAt ? formatDateTimeVi(submittedAt) : "—"}</td>
                       <td>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                           <Link href={`/preview/articles/${a.id}`} target="_blank" className="adminButton adminButtonSmall">Xem trước ↗</Link>

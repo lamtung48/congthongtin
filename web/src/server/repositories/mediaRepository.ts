@@ -91,6 +91,13 @@ export const mediaRepository = {
     return prisma.mediaAsset.create({ data });
   },
 
+  /** One `EXTERNAL` (hot-linked) asset per source image URL — the news
+   *  collector reuses this so the same picture across several imported
+   *  articles is one `MediaAsset`. */
+  findByExternalUrl(url: string) {
+    return prisma.mediaAsset.findFirst({ where: { provider: "EXTERNAL", providerFileId: url } });
+  },
+
   updateMetadata(id: string, data: { alt?: string | null; caption?: string | null }) {
     return prisma.mediaAsset.update({ where: { id }, data });
   },
@@ -136,12 +143,25 @@ export const mediaRepository = {
    *  transaction — the same "whole list, not a diff" contract
    *  `articleRepository.replaceBlocks` already uses, so the two always
    *  move in lockstep (called right after `replaceBlocks` — see
-   *  `articleService.ts`). */
-  replaceArticleBlockUsages(articleId: string, mediaIds: string[]) {
+   *  `articleService.ts`).
+   *
+   *  A block's `data.mediaId` is a plain JSON value with no DB-level FK, so
+   *  it can point at a `MediaAsset` that was deleted (or never existed —
+   *  e.g. an image whose upload failed but whose block was still inserted
+   *  client-side). Those ids are filtered out here: a `MediaUsage` row for
+   *  a non-existent asset is meaningless and would fail
+   *  `MediaUsage_mediaId_fkey`, taking the whole article save down with it. */
+  async replaceArticleBlockUsages(articleId: string, mediaIds: string[]) {
     const unique = [...new Set(mediaIds)];
+    const known = unique.length
+      ? new Set(
+          (await prisma.mediaAsset.findMany({ where: { id: { in: unique } }, select: { id: true } })).map((m) => m.id),
+        )
+      : new Set<string>();
+    const valid = unique.filter((id) => known.has(id));
     return prisma.$transaction([
       prisma.mediaUsage.deleteMany({ where: { usageType: "ARTICLE_BLOCK", referenceId: articleId } }),
-      ...unique.map((mediaId) => prisma.mediaUsage.create({ data: { mediaId, usageType: "ARTICLE_BLOCK", referenceId: articleId } })),
+      ...valid.map((mediaId) => prisma.mediaUsage.create({ data: { mediaId, usageType: "ARTICLE_BLOCK", referenceId: articleId } })),
     ]);
   },
 

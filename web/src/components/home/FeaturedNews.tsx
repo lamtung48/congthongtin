@@ -43,7 +43,7 @@ export function FeaturedNews({ featured }: { featured: FeaturedNewsResult }) {
             style={{ viewTransitionName: articleCoverTransitionName(main.url) }}
           >
             <div className={styles.mainMediaInner}>
-              <MediaImage media={main.coverImage ?? GENERIC_ARTICLE_MEDIA} priority />
+              <MediaImage media={main.coverImage ?? GENERIC_ARTICLE_MEDIA} priority sizes="(max-width: 700px) 100vw, 66vw" />
             </div>
           </ArticleCoverLink>
           <div className={styles.mainBody}>
@@ -72,7 +72,7 @@ export function FeaturedNews({ featured }: { featured: FeaturedNewsResult }) {
                 </h4>
               </div>
               <Link href={a.url} aria-hidden="true" tabIndex={-1} className={styles.secMedia}>
-                <MediaImage media={GENERIC_ARTICLE_MEDIA} />
+                <MediaImage media={a.coverImage ?? GENERIC_ARTICLE_MEDIA} sizes="(max-width: 700px) 30vw, 180px" />
               </Link>
             </Reveal>
           ))}

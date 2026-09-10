@@ -7,6 +7,7 @@ import { hasPermission } from "@/server/auth/permissions";
 import { PLATFORM_CATEGORY_LABELS, PLATFORM_STATUS_LABELS, PLATFORM_INTEGRATION_TYPE_LABELS } from "@/lib/platformLabels";
 import { updateDisplayAction, updateIntegrationAction } from "../../actions";
 import { RefreshActivityButton } from "../../RefreshActivityButton";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 export const metadata: Metadata = { title: "Chỉnh sửa nền tảng" };
 
@@ -69,7 +70,7 @@ export default async function EditPlatformPage({ params }: { params: Promise<{ i
               <label className="adminLabel" htmlFor="currentActivity">Hoạt động hiện tại (tuỳ chọn)</label>
               <input id="currentActivity" name="currentActivity" type="text" defaultValue={platform.currentActivity ?? ""} className="adminInput" />
               {platform.currentActivityUpdatedAt && (
-                <p className="adminHint">Lần làm mới gần nhất: {platform.currentActivityUpdatedAt.toLocaleString("vi-VN")}</p>
+                <p className="adminHint">Lần làm mới gần nhất: {formatDateTimeVi(platform.currentActivityUpdatedAt)}</p>
               )}
             </div>
             <div className="adminField" style={{ marginBottom: 0 }}>

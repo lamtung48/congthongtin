@@ -9,9 +9,9 @@ import type { ID } from "./common";
  * asset with `status: "missing"`, which has real per-item metadata already
  * and is genuinely waiting on a file upload.
  */
-export type MediaProvider = "drive" | "youtube" | "local-placeholder";
+export type MediaProvider = "drive" | "youtube" | "local-placeholder" | "external";
 
-export type MediaType = "image" | "video";
+export type MediaType = "image" | "video" | "document";
 
 /**
  * Lifecycle of the asset as known by the content layer — not to be confused

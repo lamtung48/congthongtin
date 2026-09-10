@@ -18,6 +18,7 @@ import { prisma } from "@/server/db/client";
 import { articleRepository, type ArticleWithRelations } from "@/server/repositories/articleRepository";
 import { mapArticleToDomain } from "@/server/content/articleMapper";
 import { mapMedia } from "@/server/content/articleContentResolver";
+import { buildHeroSlide, parseHeroConfig } from "@/lib/view/heroSlide";
 import { homepageService } from "@/server/services/homepageService";
 import { activityMapService } from "@/server/services/activityMapService";
 import { activityMapRepository } from "@/server/repositories/activityMapRepository";
@@ -33,14 +34,14 @@ import {
   SITE_NAV,
   SITE_FOOTER_COLUMNS,
   SITE_FOOTER_SOCIALS,
-  SITE_FOOTER_POLICIES,
   SITE_FOOTER_ORG_NAME,
   SITE_FOOTER_ORG_DESCRIPTION,
   SITE_FOOTER_ADDRESS,
-  SITE_FOOTER_CONTACT_NOTE,
+  SITE_FOOTER_CONTACT_EMAIL,
   SITE_FOOTER_COPYRIGHT_LINE,
   SITE_FOOTER_GOVERNING_BODY_LINE,
 } from "@/lib/siteChrome";
+import { sortVideosByPin } from "@/lib/videoOrder";
 import type {
   Prisma,
   OrganizationType as PrismaOrganizationType,
@@ -233,10 +234,27 @@ function placeholderMedia(id: string, alt?: string): MediaAsset {
 export class DatabaseProvider implements ContentProvider {
   async getHomepage(): Promise<HomepageConfiguration> {
     const [resolved, topics] = await Promise.all([homepageService.resolveHomepage(), taxonomyRepository.listTopics()]);
-    if (!resolved.hero) {
+    if (resolved.heroSlides.length === 0) {
       throw new Error("Không có bài viết PUBLISHED nào để làm Hero — cần ít nhất một bài viết đã xuất bản.");
     }
-    const heroArticle = await mapPublicArticle(resolved.hero);
+    const heroSlides = await Promise.all(
+      resolved.heroSlides.map(async (row) => {
+        const a = await mapPublicArticle(row);
+        return buildHeroSlide({
+          id: row.id,
+          category: a.category.name,
+          title: a.title,
+          summary: a.lead ?? "",
+          articleUrl: a.url,
+          media: a.coverImage ?? placeholderMedia(`hero-${row.id}`, a.title),
+          alt: a.coverImage?.alt ?? a.title,
+          publishedAt: a.publishedAt,
+          author: a.author?.name,
+          readingTimeMinutes: a.readingTimeMinutes ?? undefined,
+          overrides: parseHeroConfig((row as { heroConfig?: unknown }).heroConfig),
+        });
+      }),
+    );
     const trendingTopics: Topic[] = await Promise.all(
       topics.map(async (t) => ({
         id: t.id,
@@ -266,28 +284,15 @@ export class DatabaseProvider implements ContentProvider {
 
     return {
       nav: SITE_NAV,
-      hero: {
-        eyebrow: heroArticle.category.name,
-        headline: heroArticle.title,
-        lead: heroArticle.lead ?? "",
-        author: heroArticle.author ?? { id: "ban-bien-tap", name: "Ban Biên tập" },
-        readingTimeMinutes: heroArticle.readingTimeMinutes ?? 1,
-        topicLabel: heroArticle.category.name,
-        publishedAt: heroArticle.publishedAt,
-        articleUrl: heroArticle.url,
-        secondaryCtaLabel: "Xem thêm tin tức",
-        secondaryCtaHref: "/tin-tuc",
-        media: heroArticle.coverImage ?? placeholderMedia("hero-media", heroArticle.title),
-      },
+      hero: heroSlides,
       trendingTopics,
       footer: {
         columns: SITE_FOOTER_COLUMNS,
         socials: SITE_FOOTER_SOCIALS,
-        policies: SITE_FOOTER_POLICIES,
         orgName: SITE_FOOTER_ORG_NAME,
         orgDescription: SITE_FOOTER_ORG_DESCRIPTION,
         address: SITE_FOOTER_ADDRESS,
-        contactNote: SITE_FOOTER_CONTACT_NOTE,
+        contactEmail: SITE_FOOTER_CONTACT_EMAIL,
         copyrightLine: SITE_FOOTER_COPYRIGHT_LINE,
         governingBodyLine: SITE_FOOTER_GOVERNING_BODY_LINE,
       },
@@ -309,31 +314,46 @@ export class DatabaseProvider implements ContentProvider {
     return mapPublicArticles(rows);
   }
 
+  /**
+   * `place` is a caption on the card, not a filter: an article an editor
+   * pinned into this section from the article editor must appear whether or
+   * not it happens to carry a Province, so a missing one falls back to the
+   * article's unit and then to a neutral label. (This used to drop every
+   * province-less article silently, which made ticking "Dòng chảy sinh
+   * viên" look like it did nothing.)
+   */
   async getStoryRail(): Promise<StoryRailItem[]> {
     const resolved = await homepageService.resolveHomepage();
-    const withProvince = resolved.storyRail.filter((a) => !!a.province);
-    return withProvince.map((a) => ({
+    return resolved.storyRail.map((a) => ({
       slug: a.slug,
       url: articleHref(a.slug),
-      place: a.province!.name,
+      place: a.province?.name ?? a.organization?.name ?? "Toàn quốc",
       publishedAt: a.publishedAt!.toISOString(),
       headline: a.title,
       category: mapCategory(a.category),
+      media: a.coverMedia ? mapMedia(a.coverMedia) : placeholderMedia(`story-rail-${a.id}`, a.title),
     }));
   }
 
   async getVideos(): Promise<Video[]> {
-    // The full catalogue, not the homepage's own single "video feature"
-    // pick — both the homepage section and `/video`'s full listing read
-    // this same method (see `docs/PRODUCTION_DATA.md`), so it always
-    // returns everything, newest first.
+    // The full catalogue, not a homepage-only slice — both the homepage
+    // section and `/video`'s full listing read this same method (see
+    // `docs/PRODUCTION_DATA.md`), so it always returns everything.
+    //
+    // Order is "pinned first, then newest". `VideoSection` puts `videos[0]`
+    // in the player and the whole array in the playlist beside it, so
+    // sorting here is what makes an editor's pin actually move the video to
+    // the front of the section — and it is the *same* array the admin video
+    // list sorts by, which is what keeps the two screens showing the same
+    // order rather than each inventing its own.
     const now = new Date();
     const rows = await prisma.video.findMany({
       where: { publishedAt: { not: null, lte: now } },
       orderBy: { publishedAt: "desc" },
       include: { category: true, media: true },
     });
-    return rows.map(mapVideo);
+    const pinnedIds = await homepageService.listPinnedVideoIds();
+    return sortVideosByPin(rows, pinnedIds).map(mapVideo);
   }
 
   async getEvents(): Promise<Event[]> {
@@ -371,22 +391,38 @@ export class DatabaseProvider implements ContentProvider {
     };
   }
 
+  /**
+   * The card is built around a reporting unit (cấp đơn vị drives this
+   * section's own tab filter), so an article needs either an Organization or
+   * — failing that — a Province to sit under the "Tỉnh/thành" tab. An
+   * article carrying neither has nowhere to appear here even when pinned;
+   * the article editor warns about that at tick time rather than letting it
+   * disappear without explanation.
+   */
   async getLocalNews(): Promise<LocalNewsEntry[]> {
     const resolved = await homepageService.resolveHomepage();
-    const withOrg = resolved.localNews.filter((a) => !!a.organization);
-    return withOrg.map((a) => {
-      const org = a.organization!;
-      return {
+    return resolved.localNews.flatMap((a): LocalNewsEntry[] => {
+      const org = a.organization;
+      const base = {
         slug: a.slug,
         url: articleHref(a.slug),
         title: a.title,
         publishedAt: a.publishedAt!.toISOString(),
-        level: ORG_TYPE_TO_LEVEL[org.type],
-        orgName: org.name,
-        place: a.province?.name ?? org.name,
-        unitUrl: unitHref(org.slug),
         media: a.coverMedia ? mapMedia(a.coverMedia) : placeholderMedia(`local-news-${a.id}`, a.title),
       };
+      if (org) {
+        return [{
+          ...base,
+          level: ORG_TYPE_TO_LEVEL[org.type],
+          orgName: org.name,
+          place: a.province?.name ?? org.name,
+          unitUrl: unitHref(org.slug),
+        }];
+      }
+      if (a.province) {
+        return [{ ...base, level: "province" as const, orgName: a.province.name }];
+      }
+      return [];
     });
   }
 
@@ -590,7 +626,15 @@ export class DatabaseProvider implements ContentProvider {
 
     const storyRail: StoryRailItem[] = provinceArticles
       .filter((a) => isPubliclyVisible(a, now))
-      .map((a) => ({ slug: a.slug, url: articleHref(a.slug), place: province.name, publishedAt: a.publishedAt!.toISOString(), headline: a.title, category: mapCategory(a.category) }));
+      .map((a) => ({
+        slug: a.slug,
+        url: articleHref(a.slug),
+        place: province.name,
+        publishedAt: a.publishedAt!.toISOString(),
+        headline: a.title,
+        category: mapCategory(a.category),
+        media: a.coverMedia ? mapMedia(a.coverMedia) : placeholderMedia(`story-rail-${a.id}`, a.title),
+      }));
 
     const provinceStat = mapData.provinces.find((p) => p.slug === slug);
     const activity = provinceStat

@@ -1,28 +1,11 @@
 import "server-only";
 import { XMLParser } from "fast-xml-parser";
 import { fetchRaw } from "./httpClient";
+import { htmlToPlainText } from "./htmlText";
 import { extractHashtags } from "./normalize";
 import type { SourceFetcher, SourceFetchInput, SourceFetchResult, NormalizedExternalPost } from "./types";
 
 const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_" });
-
-/** Strips HTML tags a feed's `description`/`content:encoded` commonly
- *  wraps its text in — this task needs plain `contentText` for hashtag
- *  extraction and the eventual Article draft body, not a second HTML
- *  parser/sanitizer (out of scope; brief section 5's "biên tập thành
- *  Draft" step is where a human cleans this up before publishing). */
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 function asArray<T>(value: T | T[] | undefined): T[] {
   if (value === undefined) return [];
@@ -91,13 +74,13 @@ export const rssSource: SourceFetcher = {
     if (root.rss?.channel) {
       for (const item of asArray(root.rss.channel.item)) {
         const rawBody = textOf(item["content:encoded"]) ?? textOf(item.description) ?? "";
-        const contentText = stripHtml(rawBody);
+        const contentText = htmlToPlainText(rawBody);
         const link = textOf(item.link);
         if (!link || !contentText) continue;
         posts.push({
           externalId: textOf(item.guid) ?? link,
           url: link,
-          title: textOf(item.title),
+          title: htmlToPlainText(textOf(item.title)) || undefined,
           excerpt: contentText.length > 200 ? `${contentText.slice(0, 200)}…` : contentText,
           contentText,
           publishedAt: textOf(item.pubDate) ? new Date(textOf(item.pubDate)!) : undefined,
@@ -107,14 +90,14 @@ export const rssSource: SourceFetcher = {
     } else if (root.feed?.entry) {
       for (const entry of asArray(root.feed.entry)) {
         const rawBody = textOf(entry.content) ?? textOf(entry.summary) ?? "";
-        const contentText = stripHtml(rawBody);
+        const contentText = htmlToPlainText(rawBody);
         const linkField = Array.isArray(entry.link) ? entry.link[0] : entry.link;
         const link = linkField?.["@_href"];
         if (!link || !contentText) continue;
         posts.push({
           externalId: textOf(entry.id) ?? link,
           url: link,
-          title: textOf(entry.title),
+          title: htmlToPlainText(textOf(entry.title)) || undefined,
           excerpt: contentText.length > 200 ? `${contentText.slice(0, 200)}…` : contentText,
           contentText,
           publishedAt: textOf(entry.published) ? new Date(textOf(entry.published)!) : textOf(entry.updated) ? new Date(textOf(entry.updated)!) : undefined,

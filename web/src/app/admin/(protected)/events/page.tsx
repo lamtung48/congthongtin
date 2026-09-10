@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requirePermission } from "@/server/auth/guard";
 import { eventService } from "@/server/services/eventService";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 export const metadata: Metadata = { title: "Sự kiện" };
 
@@ -37,8 +38,8 @@ export default async function AdminEventsPage() {
                 <tr key={e.id}>
                   <td>{e.title}</td>
                   <td className="adminHint">{e.organization.name}</td>
-                  <td className="adminHint">{e.startAt.toLocaleString("vi-VN")}</td>
-                  <td className="adminHint">{e.endAt.toLocaleString("vi-VN")}</td>
+                  <td className="adminHint">{formatDateTimeVi(e.startAt)}</td>
+                  <td className="adminHint">{formatDateTimeVi(e.endAt)}</td>
                   <td>
                     <span className={e.status === "LIVE" ? "adminBadge adminBadgeSuccess" : e.status === "CANCELLED" ? "adminBadge adminBadgeDanger" : "adminBadge adminBadgeNeutral"}>
                       {e.status}

@@ -23,6 +23,11 @@ export interface NormalizedExternalPost {
   /** Extracted from `contentText` (e.g. `#tinhnguyen`) — brief section 9:
    *  hashtag rules run against this, never against a live platform search. */
   hashtags: string[];
+  /** Set by `syncSourceCore` (not the fetcher) when the Source has
+   *  `fetchFullBody` — the article page's real body as `ArticleBlockInput`-
+   *  shaped blocks, plus its `og:image`. See `articleExtractor.ts`. */
+  bodyBlocks?: import("./articleExtractor").ExtractedBlock[];
+  coverImageUrl?: string;
 }
 
 export interface SourceFetchSuccess {
