@@ -119,7 +119,7 @@ mock.module("@/server/repositories/auditLogRepository", {
   namedExports: { auditLogRepository: { record: async (e: unknown) => void db.audit.push(e) } },
 });
 
-const { getSession, requireSession, getProfileCompleteness, SSO_COOKIE, destroySession } = await import("@/server/auth/session");
+const { getSession, requireSession, SSO_COOKIE, destroySession } = await import("@/server/auth/session");
 const { authService } = await import("@/server/services/authService");
 
 // ---- fixtures ----------------------------------------------------------------------------------------------------------------------
@@ -246,18 +246,6 @@ describe("requireSession", () => {
     hsv.validate = async () => ({ ok: true, user: idUser(), completeness: COMPLETE, expiresAt: "" });
     await assert.rejects(requireSession(), /REDIRECT:\/admin\/login/);
     assert.equal(db.created.length, 0);
-  });
-});
-
-describe("getProfileCompleteness", () => {
-  test("mirrors the core's verdict", async () => {
-    await localRow();
-    cookieJar.set(SSO_COOKIE, "tok-1");
-    hsv.validate = async () => ({ ok: true, user: idUser(), completeness: { complete: false, missing: ["gender"] }, expiresAt: "" });
-    assert.deepEqual(await getProfileCompleteness(), { complete: false, missing: ["gender"] });
-  });
-  test("null when signed out", async () => {
-    assert.equal(await getProfileCompleteness(), null);
   });
 });
 

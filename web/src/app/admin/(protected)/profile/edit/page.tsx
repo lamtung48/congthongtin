@@ -25,7 +25,7 @@ export default async function AdminProfileEditPage() {
       </div>
       <div className="adminCard adminCardPad" style={{ maxWidth: 520 }}>
         {profile?.ok && options ? (
-          <ProfileForm profile={profile.profile} options={options} isEdit next="/admin/profile" />
+          <ProfileForm profile={profile.profile} options={options} next="/admin/profile" />
         ) : (
           <p className="adminErrorText" role="alert">
             {profile && !profile.ok ? profile.message : "Không tải được hồ sơ, vui lòng thử lại sau ít phút."}

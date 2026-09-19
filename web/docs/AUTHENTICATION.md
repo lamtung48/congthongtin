@@ -152,7 +152,7 @@ hệ sinh thái; Cổng thông tin chỉ giữ giao diện riêng + hàng `User`
 | Vai trò | Lấy từ hàng `User` cục bộ, tìm theo `identityUserId`. `status` cục bộ đọc từ DB **mỗi request** (không cache) → Admin vô hiệu hoá tài khoản CMS chặn ngay, và KHÔNG đăng xuất người đó khỏi nền tảng khác |
 | Đăng xuất | `logout-all` ở hsv-id: đăng xuất một nơi = đăng xuất mọi nền tảng, xoá cookie |
 | Đổi mật khẩu | Admin đặt lại ở `/admin/users` → hsv-id `change-password` (huỷ mọi phiên) → cache 30 giây của tiến trình này bị bỏ. Người dùng tự đổi: chưa có giao diện ở CMS |
-| Hồ sơ dùng chung | `/admin/profile` (xem), `/admin/profile/edit` (sửa), `/admin/hoan-thanh-ho-so` (bắt khai khi chưa đủ) — giao diện riêng của CMS, dữ liệu + danh mục + xử lý chức vụ 3 cấp/đề xuất duyệt/Hội viên đều do hsv-id; CMS chỉ chuyển tiếp token của chính người dùng (không sửa được hồ sơ người khác). Layout `(protected)` chuyển hồ sơ chưa đủ sang trang hoàn thiện (chặn UX, không phải ranh giới bảo mật) |
+| Hồ sơ dùng chung | `/admin/profile` (xem) và `/admin/profile/edit` (sửa) — giao diện riêng của CMS, dữ liệu + danh mục + xử lý chức vụ 3 cấp/đề xuất duyệt/Hội viên đều do hsv-id; CMS chỉ chuyển tiếp token của chính người dùng (không sửa được hồ sơ người khác). **Không** bắt khai hồ sơ trước khi vào `/admin` (người dùng chốt 2026-09-19: nhân sự CMS không cần cổng chặn này) |
 | Tên hiển thị | Theo hồ sơ dùng chung (sửa ở nền tảng nào cũng cập nhật `User.displayName` khi đăng nhập/vào trang) |
 
 **Liên kết tài khoản — quy tắc bảo mật.** hsv-id KHÔNG xác minh email và bất kỳ nền tảng nào cũng cho tự đăng ký
@@ -184,7 +184,7 @@ cookie; để trống = cookie riêng từng host (staging/dev). Chỉ đặt kh
 **Chưa thuộc SSO:** tài khoản đơn vị (tổ chức) của các nền tảng khác; `hoinghi.doanthanhnien.vn` (khác tên miền cha).
 Người dùng ĐANG đăng nhập bằng cookie `admin_session` cũ sẽ bị đăng xuất một lần khi triển khai.
 
-Kiểm thử: `src/server/__tests__/sso-login.test.mts` (28 ca, thuần đơn vị — mock hsv-id/repository, không cần DB;
+Kiểm thử: `src/server/__tests__/sso-login.test.mts` (26 ca, thuần đơn vị — mock hsv-id/repository, không cần DB;
 gồm các ca bảo mật ở trên).
 
 ## Shared identity (hsv-id) — thiết kế trước SSO

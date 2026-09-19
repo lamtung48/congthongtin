@@ -177,9 +177,3 @@ export async function requireSession(): Promise<SessionUser> {
   }
   redirect("/admin/login");
 }
-
-/** Whether the shared profile is complete — the admin layout sends an incomplete one to `/admin/hoan-thanh-ho-so`. */
-export async function getProfileCompleteness(): Promise<HsvCompleteness | null> {
-  const identity = await getSsoIdentity();
-  return identity.ok ? identity.completeness : null;
-}

@@ -14,12 +14,12 @@ const POSITION_LEVELS: { level: HsvPositionLevel; label: string }[] = [
 ];
 
 /**
- * Shared-profile form (the CMS's own look; data + catalogs come from `hsv-id`,
+ * Shared-profile edit form (the CMS's own look; data + catalogs come from `hsv-id`,
  * see profileActions.ts). Positions are three independent choices per level —
  * picking one sends a proposal for approval at the right unit, clearing one
  * withdraws it. Membership is display-only (set by approvals/admins).
  */
-export function ProfileForm({ profile, options, isEdit, next }: { profile: HsvProfile; options: HsvProfileOptions; isEdit: boolean; next: string }) {
+export function ProfileForm({ profile, options, next }: { profile: HsvProfile; options: HsvProfileOptions; next: string }) {
   const router = useRouter();
   const [fullName, setFullName] = useState(profile.fullName);
   const [dateOfBirth, setDateOfBirth] = useState(profile.dateOfBirth && profile.dateOfBirth !== "1950-01-09" ? profile.dateOfBirth : "");
@@ -236,7 +236,7 @@ export function ProfileForm({ profile, options, isEdit, next }: { profile: HsvPr
       })}
 
       <button type="submit" disabled={submitting} className="adminButton adminButtonPrimary" style={{ width: "100%", justifyContent: "center" }}>
-        {submitting ? "Đang lưu…" : isEdit ? "Lưu thay đổi" : "Hoàn tất"}
+        {submitting ? "Đang lưu…" : "Lưu thay đổi"}
       </button>
     </form>
   );
