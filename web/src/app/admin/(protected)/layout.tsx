@@ -1,4 +1,5 @@
-import { requireSession } from "@/server/auth/session";
+import { redirect } from "next/navigation";
+import { getProfileCompleteness, requireSession } from "@/server/auth/session";
 import { hasPermission } from "@/server/auth/permissions";
 import { notificationService } from "@/server/services/notificationService";
 import { AdminShell } from "./AdminShell";
@@ -19,6 +20,9 @@ import { AdminShell } from "./AdminShell";
  */
 export default async function ProtectedAdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
+  // Ecosystem standard: an incomplete shared profile is filled in first (UX gate, not a security boundary — the role checks below are).
+  const completeness = await getProfileCompleteness();
+  if (completeness && !completeness.complete) redirect("/admin/hoan-thanh-ho-so");
   const unreadCount = await notificationService.countUnread(session);
 
   const nav = [

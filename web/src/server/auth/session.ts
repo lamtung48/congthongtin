@@ -1,32 +1,58 @@
 import "server-only";
-import { createHash, randomBytes } from "node:crypto";
 import { cache } from "react";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { sessionRepository } from "@/server/repositories/sessionRepository";
+import { hsvIdSsoLogoutAll, hsvIdSsoValidate, type HsvCompleteness, type HsvSsoUser } from "@/server/integrations/hsvId";
+import { matchLocalUser, provisionContributor } from "@/server/auth/identityLink";
+import { userRepository } from "@/server/repositories/userRepository";
 import type { AdminRole, UserStatus } from "@/generated/prisma/client";
 
 /**
- * Database-backed sessions (brief section 5: "Sử dụng session server-side").
- * The cookie holds only an opaque random token — never a JWT, never any
- * encoded user data. Every request that needs the session re-validates
- * against the `Session` table (and the owning `User`'s current `status`),
- * so disabling an account takes effect on that account's very next request,
- * not whenever a signed token happens to expire. This is deliberately the
- * heavier-but-simpler option Next's own auth guide calls "Database Sessions"
- * — see docs/AUTHENTICATION.md, "Why database sessions, not JWT" for why
- * this was chosen over `jose`/stateless signing.
+ * The CMS session IS the shared SSO session of `hsv-id` (docs/AUTHENTICATION.md,
+ * "SSO (hsv-id)"). The cookie `hsv_sso` holds an opaque token; `hsv-id` keeps
+ * the session (log out anywhere = logged out everywhere; lock / soft-delete /
+ * password change revoke it at once). Every request validates the token
+ * against `hsv-id` — with a SHORT cache (30 s) so a lock or logout done on
+ * another platform takes effect here within ~30 s, not on the next login.
+ *
+ * What stays local: the `User` row (ROLE, status, authorship). Its `status`
+ * is re-read from the database on every request (no cache), so an Admin
+ * disabling a CMS account still blocks it immediately — disabling here does
+ * NOT sign the person out of the other platforms.
+ *
+ * SSO_COOKIE_DOMAIN (optional): ".hoisinhvien.com.vn" in production makes
+ * platforms on the same parent domain share the cookie (sign in once, in
+ * everywhere). Unset = host-only cookie (safe for staging/dev).
  */
 
-const COOKIE_NAME = "admin_session";
-const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days, fixed from creation — see docs/AUTHENTICATION.md.
+export const SSO_COOKIE = "hsv_sso";
+const LEGACY_COOKIE = "admin_session"; // pre-SSO opaque session cookie — cleared on login/logout
+const CACHE_TTL_MS = 30_000;
+const CACHE_MAX_ENTRIES = 2000;
 
-function hashToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
+type Validated = { user: HsvSsoUser; completeness: HsvCompleteness };
+// On globalThis, NOT a module-level Map: Next can load this module as several separate copies (route handlers, server actions, pages), and
+// a per-copy Map makes "invalidate after saving the profile" invisible to the page that renders next (seen on the Hoạt động staging).
+const globalForSso = globalThis as unknown as { __cmsSsoValidationCache?: Map<string, { at: number; value: Validated }> };
+const validationCache = (globalForSso.__cmsSsoValidationCache ??= new Map<string, { at: number; value: Validated }>());
+
+function cookieDomain(): string | undefined {
+  return process.env.SSO_COOKIE_DOMAIN || undefined;
 }
 
-function isProduction(): boolean {
-  return process.env.NODE_ENV === "production";
+function cacheSet(token: string, value: Validated) {
+  if (validationCache.size >= CACHE_MAX_ENTRIES) validationCache.delete(validationCache.keys().next().value as string);
+  validationCache.set(token, { at: Date.now(), value });
+}
+
+/** Drop the cached validation of a token (after the profile was saved, so the next read sees fresh data + completeness). */
+export function invalidateSsoCache(token: string) {
+  validationCache.delete(token);
+}
+
+/** Drop every cached validation of one hsv-id account (password reset / forced logout done from here). */
+export function invalidateSsoCacheForIdentity(identityUserId: string) {
+  for (const [token, entry] of validationCache) if (entry.value.user.id === identityUserId) validationCache.delete(token);
 }
 
 export interface SessionUser {
@@ -37,114 +63,123 @@ export interface SessionUser {
   status: UserStatus;
 }
 
-async function readRequestMeta() {
-  const h = await headers();
-  return {
-    userAgent: h.get("user-agent"),
-    // `x-forwarded-for` is set by whatever reverse proxy sits in front of
-    // the app in production; falls back to nothing locally rather than
-    // guessing at a header that isn't there.
-    ipAddress: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
-  };
-}
-
-/**
- * Creates a session row and sets the cookie. Called only after credentials
- * are already verified (`authService.login`) — this function itself does
- * no authentication, only session issuance.
- */
-export async function createSession(userId: string): Promise<void> {
-  const token = randomBytes(32).toString("hex");
-  const tokenHash = hashToken(token);
-  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-  const meta = await readRequestMeta();
-
-  await sessionRepository.create({
-    userId,
-    tokenHash,
-    expiresAt,
-    ipAddress: meta.ipAddress,
-    userAgent: meta.userAgent,
-  });
-
-  const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, token, {
+/** Sets the SSO cookie after `hsv-id` accepted the credentials (`authService.login`) — no authentication happens here. */
+export async function createSession(token: string, expiresAt: Date): Promise<void> {
+  const store = await cookies();
+  store.set(SSO_COOKIE, token, {
     httpOnly: true,
-    secure: isProduction(),
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     expires: expiresAt,
+    ...(cookieDomain() ? { domain: cookieDomain() } : {}),
   });
+  store.delete(LEGACY_COOKIE);
 }
+
+/** The current SSO token (for the profile view/edit actions, which act at `hsv-id` on the person's behalf). */
+export async function getSessionToken(): Promise<string | null> {
+  const store = await cookies();
+  return store.get(SSO_COOKIE)?.value ?? null;
+}
+
+export type SsoIdentity =
+  | { ok: true; user: HsvSsoUser; completeness: HsvCompleteness }
+  | { ok: false; reason: "NO_SESSION" | "BLOCKED" | "HSV_ID_UNAVAILABLE" };
+
+/** Who `hsv-id` says the cookie belongs to. React `cache`: layout + page of one request validate once. */
+export const getSsoIdentity = cache(async (): Promise<SsoIdentity> => {
+  const token = await getSessionToken();
+  if (!token) return { ok: false, reason: "NO_SESSION" };
+
+  const cached = validationCache.get(token);
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) return { ok: true, ...cached.value };
+
+  const result = await hsvIdSsoValidate(token);
+  if (!result.ok) {
+    validationCache.delete(token);
+    return { ok: false, reason: result.reason === "INVALID" ? "NO_SESSION" : result.reason === "BLOCKED" ? "BLOCKED" : "HSV_ID_UNAVAILABLE" };
+  }
+  cacheSet(token, { user: result.user, completeness: result.completeness });
+  return { ok: true, user: result.user, completeness: result.completeness };
+});
 
 /**
  * The DAL's core check (Next's own auth guide, "Creating a Data Access
- * Layer"). `cache()` memoizes this per render pass so a page that reads the
- * session from several components/layouts only hits the database once.
- * Returns `null` for every invalid case (no cookie, expired session,
- * disabled account) — callers decide what to do about `null`
- * (`requireSession`/`requireRole` below redirect/forbid; a page that wants
- * to render differently for logged-out visitors can check it directly).
+ * Layer"). `null` for every invalid case: no cookie, session gone/expired at
+ * `hsv-id`, hsv-id unreachable, no local CMS account linked to that identity,
+ * or the local account disabled. Never provisions or links anything — see
+ * `requireSession` (entering the admin area) and `authService.login`.
  */
 export const getSession = cache(async (): Promise<SessionUser | null> => {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
-  if (!token) return null;
+  const identity = await getSsoIdentity();
+  if (!identity.ok) return null;
 
-  const tokenHash = hashToken(token);
-  const session = await sessionRepository.findByTokenHashWithUser(tokenHash);
-  if (!session) return null;
+  const match = await matchLocalUser(identity.user);
+  if (match.kind !== "linked") return null;
+  const user = match.user;
 
-  if (session.expiresAt < new Date()) {
-    await sessionRepository.deleteByTokenHash(tokenHash);
-    return null;
+  // Brief section 13: "account disabled check" — re-checked on every request (local DB, uncached).
+  if (user.status !== "ACTIVE") return null;
+
+  // The shared profile is the source of the display name: a change made on another platform shows here too.
+  let displayName = user.displayName;
+  if (identity.user.fullName && identity.user.fullName !== user.displayName) {
+    displayName = identity.user.fullName;
+    void userRepository.update(user.id, { displayName }).catch(() => {});
   }
 
-  // Brief section 13: "account disabled check" — re-checked on every
-  // request, not just at login, so disabling an account invalidates an
-  // already-open session immediately rather than at its next natural
-  // expiry.
-  if (session.user.status !== "ACTIVE") {
-    return null;
-  }
-
-  // Best-effort activity timestamp — failure here (e.g. a race with the
-  // session being deleted concurrently) must never fail the request that
-  // triggered it.
-  void sessionRepository.touchLastSeen(session.id);
-
-  return {
-    id: session.user.id,
-    email: session.user.email,
-    displayName: session.user.displayName,
-    role: session.user.role,
-    status: session.user.status,
-  };
+  return { id: user.id, email: user.email, displayName, role: user.role, status: user.status };
 });
 
+/** Ends the SSO session for EVERY platform (logout here = logout everywhere) and clears the cookie. */
 export async function destroySession(): Promise<void> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const store = await cookies();
+  const token = store.get(SSO_COOKIE)?.value;
   if (token) {
-    await sessionRepository.deleteByTokenHash(hashToken(token));
+    validationCache.delete(token);
+    await hsvIdSsoLogoutAll({ token }).catch((err) => console.error("[hsv-id] đăng xuất SSO thất bại:", err));
   }
-  cookieStore.delete(COOKIE_NAME);
+  store.set(SSO_COOKIE, "", { path: "/", maxAge: 0, ...(cookieDomain() ? { domain: cookieDomain() } : {}) });
+  store.delete(LEGACY_COOKIE);
 }
 
-/** For "log out everywhere" / an Admin disabling a user mid-session. */
+/**
+ * For "an Admin reset this account's password". The sessions themselves live
+ * in `hsv-id` and its `change-password` already revoked them; what remains
+ * is this process's 30 s validation cache. (Disabling a CMS account needs
+ * nothing: `getSession` re-reads the local status on every request.)
+ */
 export async function destroyAllSessionsForUser(userId: string): Promise<void> {
-  await sessionRepository.deleteAllForUser(userId);
+  const target = await userRepository.findIdentitySyncFields(userId);
+  if (target?.identityUserId) invalidateSsoCacheForIdentity(target.identityUserId);
 }
 
 /**
  * Brief section 6: "Nếu chưa đăng nhập: → redirect về /admin/login." The
  * one function every protected admin Server Component/Server Action should
  * call first — see docs/AUTHORIZATION.md, "Route guard".
+ *
+ * A person who is signed in at `hsv-id` (say, from another HSV platform) but
+ * has no CMS account yet gets a CONTRIBUTOR one here, on entering the admin
+ * area — the same product decision as at login, not on every public page view.
  */
 export async function requireSession(): Promise<SessionUser> {
   const session = await getSession();
-  if (!session) {
-    redirect("/admin/login");
+  if (session) return session;
+
+  const identity = await getSsoIdentity();
+  if (identity.ok && (await matchLocalUser(identity.user)).kind === "none") {
+    const created = await provisionContributor(identity.user);
+    if (created && created.status === "ACTIVE") {
+      return { id: created.id, email: created.email, displayName: created.displayName, role: created.role, status: created.status };
+    }
   }
-  return session;
+  redirect("/admin/login");
+}
+
+/** Whether the shared profile is complete — the admin layout sends an incomplete one to `/admin/hoan-thanh-ho-so`. */
+export async function getProfileCompleteness(): Promise<HsvCompleteness | null> {
+  const identity = await getSsoIdentity();
+  return identity.ok ? identity.completeness : null;
 }

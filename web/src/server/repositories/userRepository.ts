@@ -47,8 +47,13 @@ export const userRepository = {
     return prisma.user.update({ where: { id }, data: { identityUserId } });
   },
 
-  findByEmailOrIdentityUserId(email: string, identityUserId: string) {
-    return prisma.user.findFirst({ where: { OR: [{ email }, { identityUserId }] } });
+  findByIdentityUserId(identityUserId: string) {
+    return prisma.user.findUnique({ where: { identityUserId } });
+  },
+
+  /** Case-insensitive: `hsv-id` normalises emails to lower case, this CMS historically did not. */
+  findByEmailInsensitive(email: string) {
+    return prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
   },
 
   /** Auto-provision path (`authService.login`): a person who authenticates
