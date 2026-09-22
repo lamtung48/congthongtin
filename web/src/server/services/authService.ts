@@ -1,7 +1,7 @@
 import { userRepository } from "@/server/repositories/userRepository";
 import { auditLogRepository } from "@/server/repositories/auditLogRepository";
 import { createSession, destroySession, getSession } from "@/server/auth/session";
-import { matchLocalUser, provisionContributor, type LocalUserRow } from "@/server/auth/identityLink";
+import { matchLocalUser, type LocalUserRow } from "@/server/auth/identityLink";
 import { verifyPassword } from "@/server/auth/password";
 import { checkLoginRateLimit, clearLoginRateLimit, recordFailedLogin } from "@/server/auth/rateLimit";
 import { hsvIdCreateUser, hsvIdLink, hsvIdSsoLogin, hsvIdSsoLogout, hsvIdVerifyAndGetUser } from "@/server/integrations/hsvId";
@@ -11,13 +11,23 @@ import { hsvIdCreateUser, hsvIdLink, hsvIdSsoLogin, hsvIdSsoLogout, hsvIdVerifyA
  * "Thông tin đăng nhập không chính xác." never distinguishes "no such
  * account", "wrong password", "locked" or "account disabled", so none of
  * those facts leaks to whoever is submitting the form. See
- * docs/AUTHENTICATION.md, "Login error messages". (Two messages differ on
- * purpose and reveal nothing about the account: too many attempts, and the
- * identity service being unreachable.)
+ * docs/AUTHENTICATION.md, "Login error messages". (Three messages differ on
+ * purpose and reveal nothing an attacker without the password could learn:
+ * too many attempts, the identity service being unreachable, and — only
+ * after the password was proven right — "no CMS role granted yet".)
  */
 const GENERIC_LOGIN_ERROR = "Thông tin đăng nhập không chính xác.";
 const RATE_LIMITED_ERROR = "Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau ít phút.";
 const UNAVAILABLE_ERROR = "Hệ thống định danh đang gián đoạn, vui lòng thử lại sau ít phút.";
+/**
+ * A real HSV-ID account (the password was right) that no Admin has granted a
+ * CMS role. Said plainly rather than with the generic message: it reveals
+ * nothing the person couldn't learn by signing in on Hoạt động, and "sai
+ * mật khẩu" would send them hunting for a password that is in fact correct.
+ * Roles are only ever granted by an Admin (`/admin/users`) — never on login.
+ */
+const NO_EDITOR_ACCESS_ERROR =
+  "Tài khoản HSV-ID của bạn chưa được cấp quyền Ban biên tập. Liên hệ Admin của Cổng để được phân quyền, hoặc dùng tab “Tài khoản cá nhân”.";
 
 export type LoginResult = { ok: true } | { ok: false; error: string };
 
@@ -69,7 +79,8 @@ export const authService = {
       return { ok: false, error: GENERIC_LOGIN_ERROR };
     }
 
-    // hsv-id accepted the credentials; now find (or, with proof, link / create) the local CMS account.
+    // hsv-id accepted the credentials; now find (or, with proof, link) the local CMS account. None is ever CREATED here: a CMS role
+    // exists only because an Admin granted it (userService.grantRole).
     const match = await matchLocalUser(sso.user);
     let user: LocalUserRow | null = null;
     if (match.kind === "linked") {
@@ -81,11 +92,14 @@ export const authService = {
         user = { ...match.user, identityUserId: sso.user.id };
       }
     } else if (match.kind === "none") {
-      user = await provisionContributor(sso.user);
+      // Only the session just opened is revoked — this never signs the person out of the other platforms.
+      await hsvIdSsoLogout(sso.token).catch(() => false);
+      clearLoginRateLimit(rateLimitKey);
+      return { ok: false, error: NO_EDITOR_ACCESS_ERROR };
     }
 
-    // Same generic failure for "no CMS account" and "disabled account". The session we just opened at hsv-id is revoked — only that one,
-    // so a refusal here never signs the person out of the other platforms.
+    // Same generic failure for a disabled account and an unproven / conflicting e-mail match. The session we just opened at hsv-id is
+    // revoked — only that one, so a refusal here never signs the person out of the other platforms.
     if (!user || user.status !== "ACTIVE") {
       await hsvIdSsoLogout(sso.token).catch(() => false);
       recordFailedLogin(rateLimitKey);
@@ -101,6 +115,34 @@ export const authService = {
     await userRepository.touchLastLogin(user.id);
     await auditLogRepository.record({ actorId: user.id, action: "LOGIN", entityType: "User", entityId: user.id });
 
+    return { ok: true };
+  },
+
+  /**
+   * PERSONAL sign-in (`/dang-nhap`, docs/AUTHENTICATION.md "Hai luồng đăng
+   * nhập"): any `hsv-id` account — the same one used on Hoạt động / Đào tạo.
+   * Only opens the shared SSO session and sets the cookie: no local `User`
+   * row is looked up, linked or created (ordinary accounts are not CMS
+   * accounts; an editor signing in here still gets their CMS role, because
+   * `getSession` finds their already-linked row). Same generic-error rule as
+   * `login`.
+   */
+  async personalLogin(identifier: string, password: string, requestIp: string | null, userAgent: string | null = null): Promise<LoginResult> {
+    const rateLimitKey = `person:${identifier.toLowerCase()}:${requestIp ?? "unknown"}`;
+    if (!checkLoginRateLimit(rateLimitKey).allowed) {
+      return { ok: false, error: RATE_LIMITED_ERROR };
+    }
+
+    const sso = await hsvIdSsoLogin({ identifier: identifier.trim(), password, ip: requestIp, userAgent });
+    if (!sso.ok) {
+      if (sso.error === "RATE_LIMITED") return { ok: false, error: RATE_LIMITED_ERROR };
+      if (sso.error === "UNAVAILABLE") return { ok: false, error: UNAVAILABLE_ERROR };
+      recordFailedLogin(rateLimitKey);
+      return { ok: false, error: GENERIC_LOGIN_ERROR };
+    }
+
+    clearLoginRateLimit(rateLimitKey);
+    await createSession(sso.token, new Date(sso.expiresAt));
     return { ok: true };
   },
 

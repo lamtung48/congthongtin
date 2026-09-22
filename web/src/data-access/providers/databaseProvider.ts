@@ -129,6 +129,7 @@ function mapOrganization(org: PrismaOrganization, province?: PrismaProvince | nu
 const PLATFORM_CATEGORY_MAP: Record<PrismaPlatformCategory, Platform["category"]> = {
   CONFERENCE: "conference",
   TRAINING: "training",
+  ACTIVITY: "activity",
   SV5TOT: "sv5tot",
   VOLUNTEER: "volunteer",
   DATA: "data",
@@ -350,7 +351,7 @@ export class DatabaseProvider implements ContentProvider {
     const rows = await prisma.video.findMany({
       where: { publishedAt: { not: null, lte: now } },
       orderBy: { publishedAt: "desc" },
-      include: { category: true, media: true },
+      include: { category: true, media: { include: { thumbnail: true } } },
     });
     const pinnedIds = await homepageService.listPinnedVideoIds();
     return sortVideosByPin(rows, pinnedIds).map(mapVideo);
@@ -386,6 +387,7 @@ export class DatabaseProvider implements ContentProvider {
       updated_at: dbData.updatedAt,
       summary: { ...staticConfig.summary, ...dbData.summary, period: dbData.period ?? staticConfig.summary.period },
       provinces: dbData.provinces,
+      platform_activities_latest: dbData.platformActivitiesLatest,
       overseas: { ...staticConfig.overseas, countries: dbData.overseas },
       reporting_period: { ...staticConfig.reporting_period, label: dbData.period ?? staticConfig.reporting_period.label },
     };

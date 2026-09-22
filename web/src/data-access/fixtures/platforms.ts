@@ -11,6 +11,18 @@ import type { Platform } from "@/domain/platform";
  */
 export const PLATFORMS: Platform[] = [
   {
+    id: "hoat-dong",
+    slug: "hoat-dong",
+    name: "Nền tảng Hoạt động",
+    url: "https://hoatdong.hoisinhvien.com.vn",
+    description: "Khám phá và đăng ký hoạt động, điểm danh bằng QR, tích luỹ điểm rèn luyện và Thẻ Hội viên.",
+    category: "activity",
+    status: "active",
+    accessLevel: "Đăng nhập bằng tài khoản HSV-ID",
+    metric: "Nâng hạng thẻ hội viên!",
+    integrationType: "external_link",
+  },
+  {
     id: "hoi-nghi",
     slug: "hoi-nghi",
     name: "Nền tảng Hội nghị",
@@ -19,7 +31,7 @@ export const PLATFORMS: Platform[] = [
     category: "conference",
     status: "live",
     accessLevel: "Cần đăng nhập tài khoản đại biểu",
-    currentActivity: "Hội nghị Ban Chấp hành Trung ương Hội lần thứ 3 — phiên biểu quyết đang mở",
+    currentActivity: "Tham gia ngay 3 hội nghị",
     integrationType: "external_link",
   },
   {

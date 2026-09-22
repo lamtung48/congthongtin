@@ -46,7 +46,7 @@ function buildWhere(params: MediaAdminFilter): Prisma.MediaAssetWhereInput {
  *  (an optional FK, or an `ArticleBlock` reference), which an Admin's
  *  force-delete can clear on the asset's way out. */
 export interface MediaUsageDetail {
-  usageType: MediaUsageType | "USER_AVATAR" | "AUTHOR_AVATAR" | "TOPIC_COVER" | "ARTICLE_COVER" | "ARTICLE_OG";
+  usageType: MediaUsageType | "USER_AVATAR" | "AUTHOR_AVATAR" | "TOPIC_COVER" | "ARTICLE_COVER" | "ARTICLE_OG" | "VIDEO_THUMBNAIL";
   hardBlock: boolean;
   entityId: string;
   entityLabel: string;
@@ -62,6 +62,7 @@ const usageDetailInclude = {
   usedAsEventCover: { select: { id: true, title: true } },
   galleryItems: { include: { gallery: { select: { id: true, title: true } } } },
   videos: { select: { id: true, title: true } },
+  usedAsVideoThumbnail: { select: { id: true, filename: true, providerFileId: true } },
   usages: true,
 } satisfies Prisma.MediaAssetInclude;
 
@@ -79,7 +80,7 @@ export const mediaRepository = {
       orderBy: { createdAt: "desc" },
       skip: params.skip,
       take: params.take,
-      include: { createdBy: { select: { id: true, displayName: true } } },
+      include: { createdBy: { select: { id: true, displayName: true } }, thumbnail: { select: { id: true, status: true } } },
     });
   },
 
@@ -121,6 +122,13 @@ export const mediaRepository = {
     },
   ) {
     return prisma.mediaAsset.update({ where: { id }, data });
+  },
+
+  /** A VIDEO asset's custom cover image (`null` → back to YouTube's own
+   *  thumbnail). Validation — that it is a ready Drive image the actor may
+   *  use — lives in `youtubeService.setThumbnail`. */
+  setVideoThumbnail(id: string, thumbnailMediaId: string | null) {
+    return prisma.mediaAsset.update({ where: { id }, data: { thumbnailMediaId } });
   },
 
   updateStatus(id: string, status: MediaStatus) {
@@ -192,6 +200,7 @@ export const mediaRepository = {
     for (const e of asset.usedAsEventCover) detail.push({ usageType: "EVENT_COVER", hardBlock: false, entityId: e.id, entityLabel: `Ảnh bìa sự kiện: ${e.title}` });
     for (const gi of asset.galleryItems) detail.push({ usageType: "GALLERY_ITEM", hardBlock: true, entityId: gi.galleryId, entityLabel: `Ảnh trong bộ sưu tập: ${gi.gallery.title}` });
     for (const v of asset.videos) detail.push({ usageType: "VIDEO_SOURCE", hardBlock: true, entityId: v.id, entityLabel: `Nguồn video: ${v.title}` });
+    for (const v of asset.usedAsVideoThumbnail) detail.push({ usageType: "VIDEO_THUMBNAIL", hardBlock: false, entityId: v.id, entityLabel: `Ảnh thumbnail video: ${v.filename ?? v.providerFileId ?? v.id}` });
     for (const u of asset.usages) detail.push({ usageType: u.usageType, hardBlock: false, entityId: u.referenceId, entityLabel: `Dùng trong nội dung bài viết (khối nội dung)` });
     return detail;
   },
@@ -211,6 +220,7 @@ export const mediaRepository = {
       prisma.article.updateMany({ where: { coverMediaId: mediaId }, data: { coverMediaId: null } }),
       prisma.article.updateMany({ where: { ogMediaId: mediaId }, data: { ogMediaId: null } }),
       prisma.event.updateMany({ where: { coverMediaId: mediaId }, data: { coverMediaId: null } }),
+      prisma.mediaAsset.updateMany({ where: { thumbnailMediaId: mediaId }, data: { thumbnailMediaId: null } }),
     ]);
   },
 };

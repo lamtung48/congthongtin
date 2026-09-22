@@ -1,6 +1,5 @@
 import "server-only";
 import { userRepository } from "@/server/repositories/userRepository";
-import { auditLogRepository } from "@/server/repositories/auditLogRepository";
 import type { HsvSsoUser } from "@/server/integrations/hsvId";
 
 /**
@@ -40,39 +39,4 @@ export async function matchLocalUser(identity: HsvSsoUser): Promise<IdentityMatc
   const byEmail = await userRepository.findByEmailInsensitive(email);
   if (!byEmail) return { kind: "none" };
   return byEmail.identityUserId ? { kind: "conflict" } : { kind: "unlinked-email", user: byEmail };
-}
-
-/**
- * Product decision kept from before SSO (docs/AUTHENTICATION.md,
- * "Auto-provisioning"): a person with an hsv-id account who enters the CMS
- * gets a CONTRIBUTOR account (draft + submit their own articles, nothing
- * more) until an Admin promotes them. Only called when `matchLocalUser`
- * said `none`, and only when the identity has an e-mail (the CMS is
- * e-mail-keyed).
- */
-export async function provisionContributor(identity: HsvSsoUser): Promise<LocalUserRow | null> {
-  const email = normalizeEmail(identity.email);
-  if (!email) return null;
-  let created;
-  try {
-    created = await userRepository.createFromIdentityAsContributor({
-      email,
-      displayName: identity.fullName || email,
-      identityUserId: identity.id,
-    });
-  } catch (err) {
-    // Two requests from the same fresh login raced to provision; the loser hits the unique index — use the winner's row.
-    const existing = await userRepository.findByIdentityUserId(identity.id);
-    if (existing) return existing;
-    throw err;
-  }
-  await auditLogRepository.record({
-    actorId: null,
-    action: "CREATE_USER",
-    entityType: "User",
-    entityId: created.id,
-    metadata: { via: "hsv-id", role: "CONTRIBUTOR", identityUserId: identity.id },
-  });
-  // `createFromIdentityAsContributor` returns the public projection; re-read the full row so every caller sees one shape.
-  return userRepository.findByIdentityUserId(identity.id);
 }

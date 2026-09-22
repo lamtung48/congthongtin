@@ -36,6 +36,41 @@ export const activityMapRepository = {
   },
 
   /**
+   * Hoạt động activities that sit on the map (filed under a province or an
+   * overseas association), newest start first — one query for the whole map.
+   * Cancelled ones are left out.
+   */
+  platformActivitiesForMap() {
+    return prisma.platformActivity.findMany({
+      where: { status: { not: "CANCELLED" }, OR: [{ provinceId: { not: null } }, { overseasOrganizationId: { not: null } }] },
+      orderBy: { startAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        url: true,
+        thumbnailUrl: true,
+        organizationName: true,
+        startAt: true,
+        endAt: true,
+        status: true,
+        provinceId: true,
+        overseasOrganizationId: true,
+        province: { select: { name: true } },
+        overseasOrganization: { select: { name: true } },
+      },
+    });
+  },
+
+  /** Published articles of the units linked to overseas associations (OverseasOrganization.organizationId). */
+  publishedArticleCountsForOverseas(now: Date) {
+    return prisma.article.groupBy({
+      by: ["organizationId"],
+      where: { status: "PUBLISHED", publishedAt: { not: null, lte: now }, organization: { overseasOrganization: { isNot: null } } },
+      _count: { _all: true },
+    });
+  },
+
+  /**
    * The map's real per-province figures: every published, already-live
    * article that belongs to a province — either directly (`Article.provinceId`)
    * or through its reporting unit (`Article.organization.provinceId`).

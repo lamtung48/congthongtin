@@ -49,6 +49,11 @@ export interface MediaAsset {
    *  `resolveVideoPlaybackSource`/`resolveVideoUnavailableReason` in
    *  `resolveMedia.ts`, the only place this is read. */
   errorReason?: string;
+  /** A video's custom cover image (a `drive` image uploaded in the CMS),
+   *  used instead of the provider's own thumbnail wherever the video is
+   *  shown as a still. Absent → YouTube's default thumbnail. Resolved only by
+   *  `resolveImageUrl`, like every other source. */
+  thumbnail?: MediaAsset;
   /** Provider-specific extras (e.g. capture location/date) that don't
    *  warrant their own top-level field. */
   metadata?: Record<string, string | number>;

@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { Feature, Geometry } from "geojson";
 import styles from "./VietnamMapSvg.module.css";
 import { IconClose } from "@/components/icons";
 import type { ActivityMapData, ActivityMapOverseasCountry, ActivityMapProvince } from "@/domain/activity";
 import type { MapLoadState } from "./useActivityMapData";
 import { mapDims, makeProjection, radiusScale } from "./mapMath";
-import { provinceValue } from "./provinceValue";
+import { provinceValue, provinceValueLabel } from "./provinceValue";
+import { withBasePath } from "@/lib/basePath";
+
+/** Bird emblem badge used as every province's marker — see the "Nổi khối" restyle's header comment below. */
+const LOGO_SRC = withBasePath("/images/hsv-logo.png");
 
 function fmt(n: number) {
   return n.toLocaleString("vi-VN");
@@ -55,6 +59,10 @@ export function VietnamMapSvg({
   const [globeHover, setGlobeHover] = useState(false);
   const gpanelRef = useRef<HTMLDivElement>(null);
   const globeGroupRef = useRef<SVGGElement>(null);
+  // Scopes the <defs> ids below (clip path, gradients, filters) to this
+  // component instance — matters if the section ever renders twice on one
+  // page (a second instance's `url(#...)` refs would otherwise collide).
+  const uid = useId();
 
   useEffect(() => {
     // `hostRef` is only attached to a DOM node once the real map renders
@@ -147,7 +155,10 @@ export function VietnamMapSvg({
   const provinces = data.provinces ?? [];
   const values = provinces.map((p) => provinceValue(p)).filter((v): v is number => v != null);
   const max = Math.max(1, ...values);
-  const r = radiusScale(max);
+  // Wider floor than radiusScale's default (2.6px): the marker is now the HSV
+  // emblem, not a plain dot, and needs a few more pixels to stay recognisable
+  // at the low end. Also feeds the legend circles below, so both stay in sync.
+  const r = radiusScale(max, 6, 18);
   const hasNone = provinces.some((p) => provinceValue(p) == null);
 
   const order = provinces
@@ -212,6 +223,12 @@ export function VietnamMapSvg({
     })
     .filter((m): m is NonNullable<typeof m> => m !== null);
 
+  // Coastline as one SVG path `d` — reused for the extrusion layers and the top face.
+  const vnPath = path(vnFeature) ?? "";
+  const glowId = `${uid}-marker-glow`;
+  const topId = `${uid}-land-top`;
+  const shadowId = `${uid}-land-shadow`;
+
   /**
    * On a map this dense, neighboring provinces' enlarged hit circles
    * routinely overlap (34 points on one country outline — see
@@ -253,6 +270,34 @@ export function VietnamMapSvg({
     <div ref={hostRef}>
       <div className={styles.stage} style={{ width: W, height: H }}>
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Bản đồ hoạt động sinh viên theo tỉnh, thành phố">
+          <defs>
+            {/* Top face of the landmass block: white at the coast, sinking to a pale
+                blue inland — the same read as a slab lit from above. */}
+            <linearGradient id={topId} x1="0" y1="0" x2="0.3" y2="1">
+              <stop offset="0" stopColor="#ffffff" />
+              <stop offset="1" stopColor="var(--blue-50)" />
+            </linearGradient>
+            {/* Soft blurred silhouette under the whole block, offset down — the
+                "floating slab" shadow. Literal colour: SVG filter primitives don't
+                reliably resolve `var()`, so this mirrors --blue-950 (#04162b) by
+                value, not by reference. */}
+            <filter id={shadowId} x="-30%" y="-20%" width="160%" height="150%">
+              <feDropShadow dx="0" dy="10" stdDeviation="9" floodColor="#04162b" floodOpacity="0.22" />
+            </filter>
+            {/* Blue halo behind each province marker — brighter/bigger with more
+                tin bài & hoạt động (see provinceMarkers below). Brighter at the
+                core than the flat blue emblem it sits behind (--blue-400 vs. the
+                logo's own ~--blue-500), deeper at the rim (--blue-700), so it
+                still reads as a glow rather than blending flat into the badge.
+                One shared gradient: objectBoundingBox units mean it auto-fits
+                whatever circle radius each marker gives it. */}
+            <radialGradient id={glowId}>
+              <stop offset="0" stopColor="var(--blue-400)" stopOpacity="0.95" />
+              <stop offset="0.45" stopColor="var(--blue-700)" stopOpacity="0.55" />
+              <stop offset="1" stopColor="var(--blue-700)" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
           <rect x={0} y={0} width={W} height={H} fill="transparent" />
           <g aria-hidden="true">
             {nearFeatures.map((f, i) => {
@@ -261,7 +306,24 @@ export function VietnamMapSvg({
               return <path key={i} d={d} fill="var(--ink-100)" stroke="var(--white)" strokeWidth={1} />;
             })}
           </g>
-          <path d={path(vnFeature) ?? undefined} fill="var(--blue-50)" stroke="var(--blue-300)" strokeWidth={1.1} strokeLinejoin="round" />
+
+          {/*
+           * "Nổi khối" landmass: the same coastline path, drawn 4 times at
+           * increasing y-offsets and increasingly dark fills (an isometric
+           * extrusion), topped with the real top face. Purely decorative
+           * (aria-hidden) — every interactive/labelled element below reads
+           * off the real `vnFeature`/`provinces` data, not these copies.
+           */}
+          <g aria-hidden="true" filter={`url(#${shadowId})`}>
+            <path d={vnPath} fill="#04162b" />
+          </g>
+          <g aria-hidden="true">
+            <path d={vnPath} transform="translate(0, 7)" fill="var(--blue-900)" />
+            <path d={vnPath} transform="translate(0, 5)" fill="var(--blue-800)" />
+            <path d={vnPath} transform="translate(0, 3)" fill="var(--blue-700)" />
+            <path d={vnPath} transform="translate(0, 1.5)" fill="var(--blue-600)" />
+          </g>
+          <path d={vnPath} fill={`url(#${topId})`} stroke="var(--blue-600)" strokeWidth={1.1} strokeLinejoin="round" />
 
           {(data.archipelagos ?? []).map((a) => {
             const c = projectPoint(a.lon, a.lat);
@@ -351,13 +413,13 @@ export function VietnamMapSvg({
             {provinceMarkers.map(({ p, x, y, v, none, rad }) => {
               const sel = selectedSlug === p.slug;
               const hovered = hoverSlug === p.slug;
-              const label = none
-                ? `${p.province_name}: chưa có tin bài`
-                : `${p.province_name}: ${v} tin bài`;
+              const active = sel || hovered;
+              const label = `${p.province_name}: ${none ? "chưa có dữ liệu" : provinceValueLabel(p)}`;
               return (
                 <g
                   key={p.slug}
                   className={styles.province}
+                  data-active={active}
                   transform={`translate(${x.toFixed(1)},${y.toFixed(1)})`}
                   tabIndex={0}
                   role="button"
@@ -372,18 +434,30 @@ export function VietnamMapSvg({
                     }
                   }}
                 >
-                  <circle className={styles.ring} r={rad + 5.5} fill="none" stroke="var(--blue-700)" strokeWidth={sel ? 1.8 : 0} opacity={sel ? 1 : 0} />
+                  <circle className={styles.ring} r={rad + 6.5} fill="none" stroke="var(--blue-700)" strokeWidth={sel ? 1.8 : 0} opacity={sel ? 1 : 0} />
                   {none ? (
-                    <circle className={styles.dot} r={rad} fill="var(--white)" fillOpacity={sel || hovered ? 1 : 0.9} stroke="var(--ink-400)" strokeWidth={1.3} strokeDasharray="2.6 2.2" />
+                    // No tin bài/hoạt động yet: a faint outline only — no emblem, so an
+                    // early-stage province doesn't compete visually with ones that have data.
+                    <circle className={styles.dot} r={rad} fill="var(--white)" fillOpacity={active ? 1 : 0.9} stroke="var(--ink-400)" strokeWidth={1.3} strokeDasharray="2.6 2.2" />
                   ) : (
-                    <circle
-                      className={styles.dot}
-                      r={rad}
-                      fill={sel ? "var(--blue-700)" : "var(--blue-500)"}
-                      fillOpacity={sel || hovered ? 1 : 0.32 + 0.5 * ((v ?? 0) / max)}
-                      stroke="var(--white)"
-                      strokeWidth={1}
-                    />
+                    <g className={styles.markerScale}>
+                      {/* Glow: brighter/bigger the more tin bài & hoạt động this province has. */}
+                      <circle
+                        className={styles.markerGlow}
+                        r={rad * 1.7}
+                        fill={`url(#${glowId})`}
+                        opacity={active ? 1 : 0.4 + 0.5 * ((v ?? 0) / max)}
+                      />
+                      <image
+                        className={styles.markerLogo}
+                        href={LOGO_SRC}
+                        x={-rad}
+                        y={-rad}
+                        width={rad * 2}
+                        height={rad * 2}
+                        preserveAspectRatio="xMidYMid meet"
+                      />
+                    </g>
                   )}
                 </g>
               );
@@ -396,12 +470,13 @@ export function VietnamMapSvg({
             <h3 className={styles.tipHead}>{hoverProvince.province_name}</h3>
             {tip.none ? (
               <div className={styles.tipNone}>
-                Chưa có tin bài.
+                Chưa có tin bài hay hoạt động.
               </div>
             ) : (
               <>
                 <div className={styles.tipNums}>
-                  <div><b>{fmt(tip.v as number)}</b><span>tin bài</span></div>
+                  {!!hoverProvince.article_count && <div><b>{fmt(hoverProvince.article_count)}</b><span>tin bài</span></div>}
+                  {!!hoverProvince.platform_activity_count && <div><b>{fmt(hoverProvince.platform_activity_count)}</b><span>hoạt động</span></div>}
                 </div>
                 {hoverProvince.latest_article && (
                   <p className={styles.tipArticle}>
@@ -462,7 +537,7 @@ export function VietnamMapSvg({
       </div>
 
       <div className={styles.legend}>
-        <span className={styles.legendLabel}>Số tin bài</span>
+        <span className={styles.legendLabel}>Tin bài &amp; hoạt động</span>
         <div className={styles.legendSizes}>
           {[0.15, 0.5, 1].map((f) => {
             const s = Math.round(r(max * f) * 2);

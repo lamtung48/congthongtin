@@ -1,0 +1,84 @@
+/* Homepage opening curtain — see IntroCurtain.tsx for the timeline.
+   Colour: a lighter navy (--blue-800) on purpose — the Hero's scrim and the
+   launchpad band under it are --blue-950, and the curtain must read as its
+   own layer, not blend into them. Curve: fast-in, long soft landing. */
+.curtain {
+  --curtain: var(--blue-800);
+  --curtain-seam: #0d4a86;
+  --open-ease: cubic-bezier(0.77, 0, 0.18, 1);
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  pointer-events: auto;
+  /* The clock JS listens to: at ~2.02 s (just after the outermost strips finish
+     at 1.98 s) the overlay stops existing for the user even if JS never runs
+     (hidden + click-through). Keep in step with OPEN_AT_MS in IntroCurtainStage.tsx. */
+  animation: curtainDone 1ms linear 2020ms forwards;
+}
+.strip {
+  position: relative;
+  flex: 1 1 0;
+  /* A hair of overlap so no seam of the page shows between strips while closed. */
+  margin-right: -1px;
+}
+.top,
+.bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: var(--curtain);
+  will-change: transform;
+  animation-duration: 820ms;
+  animation-timing-function: var(--open-ease);
+  animation-delay: var(--delay);
+  animation-fill-mode: forwards;
+}
+.top {
+  top: 0;
+  /* +1px so the two halves overlap at the centre line instead of leaving a hairline. */
+  height: calc(50% + 1px);
+  animation-name: openUp;
+  background: linear-gradient(180deg, var(--curtain) 0%, var(--curtain) 62%, var(--curtain-seam) 100%);
+}
+.bottom {
+  bottom: 0;
+  animation-name: openDown;
+  background: linear-gradient(0deg, var(--curtain) 0%, var(--curtain) 62%, var(--curtain-seam) 100%);
+}
+
+.logo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  /* 3× the first version (was clamp(96px, 12vw, 132px)), never wider than 80% of a phone screen. */
+  width: min(clamp(288px, 36vw, 396px), 80vw);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  animation:
+    logoIn 360ms var(--ease-entrance, ease-out) both,
+    logoOut 200ms ease-in 800ms forwards;
+}
+.logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 24px 64px rgba(4, 22, 43, 0.45));
+}
+
+@keyframes openUp { to { transform: translateY(-101%); } }
+@keyframes openDown { to { transform: translateY(101%); } }
+@keyframes logoIn { from { opacity: 0; transform: translate(-50%, -50%) scale(0.86); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@keyframes logoOut { to { opacity: 0; transform: translate(-50%, -50%) scale(0.92); } }
+@keyframes curtainDone { to { visibility: hidden; pointer-events: none; } }
+
+/* Already played in this tab (set before paint by IntroCurtain's inline script, or after it finished). */
+:global(html.hsv-intro-seen) .curtain { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .curtain { display: none; }
+}
+@media print {
+  .curtain { display: none; }
+}

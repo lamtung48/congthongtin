@@ -1,4 +1,27 @@
 @import "tailwindcss";
+/* Thẻ Hội viên (gói dùng chung @hsv/membership-card — cùng thẻ với Hoạt động/Đào tạo).
+   Tailwind v4 không quét node_modules nên phải khai báo nguồn của gói, nếu không các
+   lớp riêng của thẻ (rounded-3xl, text-[10.5px]…) không được sinh ra. */
+@import "@hsv/membership-card/styles.css";
+@source "../../../node_modules/@hsv/membership-card/src";
+
+/* Token màu + focus ring mà component thẻ dùng nhưng gói không tự mang theo
+   (chúng là tiện ích chung của app tiêu thụ — xem README của gói). */
+@theme {
+  --color-hsv-blue-950: #051a3d;
+  --color-hsv-blue-400: #4f98f8;
+  --color-hsv-orange-600: #e0620f;
+  --color-hsv-orange-500: #ff7a29;
+  --color-hsv-orange-100: #ffe8d9;
+}
+@layer components {
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-hsv-blue-400 focus-visible:ring-offset-2;
+  }
+  .focus-ring-inset {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-hsv-blue-400 focus-visible:ring-inset;
+  }
+}
 
 /* ============================================================
    HSV Digital Design System — tokens

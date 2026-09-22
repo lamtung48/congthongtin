@@ -34,6 +34,13 @@ services:
     build:
       context: .
       dockerfile: web/Dockerfile
+      # Forwards ONE specific key — the read-only deploy key of
+      # lamtung48/hsv-membership-card — to the `RUN --mount=type=ssh npm ci`
+      # step so it can fetch @hsv/membership-card (Thẻ Hội viên). BuildKit
+      # reads the file directly (no ssh-agent needed); it never lands in the
+      # image. Same as /opt/daotaohsv.
+      ssh:
+        - default=/root/.ssh/deploykey_membership_card_readonly
     container_name: congthongtin-app
     restart: unless-stopped
     depends_on:
@@ -69,6 +76,16 @@ services:
       # is inert and login falls back to the local password hash.
       HSV_ID_URL: "http://hsv-id:4200"
       HSV_ID_INTERNAL_KEY: ${HSV_ID_INTERNAL_KEY:?set in .env}
+      # Shared SSO cookie with the other platforms on the same parent domain
+      # (Hoạt động, Đào tạo set the same value): signed in on one = signed in
+      # here, and vice versa (web/docs/AUTHENTICATION.md, "Hai luồng đăng nhập").
+      SSO_COOKIE_DOMAIN: ".hoisinhvien.com.vn"
+      # Thẻ Hội viên lives in Hoạt động (/opt/hoatdong); read over the `edge`
+      # network with the same X-Training-Key Đào tạo uses. Without the key the
+      # card is simply hidden (account panel/page show "chưa tải được").
+      HOATDONG_URL: "http://hoatdong-hsv-app:3000"
+      HOATDONG_PUBLIC_URL: "https://hoatdong.hoisinhvien.com.vn"
+      HOATDONG_TRAINING_KEY: ${HOATDONG_TRAINING_KEY:-}
       # Google Drive (images): service account creds live in .env. YouTube
       # (videos): OAuth client id/secret still pending in .env — until set,
       # video actions fail with a clear caught error and the app is fine.
@@ -116,9 +133,11 @@ services:
 
   # Polls every `integrationType: API` ecosystem platform (Hội nghị, Đào
   # tạo) and writes the live number into `Platform.currentActivity`; the
-  # homepage's ISR picks it up within 60s. Reuses the app image but skips
-  # its build entrypoint. On `edge` so it can reach hoinghi-api-1 /
-  # daotao-hsv-app. See web/scripts/refreshPlatformActivity.ts.
+  # homepage's ISR picks it up within 60s. Every 5th round (~10 min) it also
+  # mirrors Hoạt động's public activities into `PlatformActivity` for the
+  # homepage map (web/scripts/syncPlatformActivities.ts). Reuses the app image
+  # but skips its build entrypoint. On `edge` so it can reach hoinghi-api-1 /
+  # daotao-hsv-app / hoatdong-hsv-app. See web/scripts/refreshPlatformActivity.ts.
   refresher:
     image: congthongtin-app
     container_name: congthongtin-refresher
@@ -130,9 +149,11 @@ services:
       NODE_ENV: production
       TZ: Asia/Ho_Chi_Minh
       DATABASE_URL: postgresql://congthongtin:${POSTGRES_PASSWORD}@postgres:5432/congthongtin?schema=public
+      HOATDONG_URL: "http://hoatdong-hsv-app:3000"
+      HOATDONG_PUBLIC_URL: "https://hoatdong.hoisinhvien.com.vn"
     entrypoint: ["/usr/bin/tini", "--", "sh", "-c"]
     command:
-      - 'cd /app/web && while true; do node --conditions=react-server --import tsx scripts/refreshPlatformActivity.ts || true; sleep 120; done'
+      - 'cd /app/web && i=0; while true; do node --conditions=react-server --import tsx scripts/refreshPlatformActivity.ts || true; if [ $$((i % 5)) -eq 0 ]; then node --conditions=react-server --import tsx scripts/syncPlatformActivities.ts || true; fi; i=$$((i + 1)); sleep 120; done'
     networks:
       - default
       - edge

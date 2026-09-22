@@ -51,6 +51,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Thiếu tiêu đề video." }, { status: 400 });
   }
   const description = String(formData.get("description") ?? "").trim();
+  // Optional custom cover — uploaded to Drive beforehand through the image
+  // route; `youtubeService.uploadVideo` validates the id before uploading.
+  const thumbnailMediaId = String(formData.get("thumbnailMediaId") ?? "").trim() || undefined;
   const rawVisibility = String(formData.get("visibility") ?? "unlisted");
   const visibility = (VALID_VISIBILITY as string[]).includes(rawVisibility) ? (rawVisibility as YoutubePrivacyStatus) : "unlisted";
 
@@ -61,7 +64,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const asset = await youtubeService.uploadVideo(actor, { buffer, mimeType: validation.value.mimeType, title, description, visibility });
+    const asset = await youtubeService.uploadVideo(actor, { buffer, mimeType: validation.value.mimeType, title, description, visibility, thumbnailMediaId });
     return NextResponse.json({ media: asset }, { status: 201 });
   } catch (err) {
     if (err instanceof YoutubeNotConfiguredError) {

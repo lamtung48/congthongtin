@@ -56,23 +56,23 @@ export const userRepository = {
     return prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
   },
 
-  /** Auto-provision path (`authService.login`): a person who authenticates
-   *  against `hsv-id` but has no CMS account gets a CONTRIBUTOR row linked
-   *  to their `hsv-id` id. There is no local password — `hsv-id` is the
-   *  only credential authority for these accounts — so `passwordHash` is a
-   *  throwaway random value that can never verify anything (if `hsv-id` is
-   *  ever unreachable, such an account simply can't sign in until it's
-   *  back; documented in docs/AUTHENTICATION.md). */
-  async createFromIdentityAsContributor(input: { email: string; displayName: string; identityUserId: string }): Promise<PublicUser> {
+  /**
+   * A CMS account for an existing HSV-ID account, created because an Admin
+   * granted it a role (`userService.grantRole`) — never automatically. No
+   * local password: `hsv-id` is its only credential authority, so the hash
+   * is a random throwaway nobody knows.
+   */
+  async createFromIdentity(input: { email: string; displayName: string; identityUserId: string; role: AdminRole; createdById: string }): Promise<PublicUser> {
     const passwordHash = await hashPassword(`hsv-id:${randomBytes(24).toString("hex")}`);
     return prisma.user.create({
       data: {
         email: input.email,
         displayName: input.displayName,
-        role: "CONTRIBUTOR",
+        role: input.role,
         status: "ACTIVE",
         identityUserId: input.identityUserId,
         passwordHash,
+        createdBy: { connect: { id: input.createdById } },
       },
       select: publicUserSelect,
     });

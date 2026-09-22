@@ -13,8 +13,10 @@ export interface ViewportState {
 function compute(): ViewportState {
   if (typeof window === "undefined") return { navMode: "full", narrow: false, mobile: false };
   const w = window.innerWidth;
-  // full >=1400 · compact 1120-1399 (4 items + "More") · drawer <1120
-  const navMode: NavMode = w >= 1400 ? "full" : w >= 1120 ? "compact" : "drawer";
+  // full >=1400 · compact 1240-1399 (3 items + "More") · drawer <1240.
+  // The header also carries the three platform buttons (Hoạt động · Đào tạo ·
+  // Hội nghị), so compact needs a little more room than the nav alone did.
+  const navMode: NavMode = w >= 1400 ? "full" : w >= 1240 ? "compact" : "drawer";
   return { navMode, narrow: navMode === "drawer", mobile: w < 768 };
 }
 

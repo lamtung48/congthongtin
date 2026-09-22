@@ -64,7 +64,7 @@ export const homepageRepository = {
       });
     },
     latestVideo() {
-      return prisma.video.findFirst({ orderBy: { publishedAt: "desc" }, include: { category: true, media: true } });
+      return prisma.video.findFirst({ orderBy: { publishedAt: "desc" }, include: { category: true, media: { include: { thumbnail: true } } } });
     },
     /** Ecosystem integration task: `order` (admin-set bento position), not
      *  `createdAt` — and only `isEnabled` rows, so a platform an Admin/
@@ -117,7 +117,7 @@ export const homepageRepository = {
    */
   resolvers: {
     video(id: string) {
-      return prisma.video.findUnique({ where: { id }, include: { category: true, media: true } });
+      return prisma.video.findUnique({ where: { id }, include: { category: true, media: { include: { thumbnail: true } } } });
     },
     event(id: string) {
       return prisma.event.findUnique({ where: { id }, include: eventWithRelationsInclude });

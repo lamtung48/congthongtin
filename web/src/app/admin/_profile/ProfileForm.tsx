@@ -13,13 +13,43 @@ const POSITION_LEVELS: { level: HsvPositionLevel; label: string }[] = [
   { level: "TRUONG", label: "Chức vụ cấp Trường" },
 ];
 
+/** Class names the form renders with — the admin look by default; the public
+ *  "Tài khoản cá nhân" page passes its own CSS-module classes. */
+export interface ProfileFormUi {
+  field: string;
+  label: string;
+  input: string;
+  select: string;
+  hint: string;
+  error: string;
+  badge: string;
+  badgeSuccess: string;
+  badgeNeutral: string;
+  submit: string;
+}
+
+const ADMIN_UI: ProfileFormUi = {
+  field: "adminField",
+  label: "adminLabel",
+  input: "adminInput",
+  select: "adminSelect",
+  hint: "adminHint",
+  error: "adminErrorText",
+  badge: "adminBadge",
+  badgeSuccess: "adminBadgeSuccess",
+  badgeNeutral: "adminBadgeNeutral",
+  submit: "adminButton adminButtonPrimary",
+};
+
 /**
- * Shared-profile edit form (the CMS's own look; data + catalogs come from `hsv-id`,
- * see profileActions.ts). Positions are three independent choices per level —
- * picking one sends a proposal for approval at the right unit, clearing one
- * withdraws it. Membership is display-only (set by approvals/admins).
+ * Shared-profile edit form (data + catalogs come from `hsv-id`, see
+ * profileActions.ts). Used by the admin profile page and the public personal
+ * account page (`/tai-khoan/sua`) — same logic, each with its own look (`ui`).
+ * Positions are three independent choices per level — picking one sends a
+ * proposal for approval at the right unit, clearing one withdraws it.
+ * Membership is display-only (set by approvals/admins).
  */
-export function ProfileForm({ profile, options, next }: { profile: HsvProfile; options: HsvProfileOptions; next: string }) {
+export function ProfileForm({ profile, options, next, ui = ADMIN_UI }: { profile: HsvProfile; options: HsvProfileOptions; next: string; ui?: ProfileFormUi }) {
   const router = useRouter();
   const [fullName, setFullName] = useState(profile.fullName);
   const [dateOfBirth, setDateOfBirth] = useState(profile.dateOfBirth && profile.dateOfBirth !== "1950-01-09" ? profile.dateOfBirth : "");
@@ -91,40 +121,40 @@ export function ProfileForm({ profile, options, next }: { profile: HsvProfile; o
   return (
     <form onSubmit={handleSubmit} noValidate>
       {error && (
-        <p className="adminErrorText" role="alert" style={{ marginBottom: 14 }}>
+        <p className={ui.error} role="alert" style={{ marginBottom: 14 }}>
           {error}
         </p>
       )}
 
-      <div className="adminField">
-        <span className="adminLabel">Tư cách Hội viên</span>
+      <div className={ui.field}>
+        <span className={ui.label}>Tư cách Hội viên</span>
         <div>
-          <span className={`adminBadge ${profile.membership.isMember ? "adminBadgeSuccess" : "adminBadgeNeutral"}`}>
+          <span className={`${ui.badge} ${profile.membership.isMember ? ui.badgeSuccess : ui.badgeNeutral}`}>
             {profile.membership.isMember ? `Là Hội viên${memberSince ? ` (từ ${memberSince})` : ""}` : "Chưa xác nhận"}
           </span>
         </div>
-        <p className="adminHint">Do Ban quản trị xác nhận hoặc tự có khi chức vụ của bạn được duyệt — không tự sửa được ở đây.</p>
+        <p className={ui.hint}>Do Ban quản trị xác nhận hoặc tự có khi chức vụ của bạn được duyệt — không tự sửa được ở đây.</p>
       </div>
 
-      <div className="adminField">
-        <label className="adminLabel" htmlFor="fullName">
+      <div className={ui.field}>
+        <label className={ui.label} htmlFor="fullName">
           Họ và tên
         </label>
-        <input id="fullName" type="text" autoComplete="name" className="adminInput" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
+        <input id="fullName" type="text" autoComplete="name" className={ui.input} required value={fullName} onChange={(e) => setFullName(e.target.value)} />
       </div>
 
-      <div className="adminField">
-        <label className="adminLabel" htmlFor="dateOfBirth">
+      <div className={ui.field}>
+        <label className={ui.label} htmlFor="dateOfBirth">
           Ngày tháng năm sinh
         </label>
-        <input id="dateOfBirth" type="date" autoComplete="bday" className="adminInput" required value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+        <input id="dateOfBirth" type="date" autoComplete="bday" className={ui.input} required value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
       </div>
 
-      <div className="adminField">
-        <label className="adminLabel" htmlFor="gender">
+      <div className={ui.field}>
+        <label className={ui.label} htmlFor="gender">
           Giới tính
         </label>
-        <select id="gender" className="adminSelect" required value={gender} onChange={(e) => setGender(e.target.value)}>
+        <select id="gender" className={ui.select} required value={gender} onChange={(e) => setGender(e.target.value)}>
           <option value="">— Chọn giới tính —</option>
           {options.genders.map((g) => (
             <option key={g.value} value={g.value}>
@@ -134,28 +164,28 @@ export function ProfileForm({ profile, options, next }: { profile: HsvProfile; o
         </select>
       </div>
 
-      <div className="adminField">
-        <label className="adminLabel" htmlFor="loginIdentifier">
+      <div className={ui.field}>
+        <label className={ui.label} htmlFor="loginIdentifier">
           Tài khoản đăng nhập
         </label>
-        <input id="loginIdentifier" className="adminInput" value={profile.email ?? profile.phone ?? ""} disabled readOnly />
-        <p className="adminHint">Cố định, không thể tự thay đổi.</p>
+        <input id="loginIdentifier" className={ui.input} value={profile.email ?? profile.phone ?? ""} disabled readOnly />
+        <p className={ui.hint}>Cố định, không thể tự thay đổi.</p>
       </div>
 
-      <div className="adminField">
-        <label className="adminLabel" htmlFor="phone">
+      <div className={ui.field}>
+        <label className={ui.label} htmlFor="phone">
           Số điện thoại
         </label>
-        <input id="phone" type="tel" autoComplete="tel" className="adminInput" required value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <input id="phone" type="tel" autoComplete="tel" className={ui.input} required value={phone} onChange={(e) => setPhone(e.target.value)} />
       </div>
 
-      <div className="adminField">
-        <label className="adminLabel" htmlFor="locality">
+      <div className={ui.field}>
+        <label className={ui.label} htmlFor="locality">
           Địa phương
         </label>
         <select
           id="locality"
-          className="adminSelect"
+          className={ui.select}
           required
           value={localityId}
           onChange={(e) => {
@@ -173,11 +203,11 @@ export function ProfileForm({ profile, options, next }: { profile: HsvProfile; o
       </div>
 
       {localityId && (
-        <div className="adminField">
-          <label className="adminLabel" htmlFor="organization">
+        <div className={ui.field}>
+          <label className={ui.label} htmlFor="organization">
             Đơn vị
           </label>
-          <select id="organization" className="adminSelect" required value={organizationChoice} onChange={(e) => setOrganizationChoice(e.target.value)}>
+          <select id="organization" className={ui.select} required value={organizationChoice} onChange={(e) => setOrganizationChoice(e.target.value)}>
             <option value="">— Chọn đơn vị —</option>
             {organizationsInLocality.map((o) => (
               <option key={o.id} value={o.id}>
@@ -187,16 +217,16 @@ export function ProfileForm({ profile, options, next }: { profile: HsvProfile; o
             <option value={OTHER_VALUE}>Khác — nhập tên đơn vị</option>
           </select>
           {organizationChoice === OTHER_VALUE && (
-            <input className="adminInput" style={{ marginTop: 8 }} placeholder="Nhập tên đơn vị" required value={organizationOther} onChange={(e) => setOrganizationOther(e.target.value)} />
+            <input className={ui.input} style={{ marginTop: 8 }} placeholder="Nhập tên đơn vị" required value={organizationOther} onChange={(e) => setOrganizationOther(e.target.value)} />
           )}
         </div>
       )}
 
-      <div className="adminField">
-        <label className="adminLabel" htmlFor="subjectType">
+      <div className={ui.field}>
+        <label className={ui.label} htmlFor="subjectType">
           Đối tượng
         </label>
-        <select id="subjectType" className="adminSelect" value={subjectType} onChange={(e) => setSubjectType(e.target.value)}>
+        <select id="subjectType" className={ui.select} value={subjectType} onChange={(e) => setSubjectType(e.target.value)}>
           {options.subjectTypes.map((s) => (
             <option key={s.value} value={s.value}>
               {s.label}
@@ -208,11 +238,11 @@ export function ProfileForm({ profile, options, next }: { profile: HsvProfile; o
       {POSITION_LEVELS.filter(({ level }) => options.positions[level].length > 0).map(({ level, label }) => {
         const slot = profile.positions[level];
         return (
-          <div className="adminField" key={level}>
-            <label className="adminLabel" htmlFor={`position-${level}`}>
+          <div className={ui.field} key={level}>
+            <label className={ui.label} htmlFor={`position-${level}`}>
               {label} (nếu có)
             </label>
-            <select id={`position-${level}`} aria-label={label} className="adminSelect" value={positions[level]} onChange={(e) => setPositions((prev) => ({ ...prev, [level]: e.target.value }))}>
+            <select id={`position-${level}`} aria-label={label} className={ui.select} value={positions[level]} onChange={(e) => setPositions((prev) => ({ ...prev, [level]: e.target.value }))}>
               <option value="">Không giữ chức vụ</option>
               {options.positions[level].map((name) => (
                 <option key={name} value={name}>
@@ -220,22 +250,22 @@ export function ProfileForm({ profile, options, next }: { profile: HsvProfile; o
                 </option>
               ))}
             </select>
-            {slot.current && positions[level] === slot.current.position && <p className="adminHint">Đang giữ tại: {slot.current.organization.name}.</p>}
+            {slot.current && positions[level] === slot.current.position && <p className={ui.hint}>Đang giữ tại: {slot.current.organization.name}.</p>}
             {slot.pending && positions[level] === slot.pending.position && (
-              <p className="adminHint">{slot.current ? "Đề xuất đổi chức vụ đang chờ duyệt" : "Đang chờ duyệt"} tại: {slot.pending.organization.name}.</p>
+              <p className={ui.hint}>{slot.current ? "Đề xuất đổi chức vụ đang chờ duyệt" : "Đang chờ duyệt"} tại: {slot.pending.organization.name}.</p>
             )}
             {slot.rejected && positions[level] === "" && (
-              <p className="adminErrorText">
+              <p className={ui.error}>
                 Chức vụ “{slot.rejected.position}” chưa được duyệt{slot.rejected.message ? `: ${slot.rejected.message}` : "."} Hãy chọn lại chức vụ phù hợp hoặc để trống.
               </p>
             )}
-            {level === "TINH" && profile.provinceOrganization && <p className="adminHint">Sẽ gắn với: {profile.provinceOrganization.name}.</p>}
-            <p className="adminHint">Chọn chức vụ mới sẽ gửi đề xuất chờ duyệt; bỏ trống để rút chức vụ.</p>
+            {level === "TINH" && profile.provinceOrganization && <p className={ui.hint}>Sẽ gắn với: {profile.provinceOrganization.name}.</p>}
+            <p className={ui.hint}>Chọn chức vụ mới sẽ gửi đề xuất chờ duyệt; bỏ trống để rút chức vụ.</p>
           </div>
         );
       })}
 
-      <button type="submit" disabled={submitting} className="adminButton adminButtonPrimary" style={{ width: "100%", justifyContent: "center" }}>
+      <button type="submit" disabled={submitting} className={ui.submit} style={{ width: "100%", justifyContent: "center" }}>
         {submitting ? "Đang lưu…" : "Lưu thay đổi"}
       </button>
     </form>

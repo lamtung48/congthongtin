@@ -3,7 +3,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { hsvIdSsoLogoutAll, hsvIdSsoValidate, type HsvCompleteness, type HsvSsoUser } from "@/server/integrations/hsvId";
-import { matchLocalUser, provisionContributor } from "@/server/auth/identityLink";
+import { matchLocalUser } from "@/server/auth/identityLink";
 import { userRepository } from "@/server/repositories/userRepository";
 import type { AdminRole, UserStatus } from "@/generated/prisma/client";
 
@@ -108,8 +108,8 @@ export const getSsoIdentity = cache(async (): Promise<SsoIdentity> => {
  * The DAL's core check (Next's own auth guide, "Creating a Data Access
  * Layer"). `null` for every invalid case: no cookie, session gone/expired at
  * `hsv-id`, hsv-id unreachable, no local CMS account linked to that identity,
- * or the local account disabled. Never provisions or links anything — see
- * `requireSession` (entering the admin area) and `authService.login`.
+ * or the local account disabled. Never creates or links anything (linking
+ * with proof happens only in `authService.login`).
  */
 export const getSession = cache(async (): Promise<SessionUser | null> => {
   const identity = await getSsoIdentity();
@@ -155,25 +155,22 @@ export async function destroyAllSessionsForUser(userId: string): Promise<void> {
   if (target?.identityUserId) invalidateSsoCacheForIdentity(target.identityUserId);
 }
 
+/** Where the editorial ("Ban biên tập") sign-in lives — the shared `/dang-nhap` page, editorial tab. */
+export const EDITORIAL_LOGIN_PATH = "/dang-nhap?luong=bien-tap";
+
 /**
- * Brief section 6: "Nếu chưa đăng nhập: → redirect về /admin/login." The
+ * Brief section 6: "Nếu chưa đăng nhập: → redirect về trang đăng nhập." The
  * one function every protected admin Server Component/Server Action should
  * call first — see docs/AUTHORIZATION.md, "Route guard".
  *
- * A person who is signed in at `hsv-id` (say, from another HSV platform) but
- * has no CMS account yet gets a CONTRIBUTOR one here, on entering the admin
- * area — the same product decision as at login, not on every public page view.
+ * Since sign-in was split into a PERSONAL and an EDITORIAL flow
+ * (docs/AUTHENTICATION.md, "Hai luồng đăng nhập"), a bare SSO session — a
+ * personal account signed in here or on Hoạt động / Đào tạo — never gets a
+ * CMS account by opening `/admin`: it is sent to the editorial sign-in. CMS
+ * roles are granted only by an Admin (`userService.grantRole`).
  */
 export async function requireSession(): Promise<SessionUser> {
   const session = await getSession();
   if (session) return session;
-
-  const identity = await getSsoIdentity();
-  if (identity.ok && (await matchLocalUser(identity.user)).kind === "none") {
-    const created = await provisionContributor(identity.user);
-    if (created && created.status === "ACTIVE") {
-      return { id: created.id, email: created.email, displayName: created.displayName, role: created.role, status: created.status };
-    }
-  }
-  redirect("/admin/login");
+  redirect(EDITORIAL_LOGIN_PATH);
 }

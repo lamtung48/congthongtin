@@ -4,6 +4,7 @@ import { userService } from "@/server/services/userService";
 import { ASSIGNABLE_ROLES, ROLE_LABELS } from "@/server/auth/permissions";
 import { changeRoleAction, setStatusAction } from "./actions";
 import { CreateUserForm } from "./CreateUserForm";
+import { GrantRoleForm } from "./GrantRoleForm";
 import { ResetPasswordButton } from "./ResetPasswordButton";
 import type { AdminRole, UserStatus } from "@/generated/prisma/client";
 import { formatDateTimeVi } from "@/lib/formatDate";
@@ -35,11 +36,18 @@ export default async function AdminUsersPage({
       <div className="adminPageHead">
         <div>
           <h1 className="adminPageTitle">Người dùng</h1>
-          <p className="adminPageSubtitle">Quản lý tài khoản, vai trò và trạng thái hoạt động.</p>
+          <p className="adminPageSubtitle">Quyền Ban biên tập chỉ do Admin cấp — đăng nhập không tự tạo tài khoản. Quản lý vai trò và trạng thái bên dưới.</p>
         </div>
       </div>
 
-      <CreateUserForm />
+      <GrantRoleForm />
+
+      <details style={{ marginBottom: 20 }}>
+        <summary className="adminHint" style={{ cursor: "pointer", marginBottom: 10 }}>
+          Tạo tài khoản mới hoàn toàn (chỉ cho người CHƯA có tài khoản HSV-ID — mật khẩu ban đầu do Admin đặt)
+        </summary>
+        <CreateUserForm />
+      </details>
 
       <form className="adminToolbar" method="get">
         <input type="text" name="q" placeholder="Tìm theo tên, email, tên đăng nhập…" defaultValue={params.q ?? ""} className="adminInput" style={{ minWidth: 220 }} />

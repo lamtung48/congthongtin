@@ -44,6 +44,25 @@ export interface ActivityMapArchipelago {
   illustrative: boolean;
 }
 
+/**
+ * One activity from the Hoạt động platform, shown on the map like an article
+ * but linking out to its landing page there (`url`). Mirrored by
+ * `scripts/syncPlatformActivities.ts` (model `PlatformActivity`).
+ */
+export interface PlatformActivityItem {
+  id: string;
+  title: string;
+  url: string;
+  thumbnail_url: string | null;
+  organization_name: string;
+  start_at: string;
+  end_at: string;
+  /** UPCOMING / ONGOING / COMPLETED */
+  status: string;
+  /** Province or overseas association it is filed under — set on the nationwide "latest" list only. */
+  place: string | null;
+}
+
 export interface ActivityMapProvince {
   province_id: string;
   province_name: string;
@@ -59,11 +78,19 @@ export interface ActivityMapProvince {
   reported: boolean;
   unit_url: string;
   period: string;
+  /** Activities on the Hoạt động platform organised in this province (optional: absent in the static fixture). */
+  platform_activity_count?: number;
+  /** Its newest few (up to 3). */
+  platform_activities?: PlatformActivityItem[];
 }
 
 export interface ActivityMapOverseasCountry {
   name: string;
+  /** Real figure: its Hoạt động activities + published articles of its unit. */
   activity_count: number;
+  platform_activity_count?: number;
+  platform_activities?: PlatformActivityItem[];
+  article_count?: number;
 }
 
 export interface ActivityMapData {
@@ -76,8 +103,11 @@ export interface ActivityMapData {
     provinces_total: number;
     provinces_reported: number;
     period: string;
+    total_platform_activities?: number;
   };
   categories: ActivityMapCategory[];
+  /** Newest Hoạt động activities filed under a province / overseas association, nationwide (up to 4). */
+  platform_activities_latest?: PlatformActivityItem[];
   archipelagos: ActivityMapArchipelago[];
   provinces: ActivityMapProvince[];
   overseas: {

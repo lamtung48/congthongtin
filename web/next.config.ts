@@ -118,6 +118,10 @@ const SECURITY_HEADERS = [
 const nextConfig: NextConfig = {
   basePath,
   assetPrefix: basePath ? `${basePath}/` : undefined,
+  // Thẻ Hội viên dùng chung với Hoạt động/Đào tạo — gói ship nguyên mã
+  // TypeScript (git dependency riêng tư, xem web/Dockerfile) nên Next phải
+  // tự biên dịch nó.
+  transpilePackages: ["@hsv/membership-card"],
   experimental: {
     // Enables `forbidden()`/`unauthorized()` from `next/navigation` — the
     // documented, purpose-built way to render a real 403/401 from a Server

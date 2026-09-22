@@ -38,6 +38,10 @@ const hsv = {
   createUser: async (_i: unknown): Promise<string | null> => null,
   verifyAndGet: async (_a: string, _b: string): Promise<any> => null,
   link: async (_a: string, _b: string): Promise<boolean> => true,
+  // Admin role grant (userService.lookupIdentity / grantRole)
+  lookup: async (_identifier: string): Promise<any> => ({ ok: false, reason: "NOT_FOUND" }),
+  getUser: async (_id: string): Promise<any> => ({ ok: false, reason: "NOT_FOUND" }),
+  profile: async (_id: string): Promise<any> => null,
 };
 
 mock.module("next/headers", {
@@ -83,7 +87,15 @@ mock.module("@/server/integrations/hsvId", {
       return hsv.createUser(i);
     },
     hsvIdVerifyAndGetUser: (a: string, b: string) => hsv.verifyAndGet(a, b),
-    hsvIdLink: (a: string, b: string) => hsv.link(a, b),
+    hsvIdLink: (a: string, b: string) => {
+      hsv.calls.push(`link:${a}:${b}`);
+      return hsv.link(a, b);
+    },
+    hsvIdChangePassword: async () => true,
+    hsvIdConfigured: () => true,
+    hsvIdLookupByIdentifier: (i: string) => hsv.lookup(i),
+    hsvIdGetUser: (id: string) => hsv.getUser(id),
+    hsvIdGetProfile: (id: string) => hsv.profile(id),
   },
 });
 mock.module("@/server/repositories/userRepository", {
@@ -106,8 +118,14 @@ mock.module("@/server/repositories/userRepository", {
       touchLastLogin: async (id: string) => {
         db.users.find((x) => x.id === id)!.lastLoginAt = new Date();
       },
-      createFromIdentityAsContributor: async (i: { email: string; displayName: string; identityUserId: string }) => {
-        const row: Row = { id: `local-${db.users.length + 1}`, username: null, role: "CONTRIBUTOR", status: "ACTIVE", passwordHash: "x", lastLoginAt: null, ...i };
+      createFromIdentity: async ({ createdById: _by, ...i }: { email: string; displayName: string; identityUserId: string; role: Row["role"]; createdById: string }) => {
+        const row: Row = { id: `local-${db.users.length + 1}`, username: null, status: "ACTIVE", passwordHash: "x", lastLoginAt: null, ...i };
+        db.users.push(row);
+        db.created.push(row);
+        return row;
+      },
+      create: async (data: any) => {
+        const row: Row = { id: `local-${db.users.length + 1}`, username: null, status: "ACTIVE", identityUserId: null, lastLoginAt: null, ...data };
         db.users.push(row);
         db.created.push(row);
         return row;
@@ -121,6 +139,7 @@ mock.module("@/server/repositories/auditLogRepository", {
 
 const { getSession, requireSession, SSO_COOKIE, destroySession } = await import("@/server/auth/session");
 const { authService } = await import("@/server/services/authService");
+const { userService, GrantRoleError } = await import("@/server/services/userService");
 
 // ---- fixtures ----------------------------------------------------------------------------------------------------------------------
 const COMPLETE = { complete: true, missing: [] };
@@ -156,6 +175,9 @@ beforeEach(() => {
   hsv.createUser = async () => null;
   hsv.verifyAndGet = async () => null;
   hsv.link = async () => true;
+  hsv.lookup = async () => ({ ok: false, reason: "NOT_FOUND" });
+  hsv.getUser = async () => ({ ok: false, reason: "NOT_FOUND" });
+  hsv.profile = async () => null;
   // The 30 s validation cache lives on globalThis: reset it so cases don't leak into each other.
   (globalThis as any).__cmsSsoValidationCache?.clear();
 });
@@ -220,23 +242,33 @@ describe("getSession (cookie -> hsv-id -> local user)", () => {
 });
 
 describe("requireSession", () => {
-  test("signed-out: redirects to /admin/login", async () => {
-    await assert.rejects(requireSession(), /REDIRECT:\/admin\/login/);
+  // Editorial sign-in lives on the shared page's "Ban biên tập" tab (docs/AUTHENTICATION.md, "Hai luồng đăng nhập").
+  const LOGIN = /REDIRECT:\/dang-nhap\?luong=bien-tap/;
+
+  test("signed-out: redirects to the editorial sign-in", async () => {
+    await assert.rejects(requireSession(), LOGIN);
   });
 
-  test("signed in at hsv-id but no CMS account: provisions a CONTRIBUTOR (never higher)", async () => {
+  test("linked, active CMS account: let through with its LOCAL role", async () => {
+    await localRow({ role: "ADMIN" });
     cookieJar.set(SSO_COOKIE, "tok-1");
     hsv.validate = async () => ({ ok: true, user: idUser(), completeness: COMPLETE, expiresAt: "" });
     const session = await requireSession();
-    assert.equal(session.role, "CONTRIBUTOR");
-    assert.equal(db.created.length, 1);
+    assert.equal(session.role, "ADMIN");
+  });
+
+  test("personal account (SSO session, no CMS account): NOT provisioned by opening /admin -> editorial sign-in", async () => {
+    cookieJar.set(SSO_COOKIE, "tok-1");
+    hsv.validate = async () => ({ ok: true, user: idUser(), completeness: COMPLETE, expiresAt: "" });
+    await assert.rejects(requireSession(), LOGIN);
+    assert.equal(db.created.length, 0);
   });
 
   test("signed in at hsv-id, e-mail belongs to an unlinked local account: no provisioning, no link -> login page", async () => {
     await localRow({ role: "ADMIN", identityUserId: null });
     cookieJar.set(SSO_COOKIE, "stranger");
     hsv.validate = async () => ({ ok: true, user: idUser({ id: "hsv-STRANGER" }), completeness: COMPLETE, expiresAt: "" });
-    await assert.rejects(requireSession(), /REDIRECT:\/admin\/login/);
+    await assert.rejects(requireSession(), LOGIN);
     assert.equal(db.created.length, 0);
   });
 
@@ -244,8 +276,46 @@ describe("requireSession", () => {
     await localRow({ status: "DISABLED" });
     cookieJar.set(SSO_COOKIE, "tok-1");
     hsv.validate = async () => ({ ok: true, user: idUser(), completeness: COMPLETE, expiresAt: "" });
-    await assert.rejects(requireSession(), /REDIRECT:\/admin\/login/);
+    await assert.rejects(requireSession(), LOGIN);
     assert.equal(db.created.length, 0);
+  });
+});
+
+describe("authService.personalLogin", () => {
+  const GENERIC = "Thông tin đăng nhập không chính xác.";
+  let ipCounter = 0;
+  const personalLogin = (identifier: string, password: string) => authService.personalLogin(identifier, password, `10.1.0.${++ipCounter}`);
+
+  test("any HSV-ID account: sets the shared SSO cookie, creates NO local CMS account", async () => {
+    hsv.login = async () => okLogin();
+    assert.deepEqual(await personalLogin("an@example.vn", "pw"), { ok: true });
+    assert.equal(cookieJar.get(SSO_COOKIE), "tok-1");
+    assert.equal(db.created.length, 0);
+    assert.equal(db.users.length, 0);
+  });
+
+  test("an editor signing in on the personal tab keeps their CMS role (getSession finds the linked row)", async () => {
+    await localRow({ role: "MANAGER" });
+    hsv.login = async () => okLogin();
+    hsv.validate = async () => ({ ok: true, user: idUser(), completeness: COMPLETE, expiresAt: "" });
+    assert.deepEqual(await personalLogin("an@example.vn", "pw"), { ok: true });
+    assert.equal((await getSession())?.role, "MANAGER");
+  });
+
+  test("wrong password / locked: the one generic error, no cookie", async () => {
+    hsv.login = async () => ({ ok: false, error: "INVALID_CREDENTIALS", message: "" });
+    assert.deepEqual(await personalLogin("an@example.vn", "bad"), { ok: false, error: GENERIC });
+    hsv.login = async () => ({ ok: false, error: "BLOCKED", message: "" });
+    assert.deepEqual(await personalLogin("an@example.vn", "pw"), { ok: false, error: GENERIC });
+    assert.equal(cookieJar.has(SSO_COOKIE), false);
+  });
+
+  test("hsv-id down: says so, no cookie", async () => {
+    hsv.login = async () => ({ ok: false, error: "UNAVAILABLE", message: "" });
+    const result = await personalLogin("an@example.vn", "pw");
+    assert.equal(result.ok, false);
+    assert.match((result as { error: string }).error, /gián đoạn/);
+    assert.equal(cookieJar.has(SSO_COOKIE), false);
   });
 });
 
@@ -325,10 +395,15 @@ describe("authService.login", () => {
     assert.deepEqual(await login("an@example.vn", "pw"), { ok: false, error: GENERIC });
   });
 
-  test("no CMS account yet: provisions a CONTRIBUTOR", async () => {
+  test("valid HSV-ID account with NO CMS role: refused with the 'not granted' message, nothing created, only that session revoked", async () => {
     hsv.login = async () => okLogin();
-    assert.deepEqual(await login("an@example.vn", "pw"), { ok: true });
-    assert.equal(db.created[0]?.role, "CONTRIBUTOR");
+    const result = await login("an@example.vn", "pw");
+    assert.equal(result.ok, false);
+    assert.match((result as { error: string }).error, /chưa được cấp quyền Ban biên tập/);
+    assert.equal(db.created.length, 0);
+    assert.equal(cookieJar.has(SSO_COOKIE), false);
+    assert.ok(hsv.calls.includes("logout:tok-1"));
+    assert.ok(!hsv.calls.some((c) => c.startsWith("logoutAll")));
   });
 
   test("legacy account (never synced) with the right LOCAL password: created + linked in hsv-id, then signed in", async () => {
@@ -371,5 +446,70 @@ describe("logout", () => {
     await destroySession();
     assert.ok(hsv.calls.includes('logoutAll:{"token":"tok-1"}'));
     assert.equal(cookieJar.has(SSO_COOKIE), false);
+  });
+});
+
+describe("userService.grantRole / lookupIdentity (Admin is the only way to a CMS role)", () => {
+  const ADMIN = { id: "admin-1", email: "admin@x.vn", displayName: "Admin", role: "ADMIN" as const, status: "ACTIVE" as const };
+  const MANAGER = { ...ADMIN, id: "mgr-1", role: "MANAGER" as const };
+  const hsvUser = (over: Record<string, unknown> = {}) => ({ id: "hsv-9", email: "binh@example.vn", phone: "0912345678", fullName: "Tran Binh", status: "ACTIVE", ...over });
+
+  test("only an ADMIN may look up or grant", async () => {
+    await assert.rejects(userService.lookupIdentity(MANAGER, "binh@example.vn"));
+    await assert.rejects(userService.grantRole(MANAGER, "hsv-9", "CONTRIBUTOR"));
+  });
+
+  test("lookup: exact e-mail -> preview with masked phone and the unit, grantable", async () => {
+    hsv.lookup = async () => ({ ok: true, user: hsvUser() });
+    hsv.profile = async () => ({ fullName: "Tran Binh", phone: "0912345678", organization: { name: "DH Bach khoa" }, organizationOther: null, locality: { name: "Ha Noi" }, membership: { isMember: true } });
+    const p = await userService.lookupIdentity(ADMIN, "binh@example.vn");
+    assert.equal(p?.hsvId, "hsv-9");
+    assert.equal(p?.organizationName, "DH Bach khoa");
+    assert.equal(p?.phoneMasked?.includes("345"), false);
+    assert.equal(p?.blocker, null);
+    assert.equal(p?.existing, null);
+  });
+
+  test("lookup: no such account -> null; hsv-id down -> a clear error", async () => {
+    assert.equal(await userService.lookupIdentity(ADMIN, "nobody@example.vn"), null);
+    hsv.lookup = async () => ({ ok: false, reason: "UNAVAILABLE" });
+    await assert.rejects(userService.lookupIdentity(ADMIN, "binh@example.vn"), GrantRoleError);
+  });
+
+  test("grant: creates a linked row with the chosen role from hsv-id's data (not the browser's), audits, links", async () => {
+    hsv.getUser = async () => ({ ok: true, user: hsvUser({ email: "Binh@Example.vn" }) });
+    const user = await userService.grantRole(ADMIN, "hsv-9", "MANAGER");
+    assert.equal(user.role, "MANAGER");
+    assert.equal(db.created[0]?.identityUserId, "hsv-9");
+    assert.equal(db.created[0]?.email, "binh@example.vn");
+    assert.ok(hsv.calls.includes(`link:hsv-9:${user.id}`));
+    assert.deepEqual((db.audit[0] as any).metadata, { via: "admin-grant", role: "MANAGER", identityUserId: "hsv-9" });
+  });
+
+  test("grant refused: already a CMS user / locked / phone-only / e-mail held by an unlinked legacy row", async () => {
+    hsv.getUser = async () => ({ ok: true, user: hsvUser() });
+    await localRow({ identityUserId: "hsv-9", email: "binh@example.vn" });
+    await assert.rejects(userService.grantRole(ADMIN, "hsv-9", "CONTRIBUTOR"), /đã có quyền/);
+    db.users.length = 0;
+
+    hsv.getUser = async () => ({ ok: true, user: hsvUser({ status: "LOCKED" }) });
+    await assert.rejects(userService.grantRole(ADMIN, "hsv-9", "CONTRIBUTOR"), /khoá/);
+
+    hsv.getUser = async () => ({ ok: true, user: hsvUser({ email: null }) });
+    await assert.rejects(userService.grantRole(ADMIN, "hsv-9", "CONTRIBUTOR"), /email/);
+
+    hsv.getUser = async () => ({ ok: true, user: hsvUser() });
+    await localRow({ role: "ADMIN", identityUserId: null, email: "binh@example.vn" });
+    await assert.rejects(userService.grantRole(ADMIN, "hsv-9", "CONTRIBUTOR"), /chưa liên kết/);
+    assert.equal(db.created.length, 0);
+  });
+
+  test("create (with password) refuses an e-mail that already has an HSV-ID account", async () => {
+    hsv.lookup = async () => ({ ok: true, user: hsvUser() });
+    await assert.rejects(
+      userService.create(ADMIN, { email: "binh@example.vn", displayName: "Binh", role: "CONTRIBUTOR", password: "Temp#12345" }),
+      /đã có tài khoản HSV-ID/,
+    );
+    assert.equal(db.created.length, 0);
   });
 });

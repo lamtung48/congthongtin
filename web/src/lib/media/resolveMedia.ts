@@ -23,6 +23,13 @@ import type { MediaAsset } from "@/domain/media";
 /** Resolves the URL `MediaImage` should load for one asset, or `undefined`
  *  to render `MediaPlaceholder` instead. */
 export function resolveImageUrl(media: MediaAsset): string | undefined {
+  // A video's custom cover (a Drive image uploaded in the CMS) wins over the
+  // provider's own thumbnail — and still shows while the video itself is
+  // processing/removed, since the slot is only ever a still here.
+  if (media.type === "video" && media.thumbnail) {
+    const custom = resolveImageUrl(media.thumbnail);
+    if (custom) return custom;
+  }
   if (media.status !== "ready" || !media.sourceId) return undefined;
   if (media.provider === "drive") return `/api/media/${media.id}`;
   if (media.provider === "youtube") return `https://img.youtube.com/vi/${media.sourceId}/hqdefault.jpg`;

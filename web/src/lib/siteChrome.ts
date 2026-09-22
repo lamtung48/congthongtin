@@ -19,6 +19,29 @@ import { categoryHref } from "@/lib/routes";
 
 export const HOI_NGHI_URL = "https://hoinghi.hoisinhvien.com.vn";
 export const DAO_TAO_URL = "https://daotao.hoisinhvien.com.vn";
+export const HOAT_DONG_URL = "https://hoatdong.hoisinhvien.com.vn";
+
+/**
+ * The three ecosystem platforms the header keeps as small quick-access
+ * buttons (and the account panel lists). Static chrome, like the nav: the
+ * homepage launchpad under the Hero reads the live `Platform` registry
+ * instead, so an Admin disabling a platform hides its big card there while
+ * this shortcut stays. `sso` = shares the `hsv_sso` cookie with this portal
+ * (signed in here → already signed in there); Hội nghị is not on SSO yet.
+ */
+export interface EcosystemLink {
+  key: "activity" | "training" | "conference";
+  label: string;
+  href: string;
+  hint: string;
+  sso: boolean;
+}
+
+export const ECOSYSTEM_LINKS: EcosystemLink[] = [
+  { key: "activity", label: "Hoạt động", href: HOAT_DONG_URL, hint: "Đăng ký hoạt động, điểm danh QR, Thẻ Hội viên", sso: true },
+  { key: "training", label: "Đào tạo", href: DAO_TAO_URL, hint: "Khoá học, bài kiểm tra, chứng nhận điện tử", sso: true },
+  { key: "conference", label: "Hội nghị", href: HOI_NGHI_URL, hint: "Điểm danh đại biểu, tài liệu, biểu quyết", sso: false },
+];
 
 /**
  * Trang chủ chung của Hội Sinh viên Việt Nam — trang "mẹ" của cổng này
@@ -43,8 +66,8 @@ export const SITE_NAV: NavItem[] = [
   { label: "Tin tức", href: "/tin-tuc" },
   { label: PHONG_TRAO_SV5T_LABEL, href: categoryHref(PHONG_TRAO_SV5T_SLUG) },
   { label: "Tài liệu", href: "/tai-lieu" },
-  { label: "Hội nghị", href: HOI_NGHI_URL, external: true },
-  { label: "Đào tạo", href: DAO_TAO_URL, external: true },
+  // Hoạt động / Đào tạo / Hội nghị are not text links here any more: the
+  // header renders them as small platform buttons (ECOSYSTEM_LINKS above).
   { label: "Giới thiệu", href: "#", soon: true },
 ];
 
@@ -61,7 +84,7 @@ export const SITE_FOOTER_COLUMNS: FooterColumn[] = [
     ],
   },
   { title: "Nội dung", items: [{ label: "Tin tức", href: "/tin-tuc" }, { label: PHONG_TRAO_SV5T_LABEL, href: categoryHref(PHONG_TRAO_SV5T_SLUG) }, { label: "Tài liệu", href: "/tai-lieu" }] },
-  { title: "Nền tảng số", items: [{ label: "Hội nghị", href: HOI_NGHI_URL, external: true }, { label: "Đào tạo", href: DAO_TAO_URL, external: true }, { label: "Tình nguyện" }, { label: "Dữ liệu & báo cáo" }] },
+  { title: "Nền tảng số", items: [{ label: "Hoạt động", href: HOAT_DONG_URL, external: true }, { label: "Đào tạo", href: DAO_TAO_URL, external: true }, { label: "Hội nghị", href: HOI_NGHI_URL, external: true }, { label: "Tài khoản cá nhân", href: "/tai-khoan" }] },
   { title: "Hỗ trợ", items: [{ label: "Hướng dẫn sử dụng" }, { label: "Câu hỏi thường gặp" }, { label: "Góp ý nội dung" }, { label: "Báo lỗi" }] },
 ];
 

@@ -54,11 +54,9 @@ export interface HsvIdUser {
 
 /**
  * Verify a password against `hsv-id` and return the full account on
- * success (HTTP 200), else `null`. Used by the legacy-account migration at login to:
- *  - link a pre-existing `hsv-id` account (created from another platform)
- *    to a local row, and
- *  - auto-provision a local CONTRIBUTOR for someone who has an `hsv-id`
- *    account (i.e. a hoinghi/daotaohsv user) but no CMS account yet.
+ * success (HTTP 200), else `null`. Used by the legacy-account migration at
+ * login to link a pre-existing `hsv-id` account (created from another
+ * platform) to a local row whose password it shares.
  */
 export async function hsvIdVerifyAndGetUser(identifier: string, password: string): Promise<HsvIdUser | null> {
   const res = await call("/internal/verify-credentials", {
@@ -297,4 +295,43 @@ export async function hsvIdProfileOptions(): Promise<HsvProfileOptions | null> {
   const res = await call("/internal/profile/options", { method: "GET" });
   if (res?.status !== 200) return null;
   return res.body as HsvProfileOptions;
+}
+
+// ============================================================
+// ADMIN PHAN QUYEN (2026-09-22): Admin cua Cong tra DUNG email/SDT cua 1 tai khoan HSV-ID (khong duyet danh ba) roi cap vai tro
+// Ban bien tap. Khong con tu cap CONTRIBUTOR khi dang nhap (docs/AUTHENTICATION.md, "Hai luong dang nhap").
+// ============================================================
+
+export type HsvLookupResult = { ok: true; user: HsvIdUser } | { ok: false; reason: "NOT_FOUND" | "UNAVAILABLE" };
+
+function toHsvIdUser(u: Record<string, unknown> | null | undefined): HsvIdUser | null {
+  if (!u?.id) return null;
+  return { id: String(u.id), email: (u.email as string | null) ?? null, phone: (u.phone as string | null) ?? null, fullName: (u.fullName as string) ?? "", status: (u.status as string) ?? "ACTIVE" };
+}
+
+/** Tai khoan HSV-ID theo DUNG email hoac so dien thoai (khong tim gan dung). */
+export async function hsvIdLookupByIdentifier(identifier: string): Promise<HsvLookupResult> {
+  const value = identifier.trim();
+  const query = value.includes("@") ? `email=${encodeURIComponent(value.toLowerCase())}` : `phone=${encodeURIComponent(value.replace(/[\s.-]/g, ""))}`;
+  const res = await call(`/internal/users/by-identifier?${query}`, { method: "GET" });
+  if (!res) return { ok: false, reason: "UNAVAILABLE" };
+  if (res.status === 404 || res.status === 400) return { ok: false, reason: "NOT_FOUND" };
+  const user = res.status === 200 ? toHsvIdUser(res.body?.user) : null;
+  return user ? { ok: true, user } : { ok: false, reason: "UNAVAILABLE" };
+}
+
+/** Tai khoan HSV-ID theo id (nguon su that khi cap quyen — khong tin email/ten client gui len). */
+export async function hsvIdGetUser(hsvId: string): Promise<HsvLookupResult> {
+  const res = await call(`/internal/users/${encodeURIComponent(hsvId)}`, { method: "GET" });
+  if (!res) return { ok: false, reason: "UNAVAILABLE" };
+  if (res.status === 404) return { ok: false, reason: "NOT_FOUND" };
+  const user = res.status === 200 ? toHsvIdUser(res.body?.user) : null;
+  return user ? { ok: true, user } : { ok: false, reason: "UNAVAILABLE" };
+}
+
+/** Ho so (chi XEM) cua nguoi khac — de Admin doi chieu dung nguoi truoc khi cap quyen. */
+export async function hsvIdGetProfile(hsvId: string): Promise<HsvProfile | null> {
+  const res = await call(`/internal/profile/${encodeURIComponent(hsvId)}`, { method: "GET" });
+  if (res?.status !== 200) return null;
+  return pick<HsvProfile>(res.body, "profile");
 }

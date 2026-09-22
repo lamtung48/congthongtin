@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { Hero } from "@/components/home/Hero";
+import { IntroCurtain } from "@/components/home/IntroCurtain";
 import { TrendingTopics } from "@/components/home/TrendingTopics";
 import { FeaturedNews } from "@/components/home/FeaturedNews";
 import { StoryRail } from "@/components/home/StoryRail";
 import { VideoSection } from "@/components/home/VideoSection";
 import { ActivityMapSection } from "@/components/home/ActivityMapSection";
 import { EcosystemBento } from "@/components/home/EcosystemBento";
+import { PlatformLaunchpad, LAUNCHPAD_CATEGORIES } from "@/components/home/PlatformLaunchpad";
 import { LiveEvents } from "@/components/home/LiveEvents";
 import { Gallery } from "@/components/home/Gallery";
 import { DocumentsSection } from "@/components/home/DocumentsSection";
-import { LocalNews } from "@/components/home/LocalNews";
 import {
   getHomepage,
   getFeaturedArticles,
@@ -17,7 +18,6 @@ import {
   getVideos,
   getEvents,
   getPlatforms,
-  getLocalNews,
   getGallery,
 } from "@/services/homepageService";
 import { documentService } from "@/server/services/documentService";
@@ -40,7 +40,7 @@ export const metadata: Metadata = pageMetadata({
  *  the same newest articles "Tin tiêu điểm" already leads with. `/tin-tuc`
  *  remains the full reverse-chronological listing. */
 export default async function Home() {
-  const [homepage, featured, storyRail, videos, events, platforms, localNews, gallery, documents] =
+  const [homepage, featured, storyRail, videos, events, platforms, gallery, documents] =
     await Promise.all([
       getHomepage(),
       getFeaturedArticles(),
@@ -48,7 +48,6 @@ export default async function Home() {
       getVideos(),
       getEvents(),
       getPlatforms(),
-      getLocalNews(),
       getGallery(),
       // Six newest published văn bản; the section removes itself when there
       // are none (see DocumentsSection).
@@ -57,17 +56,21 @@ export default async function Home() {
 
   return (
     <>
+      <IntroCurtain />
       <Hero slides={homepage.hero} />
+      <PlatformLaunchpad platforms={platforms} />
       <TrendingTopics topics={homepage.trendingTopics} />
       <FeaturedNews featured={featured} />
       <StoryRail stories={storyRail} />
       <ActivityMapSection />
       <VideoSection videos={videos} />
-      <EcosystemBento platforms={platforms} />
+      {/* Hoạt động / Đào tạo / Hội nghị already sit in the launchpad under the Hero. */}
+      <EcosystemBento platforms={platforms.filter((p) => !LAUNCHPAD_CATEGORIES.includes(p.category))} />
       <LiveEvents events={events} />
       <DocumentsSection documents={documents} />
       {gallery.items.length > 0 && <Gallery gallery={gallery} />}
-      <LocalNews items={localNews} />
+      {/* "Mạng lưới cơ sở · Tin từ cơ sở" (LocalNews) is hidden from the homepage at the user's request (2026-09-22);
+          the component and the /admin "Tin từ cơ sở" pinning stay in place, so it can be switched back on here. */}
     </>
   );
 }

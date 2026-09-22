@@ -435,9 +435,10 @@ async function main() {
   }
 
   console.log("Seeding platforms...");
-  const platformCategoryMap: Record<string, "CONFERENCE" | "TRAINING" | "SV5TOT" | "VOLUNTEER" | "DATA"> = {
+  const platformCategoryMap: Record<string, "CONFERENCE" | "TRAINING" | "ACTIVITY" | "SV5TOT" | "VOLUNTEER" | "DATA"> = {
     conference: "CONFERENCE",
     training: "TRAINING",
+    activity: "ACTIVITY",
     sv5tot: "SV5TOT",
     volunteer: "VOLUNTEER",
     data: "DATA",

@@ -91,8 +91,11 @@ export async function linkVideoAction(formData: FormData): Promise<LinkVideoResu
   externalIntegrationRateLimiter.record(actor.id);
   const input = String(formData.get("input") ?? "").trim();
   if (!input) return { ok: false, error: "Vui lòng dán URL hoặc video ID." };
+  // Optional custom cover, already uploaded to Drive by the form
+  // (`uploadImageFile`) — this only carries its id.
+  const thumbnailMediaId = String(formData.get("thumbnailMediaId") ?? "").trim() || undefined;
   try {
-    const asset = await youtubeService.linkExistingVideo(actor, input);
+    const asset = await youtubeService.linkExistingVideo(actor, input, { thumbnailMediaId });
     revalidatePath("/admin/media/videos");
     return { ok: true, video: toVideoOption(asset) };
   } catch (err) {
@@ -172,6 +175,26 @@ export async function refreshVideoStatusAction(formData: FormData): Promise<Vide
   try {
     await youtubeService.refreshStatus(actor, mediaId);
     revalidatePath("/admin/media/videos");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: describeError(err) };
+  }
+}
+
+/** Custom cover image for one video (`thumbnailMediaId` empty → back to
+ *  YouTube's default thumbnail). A local DB write — no YouTube API call — so
+ *  no `externalIntegrationRateLimiter` bucket; the image upload that precedes
+ *  it already went through `uploadRateLimiter`. Revalidates the public pages
+ *  that show the still right away instead of waiting out their ISR window. */
+export async function setVideoThumbnailAction(formData: FormData): Promise<VideoActionResult> {
+  const actor = await requireSession();
+  const mediaId = String(formData.get("mediaId") ?? "");
+  const thumbnailMediaId = String(formData.get("thumbnailMediaId") ?? "").trim() || null;
+  try {
+    await youtubeService.setThumbnail(actor, mediaId, thumbnailMediaId);
+    revalidatePath("/admin/media/videos");
+    revalidatePath("/", "layout");
+    revalidatePath("/video");
     return { ok: true };
   } catch (err) {
     return { ok: false, error: describeError(err) };

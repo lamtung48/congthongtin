@@ -57,6 +57,20 @@ export function buildPlatformView(p: Platform): PlatformView {
         access: p.accessLevel,
         hasCta: true,
       };
+    case "activity":
+      return {
+        id: p.id,
+        name: p.name,
+        url: p.url,
+        metric: p.currentActivity ?? p.metric,
+        desc: p.description,
+        isActive: p.status === "active" || p.status === "open" || p.status === "live",
+        isMaint: p.status === "maintenance",
+        hasCta: p.status !== "maintenance",
+        cta: p.ctaLabel ?? "Khám phá hoạt động",
+        note: "Nền tảng đang bảo trì, vui lòng quay lại sau.",
+        access: p.accessLevel,
+      };
     case "sv5tot":
       return {
         id: p.id,

@@ -105,6 +105,23 @@ network_error | invalid_response`), giữ đúng "không nhồi business logic
 vào UI": UI (`EcosystemBento`) chỉ vẽ theo `Platform.currentActivity`/
 `status` đã lưu trong DB, không bao giờ tự parse phản hồi API.
 
+**Ngoại lệ đã có hệ thống thật — Hội nghị (2026-09-22):** `conferenceAdapter.ts`
+không còn gọi `{apiBaseUrl}/status` mà đọc đúng API công khai sẵn có của nền
+tảng Hội nghị, `GET {apiBaseUrl}/public/conferences` (danh sách hội nghị mà
+trang chủ hoinghi hiển thị trước khi đăng nhập; đã tự ẩn hội nghị chờ duyệt /
+bị khoá / lưu trữ). Chỉ đọc trường `status` của từng hội nghị:
+
+- `currentActivity` = `Tham gia ngay N hội nghị`, N = số hội nghị
+  `NOT_STARTED` (chưa diễn ra) + `ONGOING` (đang diễn ra); N = 0 →
+  `Chưa có hội nghị sắp diễn ra`.
+- `status` = `LIVE` khi có ít nhất một hội nghị `ONGOING`, ngược lại `ACTIVE`.
+- `apiBaseUrl` production = `https://hoinghi.hoisinhvien.com.vn/api` (qua tên
+  miền public nên refresher không phụ thuộc việc `hoinghi-api-1` có nằm trên
+  mạng `edge` hay không; migration `20260922150000_platform_launchpad_copy`
+  đổi giá trị cũ `http://hoinghi-api-1:4000/ecosystem`).
+- Thẻ Hội nghị ở dải "Nền tảng số" (`PlatformLaunchpad`) tách câu này thành
+  "Tham gia ngay" + số lớn + "hội nghị" (`splitFigure`).
+
 `httpJson.ts` là nơi duy nhất gọi `fetch()` thật — timeout 5s qua
 `AbortSignal.timeout()`, không bao giờ throw ra ngoài (mọi lỗi được gói
 lại thành một trong 3 `reason` ở trên).
@@ -191,3 +208,44 @@ Grid bình thường trong suốt quá trình.
 
 `npx tsc --noEmit`, `npx eslint .`, `npm test` (63/63), `npm run build` đều
 sạch.
+
+## Hoạt động → Bản đồ phong trào (2026-09-22)
+
+Các hoạt động công khai của nền tảng Hoạt động hiện trên bản đồ phong trào ở trang chủ, gắn theo tỉnh/thành và Hội Sinh viên
+Việt Nam ở nước ngoài. Mỗi hoạt động hiển thị giống một tin bài (ảnh, tên, ngày, đơn vị, trạng thái); bấm vào thì mở trang landing
+của hoạt động bên Hoạt động (tab mới).
+
+| Phần | Nơi |
+|---|---|
+| Nguồn | `GET {HOATDONG_URL}/api/activities/discover?page=N` — API công khai (cùng dữ liệu tab "Khám phá" ẩn danh), đã kèm tên/loại đơn vị tổ chức và **tỉnh/thành (locality hsv-id) của đơn vị**. Không cần khoá |
+| Đồng bộ | `scripts/syncPlatformActivities.ts` do sidecar `refresher` chạy mỗi ~10 phút (vòng thứ 5 của vòng 120 giây) → bảng `PlatformActivity`. Upsert mọi dòng; chỉ khi đọc ĐỦ mọi trang mới xoá dòng không còn bên Hoạt động |
+| Gắn vị trí | Tên đơn vị tổ chức = tên một `OverseasOrganization` → Hội ngoài nước đó; nếu không, tên locality = tên `Province` → tỉnh/thành đó (so khớp bỏ dấu, `placeKey`). Đơn vị Trung ương (locality "Cơ quan Trung ương"…) không gắn được → giữ trong bảng nhưng không lên bản đồ |
+| Hiển thị | `activityMapService` gộp vào dữ liệu `/api/activity-map` (ISR 300 giây): mỗi tỉnh/Hội có `platform_activity_count` + 3 hoạt động mới nhất; `platform_activities_latest` (4 hoạt động toàn quốc) cho khung "chưa chọn". Con số của bản đồ = tin bài + hoạt động |
+| Hội ngoài nước | Số liệu nay là số thật: hoạt động + tin bài đã xuất bản của đơn vị liên kết (`OverseasOrganization.organizationId`). Trước đây là số mẫu từ seed (`activityCount`, cột này không còn được đọc) |
+| Ảnh | Hoạt động lưu ảnh Drive dạng link "view" (trang HTML) → đổi sang `drive.google.com/thumbnail?id=…`; lỗi tải thì hiện biểu tượng thay thế |
+
+Hoạt động bị huỷ (`CANCELLED`) không hiển thị. Hoạt động giữ nguyên là nguồn sự thật — không sửa tay bảng `PlatformActivity`.
+
+### Đồ hoạ bản đồ — "Nổi khối" (2026-09-22)
+
+`VietnamMapSvg.tsx` vẽ lại theo hướng "Nổi khối" (một trong 4 mẫu xem trước người dùng chọn — mẫu D): đất liền là 4 bản sao
+lệch dần xuống dưới (đậm nhạt khác nhau) + mặt trên cùng, đọc như một khối nổi trên nền biển nhạt; mỗi tỉnh/thành là huy hiệu
+Hội Sinh viên (logo `/images/hsv-logo.png`) với quầng sáng xanh lớn/đậm theo số liệu (tin bài + hoạt động), thay cho chấm
+tròn cũ. Đơn vị chưa có dữ liệu vẫn chỉ là vòng nét đứt mờ (không gắn logo) để trang không rối khi phần lớn tỉnh chưa có gì.
+
+**Từng thử vẽ "ranh giới" giữa các tỉnh bằng lược đồ Voronoi (từ toạ độ tâm tỉnh) — đã bỏ (2026-09-22, theo yêu cầu người
+dùng).** Vẫn giữ nguyên lý do không tự vẽ địa giới hành chính thật: hệ thống chưa có bộ ranh giới 34 tỉnh, thành sau sáp nhập
+(`Province` chỉ lưu 1 điểm toạ độ/tỉnh, không có polygon — xem `docs/DATABASE_SCHEMA.md`), nên nếu sau này cần lại, làm y hệt
+cách cũ chỉ cần dựng lại `voronoi.ts` (đã xoá, xem lịch sử git) và cắt theo `vnPath` qua `clipPath` — không cần sửa gì khác.
+
+**Độ chi tiết đường bờ biển nâng từ 110m lên 10m cho riêng Việt Nam (2026-09-22).** Trước đó `useActivityMapData.ts` tải
+nguyên file `world-atlas` 110m (bờ biển rất đơn giản, không thấy đảo nhỏ) — thấp hơn hẳn độ chi tiết 10m dùng ở 4 mẫu xem
+trước khi chọn kiểu "Nổi khối". Nay tải `public/data/vietnam-region-map.json` — GeoJSON thường (không còn topojson), tự dựng
+một lần từ gói `world-atlas` (10m cho Việt Nam — thấy rõ Phú Quốc, Côn Đảo, Bạch Long Vĩ…; 50m cho 7 nước láng giềng vì chỉ
+là nền, không tương tác/không nhãn), toạ độ làm tròn 4 chữ số thập phân (~11m, thừa đủ cho bản đồ trang chủ). 197KB, so với
+108KB của file 110m cũ. Không cần tách quần đảo Hoàng Sa khỏi Trung Quốc như ở 4 mẫu xem trước: ở độ phân giải 50m dùng cho
+nước láng giềng, dữ liệu Trung Quốc không còn giữ các đảo đó thành polygon riêng (quá nhỏ, bị lược bỏ khi đơn giản hoá) —
+chủ quyền Hoàng Sa/Trường Sa trên trang vẫn do lớp `archipelagos` riêng (từ `activity-map.json`) đảm nhiệm, không đổi.
+Không có script tạo file này trong repo (một lần, không chạy lại định kỳ) — cách tạo lại: đọc `Vietnam` từ
+`world-atlas/countries-10m.json` + 7 nước láng giềng từ `countries-50m.json` (qua `topojson-client`), làm tròn toạ độ, ghi
+thành `FeatureCollection`. `topojson-client`/`world-atlas` không còn là dependency của app (chỉ cần lúc tạo file).

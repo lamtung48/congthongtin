@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import * as topojson from "topojson-client";
-import type { Topology } from "topojson-specification";
-import type { Feature, Geometry } from "geojson";
+import type { Feature, FeatureCollection, Geometry } from "geojson";
 import type { ActivityMapData } from "@/domain/activity";
 import { withBasePath } from "@/lib/basePath";
-import { NEIGHBOURS } from "./constants";
 
 export type MapLoadState = "loading" | "loaded" | "empty" | "error" | "geo";
 
@@ -17,7 +14,7 @@ interface MapDataResult {
   nearFeatures: Feature<Geometry>[];
 }
 
-let topoCache: Topology | null = null;
+let geoCache: FeatureCollection<Geometry> | null = null;
 
 export function useActivityMapData(): MapDataResult {
   const [result, setResult] = useState<MapDataResult>({
@@ -46,17 +43,22 @@ export function useActivityMapData(): MapDataResult {
       }
 
       try {
-        if (!topoCache) {
-          const tr = await fetch(withBasePath("/data/countries-110m.json"));
+        if (!geoCache) {
+          // Plain GeoJSON, not the world-atlas topojson this used to be — see
+          // docs/ECOSYSTEM_INTEGRATION.md, "Đồ hoạ bản đồ" for how it's
+          // generated. Exactly Vietnam (Natural Earth 10m: real coastline
+          // detail, the small islands included) plus the fixed neighbour set
+          // at a coarser 50m (they're backdrop only, never labelled or
+          // clicked) — nothing else, so no runtime allowlist filter is
+          // needed for "which features count as neighbours" the way the old
+          // whole-world file needed one.
+          const tr = await fetch(withBasePath("/data/vietnam-region-map.json"));
           if (!tr.ok) throw new Error("geo");
-          topoCache = (await tr.json()) as Topology;
+          geoCache = (await tr.json()) as FeatureCollection<Geometry>;
         }
-        const objects = topoCache.objects.countries;
-        const land = (topojson.feature(topoCache, objects) as unknown as { features: Feature<Geometry>[] }).features;
-        const vn = land.find(
-          (f) => String(f.id) === "704" || /viet\s?nam/i.test((f.properties as { name?: string } | null)?.name ?? "")
-        );
-        const near = land.filter((f) => NEIGHBOURS.has((f.properties as { name?: string } | null)?.name ?? ""));
+        const land = geoCache.features;
+        const vn = land.find((f) => (f.properties as { name?: string } | null)?.name === "Vietnam");
+        const near = land.filter((f) => f !== vn);
         if (!vn) throw new Error("geo");
         if (cancelled) return;
         setResult({

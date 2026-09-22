@@ -24,6 +24,9 @@ enough to justify explaining why both exist — see their entries below.
 | `/su-kien/[slug]` | Event detail | `getEventBySlug()` | `src/app/su-kien/[slug]/page.tsx` | `slug`: event slug | `GET /api/events/:slug` |
 | `/video` | Video/reportage index | `getVideos()` | `src/app/video/page.tsx` | — | `GET /api/videos` |
 | `/tim-kiem` | Search results (also the search overlay's "view all") | `searchContent()` | `src/app/tim-kiem/page.tsx` | `?q=` search param | `GET /api/search?q=` |
+| `/dang-nhap` | Sign-in — two tabs: personal HSV-ID account (default) / Ban biên tập (`?luong=bien-tap`); `/admin/login` redirects here (docs/AUTHENTICATION.md, "Hai luồng đăng nhập") | `authService.personalLogin` / `authService.login` | `src/app/(site)/dang-nhap/page.tsx` | `?luong=`, `?next=` (same-site paths only) | — |
+| `/tai-khoan` | Personal account: Thẻ Hội viên (from Hoạt động), shared profile, SSO platforms | `accountService.loadPersonalAccount()` | `src/app/(site)/tai-khoan/page.tsx` | — (dynamic, noindex) | `GET /api/me/membership-card` |
+| `/tai-khoan/sua` | Edit the shared HSV-ID profile | `hsvIdSsoProfile()` + `saveProfileAction` | `src/app/(site)/tai-khoan/sua/page.tsx` | — (dynamic, noindex) | — |
 
 ### Why `/dia-phuong/[slug]` and `/don-vi/[slug]` both exist
 
