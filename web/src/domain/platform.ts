@@ -1,7 +1,7 @@
 import type { ID, Slug } from "./common";
 import type { MediaAsset } from "./media";
 
-export type PlatformCategory = "conference" | "training" | "sv5tot" | "volunteer" | "data";
+export type PlatformCategory = "conference" | "training" | "activity" | "sv5tot" | "volunteer" | "data";
 
 /** Union of every status any platform category can be in. Which values are
  *  meaningful for a given category is a view-layer concern (see

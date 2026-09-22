@@ -99,10 +99,14 @@ function parseDurationToSeconds(label: string): number | null {
  * otherwise fail to resolve a `categoryId`.
  */
 const MAP_CATEGORY_SLUG_TO_TAXONOMY_SLUG: Record<string, string> = {
-  sv5tot: "sinh-vien-5-tot",
-  tinhnguyen: "tinh-nguyen",
-  nckh: "nghien-cuu",
-  hoinhap: "hoi-nhap",
+  // Both land on the same taxonomy row since
+  // `20260908090000_merge_phong_trao_sv5t` merged "Sinh viên 5 tốt" into
+  // "Phong trào" — see the accumulation below, which adds their counts
+  // together instead of letting one overwrite the other.
+  sv5tot: "phong-trao-sinh-vien-5-tot",
+  tinhnguyen: "phong-trao-sinh-vien-5-tot",
+  nckh: "dong-chay-sinh-vien",
+  hoinhap: "tin-tu-co-so",
 };
 
 const PLACE_TO_PROVINCE_SLUG: Record<string, string> = {
@@ -306,7 +310,7 @@ async function main() {
   for (const summary of allSummaries.values()) {
     const extra = ARTICLE_CONTENT[summary.slug];
     const localNews = localNewsBySlug.get(summary.slug);
-    const provinceSlug = localNews ? PLACE_TO_PROVINCE_SLUG[localNews.place] : undefined;
+    const provinceSlug = localNews?.place ? PLACE_TO_PROVINCE_SLUG[localNews.place] : undefined;
 
     const article = await prisma.article.upsert({
       where: { slug: summary.slug },
@@ -431,9 +435,10 @@ async function main() {
   }
 
   console.log("Seeding platforms...");
-  const platformCategoryMap: Record<string, "CONFERENCE" | "TRAINING" | "SV5TOT" | "VOLUNTEER" | "DATA"> = {
+  const platformCategoryMap: Record<string, "CONFERENCE" | "TRAINING" | "ACTIVITY" | "SV5TOT" | "VOLUNTEER" | "DATA"> = {
     conference: "CONFERENCE",
     training: "TRAINING",
+    activity: "ACTIVITY",
     sv5tot: "SV5TOT",
     volunteer: "VOLUNTEER",
     data: "DATA",
@@ -516,9 +521,17 @@ async function main() {
       else await prisma.activityStatistic.create({ data });
     });
 
+    // Two of the map file's category keys now resolve to the same merged
+    // taxonomy row, so their counts are added up before writing. Upserting
+    // them one after another would silently keep only the last one — the
+    // merge migration sums, and the seed has to agree with it.
+    const countByCategoryId = new Map<string, number>();
     for (const [categorySlug, count] of Object.entries(p.category_distribution ?? {})) {
       const categoryId = categoryIdBySlug.get(MAP_CATEGORY_SLUG_TO_TAXONOMY_SLUG[categorySlug] ?? categorySlug);
       if (!categoryId) continue;
+      countByCategoryId.set(categoryId, (countByCategoryId.get(categoryId) ?? 0) + count);
+    }
+    for (const [categoryId, count] of countByCategoryId) {
       await prisma.activityStatistic.upsert({
         where: { provinceId_categoryId_period: { provinceId, categoryId, period: p.period } },
         create: { provinceId, categoryId, period: p.period, activityCount: count, articleCount: null, organizationCount: null, participantCount: null, reported: p.reported },

@@ -8,18 +8,38 @@ import { MediaVideo } from "@/components/ui/MediaVideo";
 import { Reveal } from "@/components/ui/Reveal";
 import { IconArrowRight, IconPlay } from "@/components/icons";
 import type { Video } from "@/domain/video";
-import type { MediaAsset } from "@/domain/media";
 import { formatDateVi } from "@/lib/formatDate";
 import { useModalDialog } from "@/lib/hooks/useModalDialog";
 
-const PLAYLIST_THUMB_MEDIA: MediaAsset = { id: "video-playlist-thumb", provider: "local-placeholder", type: "image", status: "missing", placeholder: "Ảnh video" };
+
+/**
+ * The homepage shows a fixed six: one in the large player and five stacked
+ * in the column beside it. `getVideos()` returns the whole catalogue (it also
+ * backs `/video`'s full listing), so the cap belongs here, next to the layout
+ * that depends on it — the two-column grid is designed around this count, and
+ * a growing catalogue would otherwise stretch the right-hand column well past
+ * the player.
+ *
+ * Which six: the order `getVideos()` already produced — CMS-pinned first, in
+ * pin order, then newest (`lib/videoOrder.ts`). So pinning a video on
+ * /admin/media/videos both puts it in the player and decides who makes the
+ * cut.
+ */
+const HOMEPAGE_VIDEO_COUNT = 6;
 
 export function VideoSection({ videos }: { videos: Video[] }) {
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
-  const main = videos[index];
+
+  const shown = videos.slice(0, HOMEPAGE_VIDEO_COUNT);
+  // Clamp rather than trust the state: the list can shrink under a selection
+  // that was valid a moment ago (a video unpublished between two ISR
+  // revalidations), and `shown[stale]` would be `undefined` — the same shape
+  // of crash an empty gallery once caused during prerender.
+  const active = Math.min(index, Math.max(shown.length - 1, 0));
+  const main = shown[active];
 
   useEffect(() => {
     if (!playing) return;
@@ -32,10 +52,16 @@ export function VideoSection({ videos }: { videos: Video[] }) {
   useModalDialog(playing, backdropRef, () => setPlaying(false), closeBtnRef);
 
   function selectVideo(i: number) {
-    if (i === index) return;
+    if (i === active) return;
     setIndex(i);
     setPlaying(false);
   }
+
+  // No published video at all: no section. Also the guard that keeps `main`
+  // from being `undefined` two lines into the JSX — an empty Gallery once
+  // failed `next build` outright for exactly this reason, and this component
+  // dereferences its main item just as directly.
+  if (!main) return null;
 
   return (
     <section aria-label="Video và phóng sự" className={styles.section}>
@@ -70,36 +96,29 @@ export function VideoSection({ videos }: { videos: Video[] }) {
 
           <div role="list" aria-label="Danh sách phát" className={styles.playlist}>
             <span className={styles.playlistLabel}>Trong playlist</span>
-            {videos.map((v, i) => {
-              const active = i === index;
-              return (
-                <div key={v.id} role="listitem" className={styles.playlistItem}>
-                  {active && <span className={styles.activeBar} />}
-                  <button type="button" onClick={() => selectVideo(i)} aria-label={`Chọn video: ${v.title}`} className={styles.thumbBtn}>
-                    <MediaImage media={PLAYLIST_THUMB_MEDIA} />
-                    <span className={styles.thumbOverlay}>
-                      <IconPlay size={18} />
-                    </span>
-                  </button>
-                  <div className={styles.plMeta}>
-                    <div className={styles.plMetaRow}>
-                      <span className={styles.plCat}>{v.category.name}</span>
-                      <span className={styles.plDuration}>{v.durationLabel}</span>
-                      {active && <span className={styles.plBadgeActive}>Đang chọn</span>}
-                      {!(v.media.status === "ready" && v.media.sourceId) && <span className={styles.plBadgeOffline}>Chưa có nguồn</span>}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => selectVideo(i)}
-                      className={styles.plTitleBtn}
-                      style={{ color: active ? "#fff" : "var(--ink-300)" }}
-                    >
-                      {v.title}
-                    </button>
+            {/* The five that are not currently in the player — the one that
+                is already fills the large slot, and listing it again would
+                make the section read as seven items instead of six. */}
+            {shown.map((v, i) => ({ v, i })).filter(({ i }) => i !== active).map(({ v, i }) => (
+              <div key={v.id} role="listitem" className={styles.playlistItem}>
+                <button type="button" onClick={() => selectVideo(i)} aria-label={`Chọn video: ${v.title}`} className={styles.thumbBtn}>
+                  <MediaImage media={v.media} sizes="120px" />
+                  <span className={styles.thumbOverlay}>
+                    <IconPlay size={18} />
+                  </span>
+                </button>
+                <div className={styles.plMeta}>
+                  <div className={styles.plMetaRow}>
+                    <span className={styles.plCat}>{v.category.name}</span>
+                    <span className={styles.plDuration}>{v.durationLabel}</span>
+                    {!(v.media.status === "ready" && v.media.sourceId) && <span className={styles.plBadgeOffline}>Chưa có nguồn</span>}
                   </div>
+                  <button type="button" onClick={() => selectVideo(i)} className={styles.plTitleBtn} style={{ color: "var(--ink-300)" }}>
+                    {v.title}
+                  </button>
                 </div>
-              );
-            })}
+              </div>
+            ))}
             <div className={styles.plFootRow}>
               <span />
               <span className={styles.plFootNote}>Trình phát chỉ nạp khi bạn bấm phát. Không có video nào tự phát kèm âm thanh.</span>

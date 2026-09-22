@@ -9,6 +9,8 @@ import { YoutubeNotConfiguredError, YoutubeNotConnectedError, YoutubeOperationEr
 import { MediaInUseError } from "@/server/services/mediaService";
 import { mediaService } from "@/server/services/mediaService";
 import { externalIntegrationRateLimiter } from "@/server/security/rateLimit";
+import { homepageService } from "@/server/services/homepageService";
+import { videoRepository } from "@/server/repositories/videoRepository";
 
 /**
  * Every action re-checks permission/role inside `youtubeService` itself
@@ -89,8 +91,11 @@ export async function linkVideoAction(formData: FormData): Promise<LinkVideoResu
   externalIntegrationRateLimiter.record(actor.id);
   const input = String(formData.get("input") ?? "").trim();
   if (!input) return { ok: false, error: "Vui lòng dán URL hoặc video ID." };
+  // Optional custom cover, already uploaded to Drive by the form
+  // (`uploadImageFile`) — this only carries its id.
+  const thumbnailMediaId = String(formData.get("thumbnailMediaId") ?? "").trim() || undefined;
   try {
-    const asset = await youtubeService.linkExistingVideo(actor, input);
+    const asset = await youtubeService.linkExistingVideo(actor, input, { thumbnailMediaId });
     revalidatePath("/admin/media/videos");
     return { ok: true, video: toVideoOption(asset) };
   } catch (err) {
@@ -176,6 +181,26 @@ export async function refreshVideoStatusAction(formData: FormData): Promise<Vide
   }
 }
 
+/** Custom cover image for one video (`thumbnailMediaId` empty → back to
+ *  YouTube's default thumbnail). A local DB write — no YouTube API call — so
+ *  no `externalIntegrationRateLimiter` bucket; the image upload that precedes
+ *  it already went through `uploadRateLimiter`. Revalidates the public pages
+ *  that show the still right away instead of waiting out their ISR window. */
+export async function setVideoThumbnailAction(formData: FormData): Promise<VideoActionResult> {
+  const actor = await requireSession();
+  const mediaId = String(formData.get("mediaId") ?? "");
+  const thumbnailMediaId = String(formData.get("thumbnailMediaId") ?? "").trim() || null;
+  try {
+    await youtubeService.setThumbnail(actor, mediaId, thumbnailMediaId);
+    revalidatePath("/admin/media/videos");
+    revalidatePath("/", "layout");
+    revalidatePath("/video");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: describeError(err) };
+  }
+}
+
 /** Unlinking (brief: deleting from this CMS never deletes the actual
  *  YouTube video) — reuses `mediaService.remove()`'s usage/ownership policy
  *  unchanged, since a video's delete rules are identical to an image's. */
@@ -198,4 +223,32 @@ export async function unlinkVideoAction(formData: FormData): Promise<VideoAction
 function describeError(err: unknown): string {
   if (err instanceof YoutubeNotConfiguredError || err instanceof YoutubeNotConnectedError || err instanceof YoutubeOperationError) return err.message;
   return err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định.";
+}
+
+/**
+ * Pin/unpin one video on the homepage's "Video và phóng sự" section.
+ * Addressed by `mediaId` because that is what the video list has a row for;
+ * the placement itself is on the `Video` record, which is what the public
+ * section actually reads. A media asset that was never published as a video
+ * has nothing to pin — the button is not rendered for it, and this is the
+ * server-side half of that check.
+ */
+export async function toggleVideoHomepagePinAction(formData: FormData): Promise<VideoActionResult> {
+  try {
+    const actor = await requireSession();
+    const mediaId = String(formData.get("mediaId"));
+    const pinned = String(formData.get("pinned")) === "true";
+    const video = await videoRepository.findByMediaId(mediaId);
+    if (!video) {
+      return { ok: false, error: "Video này chưa được đăng lên trang công khai nên chưa ghim được." };
+    }
+    await homepageService.setVideoPinned(actor, video.id, pinned);
+    revalidatePath("/admin/media/videos");
+    // The pin decides which video leads the homepage section and /video.
+    revalidatePath("/", "layout");
+    revalidatePath("/video");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Không đổi được trạng thái ghim." };
+  }
 }

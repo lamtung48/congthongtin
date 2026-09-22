@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import { notFound, forbidden } from "next/navigation";
 import { requireSession } from "@/server/auth/session";
 import { articleService } from "@/server/services/articleService";
+import type { HeroConfigInput } from "@/server/validation/heroConfig";
 import { taxonomyService } from "@/server/services/taxonomyService";
 import { mediaService } from "@/server/services/mediaService";
 import { youtubeService } from "@/server/services/youtubeService";
 import { organizationRepository } from "@/server/repositories/organizationRepository";
 import { provinceRepository } from "@/server/repositories/provinceRepository";
 import { authorProfileRepository } from "@/server/repositories/authorProfileRepository";
+import { homepagePlacementRepository, ARTICLE_SECTION_KEYS, ARTICLE_SECTION_LABELS } from "@/server/repositories/homepagePlacementRepository";
+import { adminImagePreviewUrl } from "@/lib/media/adminPreview";
 import { hasPermission } from "@/server/auth/permissions";
 import { ArticleEditor } from "./ArticleEditor";
 import type { EditorBlock } from "./ArticleContentEditor";
@@ -22,7 +25,7 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
   if (!articleService.canView(session, article)) forbidden();
 
   const canViewAnyMedia = hasPermission(session.role, "media.manage.any");
-  const [categories, topics, tags, organizations, provinces, authors, mediaRows, ownAuthor, revisions] = await Promise.all([
+  const [categories, topics, tags, organizations, provinces, authors, mediaRows, ownAuthor, revisions, homepageSections] = await Promise.all([
     taxonomyService.listCategories(),
     taxonomyService.listTopics(),
     taxonomyService.listTags(),
@@ -32,6 +35,7 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
     mediaService.listForAdmin(session, { take: 200 }),
     authorProfileRepository.findByUserId(session.id),
     articleService.listRevisions(session, article),
+    homepagePlacementRepository.listSectionKeysForArticle(article.id),
   ]);
   const notes = await articleService.listNotes(session, article);
 
@@ -56,12 +60,15 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
         canonicalUrl: article.canonicalUrl ?? "",
         topicIds: article.topics.map((t) => t.topicId),
         tagIds: article.tags.map((t) => t.tagId),
+        heroConfig: (article.heroConfig as HeroConfigInput | null) ?? null,
+        homepageSections,
         blocks,
         status: article.status,
         returnNote: article.returnNote,
         publishedAt: article.publishedAt ? article.publishedAt.toISOString() : null,
       }}
       options={{
+        homepageSections: ARTICLE_SECTION_KEYS.map((k) => ({ id: k, name: ARTICLE_SECTION_LABELS[k] })),
         categories: categories.map((c) => ({ id: c.id, name: c.name })),
         topics: topics.map((t) => ({ id: t.id, name: t.name })),
         tags: tags.map((t) => ({ id: t.id, name: t.name })),
@@ -72,8 +79,8 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
           .filter((m) => m.type === "IMAGE")
           .map((m) => ({
             id: m.id,
-            label: m.alt || m.caption || m.providerFileId || m.id,
-            previewUrl: m.provider === "GOOGLE_DRIVE" && m.status === "READY" ? `/api/media/${m.id}` : undefined,
+            label: m.alt || m.caption || m.filename || m.providerFileId || m.id,
+            previewUrl: adminImagePreviewUrl(m),
           })),
         // PRIVATE videos are filtered out at the source — brief section 3's
         // decision to block them entirely from article content, not just

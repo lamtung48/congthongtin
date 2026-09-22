@@ -4,11 +4,13 @@ import { authorProfileRepository } from "@/server/repositories/authorProfileRepo
 import { mediaRepository } from "@/server/repositories/mediaRepository";
 import { auditLogRepository } from "@/server/repositories/auditLogRepository";
 import { articleNoteRepository } from "@/server/repositories/articleNoteRepository";
+import { homepagePlacementRepository, type ArticleSectionKey } from "@/server/repositories/homepagePlacementRepository";
 import { notificationService } from "@/server/services/notificationService";
 import { parseArticleBlockData, collectMediaIdsFromBlocks, type ArticleBlockType } from "@/server/validation/articleBlocks";
+import { normalizeHeroConfig } from "@/server/validation/heroConfig";
 import { hasPermission } from "@/server/auth/permissions";
 import type { SessionUser } from "@/server/auth/session";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import type { ArticleStatus } from "@/generated/prisma/client";
 
 /**
@@ -52,6 +54,15 @@ export interface ArticleFieldsInput {
   canonicalUrl?: string | null;
   topicIds?: string[];
   tagIds?: string[];
+  /** Raw Hero-editor payload — normalised by `normalizeHeroConfig` before
+   *  it's written (or cleared to DB NULL). See `docs/HERO.md`. */
+  heroConfig?: unknown;
+  /** Homepage sections this article is pinned into ("Hiển thị tại trang
+   *  chủ"). Replaces the whole set when present, like `topicIds`/`tagIds`;
+   *  omit to leave the current pins untouched (autosave never sends it).
+   *  Lives on `HomepagePlacement`, not on `Article` — `fieldsToData` ignores
+   *  it and `create`/`update` sync it separately. */
+  homepageSections?: ArticleSectionKey[];
 }
 
 /** DRAFT and IN_REVIEW can move to most other states; PUBLISHED/ARCHIVED are
@@ -187,6 +198,10 @@ function fieldsToData(fields: ArticleFieldsInput) {
   if (fields.seoTitle !== undefined) data.seoTitle = fields.seoTitle;
   if (fields.seoDescription !== undefined) data.seoDescription = fields.seoDescription;
   if (fields.canonicalUrl !== undefined) data.canonicalUrl = fields.canonicalUrl;
+  if (fields.heroConfig !== undefined) {
+    const cleaned = normalizeHeroConfig(fields.heroConfig);
+    data.heroConfig = cleaned ?? Prisma.DbNull;
+  }
   return data;
 }
 
@@ -288,6 +303,7 @@ export const articleService = {
     }
     if (input.fields.topicIds) await articleRepository.replaceTopics(article.id, input.fields.topicIds);
     if (input.fields.tagIds) await articleRepository.replaceTags(article.id, input.fields.tagIds);
+    if (input.fields.homepageSections) await homepagePlacementRepository.setArticleSections(article.id, input.fields.homepageSections);
     await auditLogRepository.record({ actorId: actor.id, action: "CREATE_ARTICLE", entityType: "Article", entityId: article.id });
     const full = await articleRepository.findById(article.id);
     if (full) await snapshotRevision(full, actor.id, "Initial version");
@@ -315,13 +331,18 @@ export const articleService = {
     }
     if (input.fields.topicIds) await articleRepository.replaceTopics(article.id, input.fields.topicIds);
     if (input.fields.tagIds) await articleRepository.replaceTags(article.id, input.fields.tagIds);
+    const placementsChanged = input.fields.homepageSections !== undefined;
+    if (input.fields.homepageSections) await homepagePlacementRepository.setArticleSections(article.id, input.fields.homepageSections);
     const full = await articleRepository.findById(updated.id);
     if (full) await snapshotRevision(full, actor.id, input.note);
     await auditLogRepository.record({ actorId: actor.id, action: "UPDATE_ARTICLE", entityType: "Article", entityId: article.id });
     // `article` is the pre-update row — its `status` here reflects whether
     // this edit just changed already-public content (a Manager fixing a
     // typo on a live article), the case `revalidatePublicSite()` exists for.
-    if (article.status === "PUBLISHED") revalidatePublicSite();
+    // A placement change moves the article between homepage sections, which
+    // is a change to the homepage even when the article's own text is
+    // untouched — so that alone is enough to warrant a revalidate.
+    if (article.status === "PUBLISHED" || placementsChanged) revalidatePublicSite();
     return full;
   },
 
@@ -349,6 +370,13 @@ export const articleService = {
     if (input.blocks) {
       await articleRepository.replaceBlocks(article.id, validateBlocks(input.blocks));
       await syncBlockMediaUsage(article.id, input.blocks);
+    }
+    // Unlike topics/tags (whose pickers save through `update`), the homepage
+    // tick-boxes live in the same form state autosave carries — skipping
+    // them here would let the editor clear its "unsaved" marker while the
+    // pin the user just ticked was silently dropped.
+    if (input.fields.homepageSections) {
+      await homepagePlacementRepository.setArticleSections(article.id, input.fields.homepageSections);
     }
     return articleRepository.findById(updated.id);
   },
@@ -588,6 +616,7 @@ export const articleService = {
     if (actor.role === "MANAGER" && article.status === "PUBLISHED") {
       throw new Error("A Manager must unpublish an article before deleting it.");
     }
+    await homepagePlacementRepository.deleteForArticle(article.id);
     await articleRepository.remove(article.id);
     await auditLogRepository.record({ actorId: actor.id, action: "DELETE", entityType: "Article", entityId: article.id });
     // Admin deleting a still-live PUBLISHED article outright (a Manager

@@ -68,3 +68,7 @@
 .ctaLink:hover { text-decoration: none; }
 .noteLight { font-family: var(--font-ui); font-size: 12.5px; line-height: 1.55; color: var(--text-muted); }
 .accessLight { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+
+.cardSpan4 { grid-column: span 4; }
+.featuredFull { grid-column: span 4; grid-row: span 1; }
+.featuredShort { grid-row: span 1; }

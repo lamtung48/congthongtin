@@ -68,6 +68,9 @@ mock.module("@/server/integrations/googleDrive", {
     getDriveFileStream: async () => {
       throw new Error("getDriveFileStream is not exercised by this test suite");
     },
+    getDriveFileContent: async () => {
+      throw new Error("getDriveFileContent is not exercised by this test suite");
+    },
     isGoogleDriveConfigured: () => true,
     GoogleDriveNotConfiguredError: class GoogleDriveNotConfiguredError extends Error {},
     GoogleDriveOperationError: class GoogleDriveOperationError extends Error {},

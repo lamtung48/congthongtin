@@ -1,4 +1,11 @@
-.stage { position: relative; margin: 0 auto; }
+.stage {
+  position: relative;
+  margin: 0 auto;
+  border-radius: var(--radius-lg);
+  /* A pale sea behind the "nổi khối" landmass block (see .landExtrude below) — sells the floating-block
+     read instead of the block sitting flush on the card's own white background. */
+  background: radial-gradient(120% 100% at 50% 8%, var(--blue-50) 0%, var(--surface-card) 72%);
+}
 .stage svg { display: block; overflow: hidden; }
 .province { cursor: pointer; outline: none; }
 /*
@@ -12,6 +19,17 @@
  */
 .province circle.dot { transition: r var(--dur-base) var(--ease-standard), fill-opacity var(--dur-base) var(--ease-standard); }
 .province:focus-visible circle.ring { stroke: var(--focus-ring); stroke-width: 2.5; opacity: 1; }
+
+/* Province marker: a small glow (radial gradient, sized/opacity by value) behind the HSV emblem.
+   `.markerScale` is a SEPARATE inner <g> from the position-only outer <g transform="translate(...)">
+   in VietnamMapSvg.tsx, because that outer transform already carries the translate — scaling has to be
+   a second, nested transform, and needs `transform-box: fill-box` so it pivots on the marker's own
+   center instead of the SVG viewport origin. */
+.markerScale { transform-box: fill-box; transform-origin: center; transition: transform var(--dur-base) var(--ease-standard); }
+.province[data-active="true"] .markerScale { transform: scale(1.16); }
+.markerGlow { transition: opacity var(--dur-base) var(--ease-standard), r var(--dur-base) var(--ease-standard); }
+.markerLogo { transition: filter var(--dur-base) var(--ease-standard); }
+.province[data-active="true"] .markerLogo { filter: drop-shadow(0 2px 5px rgba(4, 22, 43, .38)); }
 
 .archLabel text { font-family: var(--font-mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; fill: var(--text-muted); }
 .archLabel text.sub { font-size: 7.5px; letter-spacing: .06em; fill: var(--text-faint); text-transform: none; }
@@ -87,7 +105,9 @@
 .legendLabel { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-faint); align-self: center; }
 .legendSizes { display: flex; align-items: flex-end; gap: 12px; }
 .legendSizeItem { display: flex; flex-direction: column; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); }
-.legendDot { display: block; border-radius: 999px; background: var(--blue-500); opacity: .55; }
+/* Approximates the SVG marker glow (radialGradient #glow in VietnamMapSvg.tsx) in plain CSS —
+   this swatch is a <span>, not SVG, so it can't reference that gradient directly. */
+.legendDot { display: block; border-radius: 999px; background: radial-gradient(circle, var(--blue-400), var(--blue-700) 55%, transparent 100%); opacity: .8; }
 .legendNone { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
 .legendNoneDot { width: 13px; height: 13px; border-radius: 999px; border: 1.4px dashed var(--ink-400); background: transparent; }
 

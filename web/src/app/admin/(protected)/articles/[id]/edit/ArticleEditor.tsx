@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArticleContentEditor, type EditorBlock } from "./ArticleContentEditor";
 import { MediaPicker, type MediaOption } from "../../MediaPicker";
+import { HeroPanel } from "./HeroPanel";
+import { slugify } from "@/lib/slug";
+import type { HeroConfigInput } from "@/server/validation/heroConfig";
 import type { VideoOption } from "../../VideoPicker";
 import { autosaveAction, saveAction, restoreRevisionAction, addNoteAction, type EditorFormPayload } from "./actions";
 import {
@@ -19,6 +22,8 @@ import {
   deleteArticleAction,
 } from "../../actions";
 import type { ArticleStatus } from "@/generated/prisma/client";
+import type { ArticleSectionKey } from "@/server/repositories/homepagePlacementRepository";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 interface Option { id: string; name: string }
 
@@ -38,6 +43,8 @@ interface InitialData {
   canonicalUrl: string;
   topicIds: string[];
   tagIds: string[];
+  heroConfig: HeroConfigInput | null;
+  homepageSections: ArticleSectionKey[];
   blocks: EditorBlock[];
   status: ArticleStatus;
   returnNote: string | null;
@@ -103,6 +110,8 @@ function toPayload(fields: Omit<InitialData, "blocks" | "status" | "returnNote" 
       canonicalUrl: fields.canonicalUrl || null,
       topicIds: fields.topicIds,
       tagIds: fields.tagIds,
+      heroConfig: fields.heroConfig,
+      homepageSections: fields.homepageSections,
     },
     blocks,
   };
@@ -150,7 +159,7 @@ export function ArticleEditor({
 }: {
   articleId: string;
   initial: InitialData;
-  options: { categories: Option[]; topics: Option[]; tags: Option[]; organizations: Option[]; provinces: Option[]; authors: Option[]; media: MediaOption[]; video: VideoOption[] };
+  options: { homepageSections: Option[]; categories: Option[]; topics: Option[]; tags: Option[]; organizations: Option[]; provinces: Option[]; authors: Option[]; media: MediaOption[]; video: VideoOption[] };
   permissions: Permissions;
   revisions: RevisionRow[];
   notes: NoteRow[];
@@ -173,13 +182,19 @@ export function ArticleEditor({
   const [canonicalUrl, setCanonicalUrl] = useState(initial.canonicalUrl);
   const [topicIds, setTopicIds] = useState(initial.topicIds);
   const [tagIds, setTagIds] = useState(initial.tagIds);
+  const [heroConfig, setHeroConfig] = useState<HeroConfigInput | null>(initial.heroConfig);
+  const [homepageSections, setHomepageSections] = useState<ArticleSectionKey[]>(initial.homepageSections);
   const [blocks, setBlocks] = useState(initial.blocks);
 
   const payload = useMemo(
-    () => toPayload({ slug, title, subtitle, excerpt, categoryId, authorId, organizationId, provinceId, coverMediaId, ogMediaId, seoTitle, seoDescription, canonicalUrl, topicIds, tagIds }, blocks),
-    [slug, title, subtitle, excerpt, categoryId, authorId, organizationId, provinceId, coverMediaId, ogMediaId, seoTitle, seoDescription, canonicalUrl, topicIds, tagIds, blocks],
+    () => toPayload({ slug, title, subtitle, excerpt, categoryId, authorId, organizationId, provinceId, coverMediaId, ogMediaId, seoTitle, seoDescription, canonicalUrl, topicIds, tagIds, heroConfig, homepageSections }, blocks),
+    [slug, title, subtitle, excerpt, categoryId, authorId, organizationId, provinceId, coverMediaId, ogMediaId, seoTitle, seoDescription, canonicalUrl, topicIds, tagIds, heroConfig, homepageSections, blocks],
   );
   const serialized = useMemo(() => JSON.stringify(payload), [payload]);
+
+  // Names an upload made from this editor after the article, for a
+  // browsable Drive folder.
+  const uploadNameHint = useMemo(() => slug || slugify(title), [slug, title]);
   // A plain state (not a ref) holds "what's saved so far" — reading `.current`
   // during render to compute `dirty` would violate React's rule against
   // accessing refs while rendering; state is the render-safe equivalent here
@@ -308,7 +323,7 @@ export function ArticleEditor({
 
           <div className="adminCard adminCardPad" style={{ marginBottom: 16 }}>
             <h2 className="adminLabel" style={{ marginBottom: 10, fontSize: 13 }}>Nội dung</h2>
-            <ArticleContentEditor blocks={blocks} onChange={setBlocks} mediaOptions={options.media} videoOptions={options.video} canManageMediaAny={permissions.canManageMediaAny} canUploadVideo={permissions.canUploadVideo} editable={!locked} />
+            <ArticleContentEditor blocks={blocks} onChange={setBlocks} mediaOptions={options.media} videoOptions={options.video} canManageMediaAny={permissions.canManageMediaAny} canUploadVideo={permissions.canUploadVideo} editable={!locked} nameHint={uploadNameHint} />
           </div>
 
           <div className="adminCard adminCardPad">
@@ -326,12 +341,53 @@ export function ArticleEditor({
                 <label className="adminLabel" htmlFor="e-canonical">Canonical URL</label>
                 <input id="e-canonical" className="adminInput" value={canonicalUrl} onChange={(e) => setCanonicalUrl(e.target.value)} disabled={locked} />
               </div>
-              <MediaPicker label="Ảnh chia sẻ (OG image)" value={ogMediaId} onChange={setOgMediaId} options={options.media} canManageAny={permissions.canManageMediaAny} />
+              <MediaPicker label="Ảnh chia sẻ (OG image)" value={ogMediaId} onChange={setOgMediaId} options={options.media} canManageAny={permissions.canManageMediaAny} nameHint={`${uploadNameHint}-og`} />
             </div>
           </div>
         </div>
 
         <div>
+          <div className="adminCard adminCardPad" style={{ marginBottom: 16 }}>
+            <span className="adminLabel">Hiển thị tại trang chủ</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+              {options.homepageSections.map((s) => {
+                const key = s.id as ArticleSectionKey;
+                const ticked = homepageSections.includes(key);
+                // "Tin từ cơ sở" groups its cards by cấp đơn vị (its own tab
+                // filter), so an article needs an Đơn vị or at least a Địa
+                // phương to have a row to sit in. Say so at tick time rather
+                // than letting the tick quietly do nothing.
+                const needsOrg = key === "LOCAL_NEWS" && !organizationId && !provinceId;
+                return (
+                  <div key={s.id}>
+                    <label style={{ fontSize: 12.5, display: "flex", gap: 6, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        disabled={locked}
+                        checked={ticked}
+                        onChange={(e) =>
+                          setHomepageSections(
+                            e.target.checked ? [...homepageSections, key] : homepageSections.filter((k) => k !== key),
+                          )
+                        }
+                      />
+                      {s.name}
+                    </label>
+                    {ticked && needsOrg && (
+                      <span className="adminHint" style={{ display: "block", marginLeft: 22, color: "var(--admin-warning, #b45309)" }}>
+                        Cần chọn “Đơn vị” hoặc “Địa phương” bên dưới thì bài mới hiện ở mục này.
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <span className="adminHint" style={{ display: "block", marginTop: 8 }}>
+              Tick nhiều mục nếu muốn bài xuất hiện ở nhiều nơi. Bài được tick sẽ đứng đầu mục đó; các vị trí còn lại
+              vẫn tự động lấy bài mới nhất. Chỉ áp dụng khi bài đã xuất bản.
+            </span>
+          </div>
+
           <div className="adminCard adminCardPad" style={{ marginBottom: 16, display: "grid", gap: 12 }}>
             <div className="adminField" style={{ marginBottom: 0 }}>
               <label className="adminLabel" htmlFor="e-category">Chuyên mục</label>
@@ -361,7 +417,13 @@ export function ArticleEditor({
                 {options.provinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
-            <MediaPicker label="Ảnh cover" value={coverMediaId} onChange={setCoverMediaId} options={options.media} canManageAny={permissions.canManageMediaAny} />
+            <MediaPicker label="Ảnh cover" value={coverMediaId} onChange={setCoverMediaId} options={options.media} canManageAny={permissions.canManageMediaAny} nameHint={uploadNameHint} />
+            <HeroPanel
+              coverMediaId={coverMediaId}
+              title={title}
+              value={heroConfig}
+              onChange={setHeroConfig}
+            />
           </div>
 
           <div className="adminCard adminCardPad" style={{ marginBottom: 16 }}>
@@ -377,7 +439,7 @@ export function ArticleEditor({
                 {revisions.map((r) => (
                   <div key={r.version} style={{ fontSize: 12, borderBottom: "1px solid var(--admin-border)", paddingBottom: 6 }}>
                     <div><strong>v{r.version}</strong> — {r.changedByName}</div>
-                    <div className="adminHint">{new Date(r.createdAt).toLocaleString("vi-VN")}{r.note ? ` · ${r.note}` : ""}</div>
+                    <div className="adminHint">{formatDateTimeVi(r.createdAt)}{r.note ? ` · ${r.note}` : ""}</div>
                     {permissions.canRestoreRevision && (
                       <form action={restoreRevisionAction}>
                         <input type="hidden" name="articleId" value={articleId} />
@@ -398,7 +460,7 @@ export function ArticleEditor({
               {notes.length === 0 && <span className="adminHint">Chưa có ghi chú nào.</span>}
               {notes.map((n) => (
                 <div key={n.id} style={{ fontSize: 12, borderBottom: "1px solid var(--admin-border)", paddingBottom: 6 }}>
-                  <div><strong>{n.authorName}</strong> <span className="adminHint">· {new Date(n.createdAt).toLocaleString("vi-VN")}</span></div>
+                  <div><strong>{n.authorName}</strong> <span className="adminHint">· {formatDateTimeVi(n.createdAt)}</span></div>
                   <div style={{ marginTop: 2, whiteSpace: "pre-wrap" }}>{n.body}</div>
                 </div>
               ))}

@@ -68,8 +68,12 @@ export function LocalNews({ items }: { items: LocalNewsEntry[] }) {
                   <span className={styles.rowBody}>
                     <span className={styles.rowMeta}>
                       <span className={styles.org}>{n.orgName}</span>
-                      <span className={styles.dot} />
-                      <span className={styles.place}>{n.place}</span>
+                      {n.place && (
+                        <>
+                          <span className={styles.dot} />
+                          <span className={styles.place}>{n.place}</span>
+                        </>
+                      )}
                     </span>
                     <Link href={n.url} className={styles.rowTitle}>{n.title}</Link>
                     <span className={styles.rowFoot}>
@@ -85,7 +89,7 @@ export function LocalNews({ items }: { items: LocalNewsEntry[] }) {
                     </span>
                   </span>
                   <span className={styles.thumb}>
-                    <MediaImage media={n.media} />
+                    <MediaImage media={n.media} sizes="140px" />
                   </span>
                 </Reveal>
               ))}

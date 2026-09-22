@@ -171,3 +171,81 @@ export function IconImageBroken({ size = 22, className }: IconProps) {
     </svg>
   );
 }
+
+/* Ecosystem platforms — shared by the header's platform pills, the homepage
+   launchpad and the account panel, so one platform always wears one glyph. */
+export function IconActivity({ size = 20, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M5 21V4.5" />
+      <path d="M5 4.5c2.6-1.6 5-1.6 7.3 0s4.6 1.6 6.7 0v9c-2.1 1.6-4.4 1.6-6.7 0s-4.7-1.6-7.3 0" />
+    </svg>
+  );
+}
+
+export function IconTraining({ size = 20, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M21.5 9.4L12 4.8 2.5 9.4 12 14l9.5-4.6z" />
+      <path d="M6.2 11.4v4.3c0 1.5 2.6 2.7 5.8 2.7s5.8-1.2 5.8-2.7v-4.3" />
+      <path d="M21.5 9.4v5" />
+    </svg>
+  );
+}
+
+export function IconConference({ size = 20, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M16 21v-1.6a3.4 3.4 0 0 0-3.4-3.4H6.4A3.4 3.4 0 0 0 3 19.4V21" />
+      <circle cx="9.5" cy="8" r="3.4" />
+      <path d="M21 21v-1.6a3.4 3.4 0 0 0-2.6-3.3" />
+      <path d="M15.5 4.8a3.4 3.4 0 0 1 0 6.4" />
+    </svg>
+  );
+}
+
+export function IconIdCard({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="3" y="5" width="18" height="14" rx="2.5" />
+      <circle cx="9" cy="11" r="2.2" />
+      <path d="M5.8 16.2c.6-1.4 1.8-2.1 3.2-2.1s2.6.7 3.2 2.1M14.5 10h3.5M14.5 13.5h2.5" />
+    </svg>
+  );
+}
+
+export function IconEdit({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z" />
+      <path d="M13.5 6.5l4 4" />
+    </svg>
+  );
+}
+
+export function IconLogout({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" />
+      <path d="M10 16l-4-4 4-4M6 12h10" />
+    </svg>
+  );
+}
+
+export function IconShield({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 3l7.5 3v5.6c0 4.4-3.1 8.2-7.5 9.4-4.4-1.2-7.5-5-7.5-9.4V6L12 3z" />
+      <path d="M8.8 12.2l2.2 2.2 4.3-4.4" />
+    </svg>
+  );
+}
+
+export function IconPen({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  );
+}

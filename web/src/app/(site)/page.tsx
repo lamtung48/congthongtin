@@ -1,26 +1,26 @@
 import type { Metadata } from "next";
 import { Hero } from "@/components/home/Hero";
+import { IntroCurtain } from "@/components/home/IntroCurtain";
 import { TrendingTopics } from "@/components/home/TrendingTopics";
 import { FeaturedNews } from "@/components/home/FeaturedNews";
 import { StoryRail } from "@/components/home/StoryRail";
-import { LatestNews } from "@/components/home/LatestNews";
 import { VideoSection } from "@/components/home/VideoSection";
 import { ActivityMapSection } from "@/components/home/ActivityMapSection";
 import { EcosystemBento } from "@/components/home/EcosystemBento";
+import { PlatformLaunchpad, LAUNCHPAD_CATEGORIES } from "@/components/home/PlatformLaunchpad";
 import { LiveEvents } from "@/components/home/LiveEvents";
 import { Gallery } from "@/components/home/Gallery";
-import { LocalNews } from "@/components/home/LocalNews";
+import { DocumentsSection } from "@/components/home/DocumentsSection";
 import {
   getHomepage,
   getFeaturedArticles,
-  getLatestArticles,
   getStoryRail,
   getVideos,
   getEvents,
   getPlatforms,
-  getLocalNews,
   getGallery,
 } from "@/services/homepageService";
+import { documentService } from "@/server/services/documentService";
 import { pageMetadata } from "@/lib/seo";
 import { SITE_DEFAULT_DESCRIPTION } from "@/lib/siteConfig";
 
@@ -34,34 +34,43 @@ export const metadata: Metadata = pageMetadata({
 });
 
 /** Header/Footer render once in `app/layout.tsx` — this page is only its own
- *  13 sections. See `docs/ROUTES.md` on why layout isn't duplicated per route. */
+ *  sections. See `docs/ROUTES.md` on why layout isn't duplicated per route.
+ *
+ *  "Tin mới nhất" (`LatestNews`) is deliberately not rendered: it repeated
+ *  the same newest articles "Tin tiêu điểm" already leads with. `/tin-tuc`
+ *  remains the full reverse-chronological listing. */
 export default async function Home() {
-  const [homepage, featured, latestArticles, storyRail, videos, events, platforms, localNews, gallery] =
+  const [homepage, featured, storyRail, videos, events, platforms, gallery, documents] =
     await Promise.all([
       getHomepage(),
       getFeaturedArticles(),
-      getLatestArticles(),
       getStoryRail(),
       getVideos(),
       getEvents(),
       getPlatforms(),
-      getLocalNews(),
       getGallery(),
+      // Six newest published văn bản; the section removes itself when there
+      // are none (see DocumentsSection).
+      documentService.listPublic({ take: 6 }),
     ]);
 
   return (
     <>
-      <Hero hero={homepage.hero} />
+      <IntroCurtain />
+      <Hero slides={homepage.hero} />
+      <PlatformLaunchpad platforms={platforms} />
       <TrendingTopics topics={homepage.trendingTopics} />
       <FeaturedNews featured={featured} />
       <StoryRail stories={storyRail} />
-      <LatestNews articles={latestArticles} />
-      <VideoSection videos={videos} />
       <ActivityMapSection />
-      <EcosystemBento platforms={platforms} />
+      <VideoSection videos={videos} />
+      {/* Hoạt động / Đào tạo / Hội nghị already sit in the launchpad under the Hero. */}
+      <EcosystemBento platforms={platforms.filter((p) => !LAUNCHPAD_CATEGORIES.includes(p.category))} />
       <LiveEvents events={events} />
-      <Gallery gallery={gallery} />
-      <LocalNews items={localNews} />
+      <DocumentsSection documents={documents} />
+      {gallery.items.length > 0 && <Gallery gallery={gallery} />}
+      {/* "Mạng lưới cơ sở · Tin từ cơ sở" (LocalNews) is hidden from the homepage at the user's request (2026-09-22);
+          the component and the /admin "Tin từ cơ sở" pinning stay in place, so it can be switched back on here. */}
     </>
   );
 }

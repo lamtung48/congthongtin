@@ -1,0 +1,199 @@
+# Cong thong tin so HSV — third tenant on the shared VPS alongside
+# /opt/hoinghi and /opt/daotaohsv. Same shape as those: own Postgres
+# container, app joined to the shared external `edge` network so the
+# existing Caddy reverse proxy (hoinghi-caddy-1) can reach it by container
+# name. See web/docs/DEPLOYMENT.md for the full topology rationale.
+name: congthongtin
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: congthongtin-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: congthongtin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: congthongtin
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # localhost only — DB never exposed to the Internet. 5432/5433 are
+    # already taken by the other apps' Postgres containers on this VPS.
+    ports:
+      - "127.0.0.1:5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U congthongtin -d congthongtin"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+
+  app:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      # Forwards ONE specific key — the read-only deploy key of
+      # lamtung48/hsv-membership-card — to the `RUN --mount=type=ssh npm ci`
+      # step so it can fetch @hsv/membership-card (Thẻ Hội viên). BuildKit
+      # reads the file directly (no ssh-agent needed); it never lands in the
+      # image. Same as /opt/daotaohsv.
+      ssh:
+        - default=/root/.ssh/deploykey_membership_card_readonly
+    container_name: congthongtin-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      # Gio Viet Nam cho moi thu chay trong container: log, `new Date()` thuan,
+      # va phep tinh ngay/gio khong di qua bo dinh dang. Rieng phan HIEN THI
+      # ngay/gio khong phu thuoc bien nay - src/lib/formatDate.ts ghim cung
+      # timeZone "Asia/Ho_Chi_Minh" de trinh duyet cua khach o mui gio khac
+      # cung ra dung mot ket qua nhu may chu (tranh hydration mismatch).
+      TZ: Asia/Ho_Chi_Minh
+      # `next build` collects page data with one worker per CPU, each a Node
+      # process doing static generation against the DB — memory-hungry on a
+      # many-core VPS. Cap the heap and (below) give the container headroom.
+      NODE_OPTIONS: "--max-old-space-size=4096"
+      # This VPS reports 16 cores, so `next build` would otherwise fan out to
+      # 15 static-generation workers and spike past any sane memory limit.
+      # next.config.ts reads this to cap `experimental.cpus` for the build.
+      NEXT_BUILD_CPUS: "4"
+      DATABASE_URL: postgresql://congthongtin:${POSTGRES_PASSWORD}@postgres:5432/congthongtin?schema=public
+      NEXT_PUBLIC_SITE_URL: https://congthongtin.hoisinhvien.com.vn
+      # Two independent AES-256-GCM keys (openssl rand -hex 32) — see
+      # web/.env.example / web/docs/SECURITY.md. Values live in .env.
+      SOURCE_CREDENTIAL_ENCRYPTION_KEY: ${SOURCE_CREDENTIAL_ENCRYPTION_KEY:?set in .env}
+      YOUTUBE_TOKEN_ENCRYPTION_KEY: ${YOUTUBE_TOKEN_ENCRYPTION_KEY:?set in .env}
+      # Shared identity service (/opt/hsv-id) — password + root profile shared
+      # with hoinghi/daotaohsv. Reachable as `hsv-id` once hsv-id's own
+      # compose joins the `congthongtin_default` network (see /opt/hsv-id).
+      # Same X-Internal-Key as the other platforms. If unset the integration
+      # is inert and login falls back to the local password hash.
+      HSV_ID_URL: "http://hsv-id:4200"
+      HSV_ID_INTERNAL_KEY: ${HSV_ID_INTERNAL_KEY:?set in .env}
+      # Shared SSO cookie with the other platforms on the same parent domain
+      # (Hoạt động, Đào tạo set the same value): signed in on one = signed in
+      # here, and vice versa (web/docs/AUTHENTICATION.md, "Hai luồng đăng nhập").
+      SSO_COOKIE_DOMAIN: ".hoisinhvien.com.vn"
+      # Thẻ Hội viên lives in Hoạt động (/opt/hoatdong); read over the `edge`
+      # network with the same X-Training-Key Đào tạo uses. Without the key the
+      # card is simply hidden (account panel/page show "chưa tải được").
+      HOATDONG_URL: "http://hoatdong-hsv-app:3000"
+      HOATDONG_PUBLIC_URL: "https://hoatdong.hoisinhvien.com.vn"
+      HOATDONG_TRAINING_KEY: ${HOATDONG_TRAINING_KEY:-}
+      # Google Drive (images): service account creds live in .env. YouTube
+      # (videos): OAuth client id/secret still pending in .env — until set,
+      # video actions fail with a clear caught error and the app is fine.
+      GOOGLE_DRIVE_CLIENT_EMAIL: ${GOOGLE_DRIVE_CLIENT_EMAIL:-}
+      GOOGLE_DRIVE_PRIVATE_KEY: ${GOOGLE_DRIVE_PRIVATE_KEY:-}
+      GOOGLE_DRIVE_FOLDER_ID: ${GOOGLE_DRIVE_FOLDER_ID:-}
+      GOOGLE_DRIVE_SHARED_DRIVE_ID: ${GOOGLE_DRIVE_SHARED_DRIVE_ID:-}
+      YOUTUBE_OAUTH_CLIENT_ID: ${YOUTUBE_OAUTH_CLIENT_ID:-}
+      YOUTUBE_OAUTH_CLIENT_SECRET: ${YOUTUBE_OAUTH_CLIENT_SECRET:-}
+      YOUTUBE_OAUTH_REDIRECT_URI: "https://congthongtin.hoisinhvien.com.vn/api/admin/youtube/oauth/callback"
+      # Optional: public video lookup falls back to key-less oEmbed without it,
+      # but only the Data API returns a video's duration.
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      YOUTUBE_ALLOW_CONTRIBUTOR_UPLOAD: "false"
+      # Persistent cache for the bytes /api/media/[id] serves
+      # (web/src/server/media/mediaCache.ts). Without it every image request
+      # — even a repeat — is a live Google Drive round trip (~1.5–4s); with
+      # it a repeat is ~1ms and the cache survives redeploys via the volume
+      # below. 512MB budget, LRU-evicted.
+      MEDIA_CACHE_DIR: /app/web/.media-cache
+      MEDIA_CACHE_MAX_BYTES: "536870912"
+    volumes:
+      # Persist the Next.js build across restarts (entrypoint rebuilds only
+      # when source changes).
+      - next_cache:/app/web/.next
+      # `npm run db:backup` output (scripts/backupDatabase.sh).
+      - backups_data:/app/web/backups
+      # Shared media-bytes cache (see MEDIA_CACHE_DIR above).
+      - media_cache:/app/web/.media-cache
+    # localhost port for direct smoke-testing; public traffic comes via Caddy
+    # over the `edge` network. 3000/3001/3100 are used by the other apps.
+    ports:
+      - "127.0.0.1:3002:3000"
+    networks:
+      - default
+      - edge
+    deploy:
+      resources:
+        limits:
+          # Runtime needs ~768M (docs/DEPLOYMENT.md), but the in-container
+          # `next build` on start peaks much higher (multi-worker static
+          # generation). VPS has ~25G free; 6G keeps the build from being
+          # OOM-killed with plenty of margin.
+          memory: 6144M
+
+  # Polls every `integrationType: API` ecosystem platform (Hội nghị, Đào
+  # tạo) and writes the live number into `Platform.currentActivity`; the
+  # homepage's ISR picks it up within 60s. Every 5th round (~10 min) it also
+  # mirrors Hoạt động's public activities into `PlatformActivity` for the
+  # homepage map (web/scripts/syncPlatformActivities.ts). Reuses the app image
+  # but skips its build entrypoint. On `edge` so it can reach hoinghi-api-1 /
+  # daotao-hsv-app / hoatdong-hsv-app. See web/scripts/refreshPlatformActivity.ts.
+  refresher:
+    image: congthongtin-app
+    container_name: congthongtin-refresher
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Ho_Chi_Minh
+      DATABASE_URL: postgresql://congthongtin:${POSTGRES_PASSWORD}@postgres:5432/congthongtin?schema=public
+      HOATDONG_URL: "http://hoatdong-hsv-app:3000"
+      HOATDONG_PUBLIC_URL: "https://hoatdong.hoisinhvien.com.vn"
+    entrypoint: ["/usr/bin/tini", "--", "sh", "-c"]
+    command:
+      - 'cd /app/web && i=0; while true; do node --conditions=react-server --import tsx scripts/refreshPlatformActivity.ts || true; if [ $$((i % 5)) -eq 0 ]; then node --conditions=react-server --import tsx scripts/syncPlatformActivities.ts || true; fi; i=$$((i + 1)); sleep 120; done'
+    networks:
+      - default
+      - edge
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # Scheduled external-content collector: every ~5 min, syncs each enabled
+  # RSS/WEBSITE Source whose per-source `syncEveryMinutes` has elapsed and
+  # drops new items into the Social Inbox (PENDING_REVIEW). Never publishes.
+  # See web/scripts/runDueSourceSyncs.ts, docs/SOCIAL_COLLECTOR.md.
+  collector:
+    image: congthongtin-app
+    container_name: congthongtin-collector
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Ho_Chi_Minh
+      DATABASE_URL: postgresql://congthongtin:${POSTGRES_PASSWORD}@postgres:5432/congthongtin?schema=public
+    entrypoint: ["/usr/bin/tini", "--", "sh", "-c"]
+    command:
+      - 'cd /app/web && while true; do node --conditions=react-server --import tsx scripts/runDueSourceSyncs.ts || true; sleep 300; done'
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+volumes:
+  postgres_data:
+  next_cache:
+  backups_data:
+  media_cache:
+
+networks:
+  default:
+  edge:
+    external: true

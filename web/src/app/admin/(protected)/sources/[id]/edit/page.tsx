@@ -5,6 +5,7 @@ import { taxonomyService } from "@/server/services/taxonomyService";
 import { sourceService } from "@/server/services/sourceService";
 import { SOURCE_TYPE_LABELS } from "@/lib/sourceLabels";
 import { updateSourceAction } from "../../actions";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 export const metadata: Metadata = { title: "Chỉnh sửa nguồn" };
 
@@ -68,6 +69,60 @@ export default async function EditSourcePage({ params }: { params: Promise<{ id:
         <div className="adminField" style={{ marginBottom: 0 }}>
           <label className="adminLabel" htmlFor="excludeHashtags">Loại trừ hashtag</label>
           <textarea id="excludeHashtags" name="excludeHashtags" rows={2} defaultValue={source.excludeHashtags.join(", ")} className="adminInput" />
+        </div>
+        <div className="adminField" style={{ marginBottom: 0 }}>
+          <label className="adminLabel" htmlFor="syncEveryHours">Tự động đồng bộ mỗi (giờ) — để trống = chỉ chạy tay</label>
+          <input
+            id="syncEveryHours"
+            name="syncEveryHours"
+            type="number"
+            min={1}
+            max={168}
+            step={1}
+            placeholder="6"
+            defaultValue={source.syncEveryMinutes ? Math.round(source.syncEveryMinutes / 60) : ""}
+            className="adminInput"
+          />
+          {source.lastSyncedAt && (
+            <p className="adminHint">
+              Lần đồng bộ gần nhất: {formatDateTimeVi(source.lastSyncedAt)}
+              {source.lastSyncItemCount != null && ` · ${source.lastSyncItemCount} mục`}
+            </p>
+          )}
+        </div>
+        <div className="adminField" style={{ marginBottom: 0 }}>
+          <label className="adminLabel" htmlFor="maxItemsPerSync">Số tin tối đa mỗi lần đồng bộ — để trống = lấy tất cả</label>
+          <input
+            id="maxItemsPerSync"
+            name="maxItemsPerSync"
+            type="number"
+            min={1}
+            max={500}
+            step={1}
+            placeholder="10"
+            defaultValue={source.maxItemsPerSync ?? ""}
+            className="adminInput"
+          />
+          <p className="adminHint">Lấy N tin mới nhất theo thứ tự nguồn trả về (sau khi lọc hashtag).</p>
+        </div>
+        <div className="adminField" style={{ marginBottom: 0 }}>
+          <label className="adminLabel adminCheckboxLabel" htmlFor="fetchFullBody" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input id="fetchFullBody" name="fetchFullBody" type="checkbox" defaultChecked={source.fetchFullBody} />
+            <span>Tải thân bài đầy đủ từ trang gốc</span>
+          </label>
+          <p className="adminHint">Khi feed chỉ có tóm tắt: mở từng trang bài, trích đoạn văn / tiêu đề phụ / ảnh (ảnh giữ nguyên link nguồn, không tải về). Chậm hơn ~1 giây/bài.</p>
+        </div>
+        <div className="adminField" style={{ marginBottom: 0 }}>
+          <label className="adminLabel" htmlFor="contentSelector">CSS selector thân bài (tuỳ chọn)</label>
+          <input
+            id="contentSelector"
+            name="contentSelector"
+            type="text"
+            placeholder='[itemprop="articleBody"]'
+            defaultValue={source.contentSelector ?? ""}
+            className="adminInput"
+          />
+          <p className="adminHint">Để trống thì tự dò. Ví dụ Tiền Phong: <code>[itemprop=&quot;articleBody&quot;]</code></p>
         </div>
         <button type="submit" className="adminButton adminButtonPrimary" style={{ alignSelf: "flex-start" }}>Lưu</button>
       </form>

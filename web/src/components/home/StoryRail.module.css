@@ -1,10 +1,11 @@
 .section {
   position: relative;
-  margin-top: var(--sp-32);
   background: var(--ink-1000);
   color: #fff;
 }
-.sticky {
+/* Renamed from `.sticky`: nothing sticks any more — the rail no longer pins
+   itself to hijack vertical scroll, so this is a plain content wrapper. */
+.inner {
   display: flex;
   flex-direction: column;
   gap: var(--sp-8);
@@ -44,11 +45,17 @@
 .navBtn:disabled { opacity: 0.38; cursor: default; }
 
 .railWrap { position: relative; }
-.viewport { overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; }
-.track { display: flex; gap: clamp(18px, 2vw, 32px); padding: 0 var(--gutter) var(--sp-4); width: max-content; will-change: transform; }
+/* No `scroll-snap-type` and no `scroll-behavior: smooth`, both deliberate —
+   see StoryRail.tsx. Snap points would drag the rail back to a card boundary
+   on every frame of the constant drift, and a blanket `smooth` would turn
+   each of those per-frame `scrollLeft` writes into its own animation,
+   cancelling the one before it: together they make continuous motion
+   impossible. Button presses still animate, because `nudge()` asks for
+   `behavior: "smooth"` on that one call. */
+.viewport { overflow-x: auto; }
+.track { display: flex; gap: clamp(18px, 2vw, 32px); padding: 0 var(--gutter) var(--sp-4); width: max-content; }
 .card {
   flex: 0 0 clamp(300px, 30vw, 470px);
-  scroll-snap-align: center;
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);

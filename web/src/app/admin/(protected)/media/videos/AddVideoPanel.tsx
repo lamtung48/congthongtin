@@ -15,7 +15,7 @@ import { VideoUploader, type UploadedVideo } from "./VideoUploader";
  * (`VideoUploader` needs `XMLHttpRequest` progress events a Server Action
  * can't give it) and so calls `router.refresh()` itself in `handleUploaded`.
  */
-export function AddVideoPanel({ canUpload, canManageAny }: { canUpload: boolean; canManageAny: boolean }) {
+export function AddVideoPanel({ canUpload, canManageAny, canBrowseChannel }: { canUpload: boolean; canManageAny: boolean; canBrowseChannel: boolean }) {
   const router = useRouter();
   const [mode, setMode] = useState<"none" | "upload" | "link" | "browse">("none");
   const [pending, startTransition] = useTransition();
@@ -88,10 +88,14 @@ export function AddVideoPanel({ canUpload, canManageAny }: { canUpload: boolean;
             {mode === "upload" ? "Đóng" : "Tải video lên"}
           </button>
         )}
-        <button type="button" className="adminButton adminButtonSmall" onClick={() => toggleMode("link")}>
-          {mode === "link" ? "Đóng" : "Dán URL / ID"}
+        <button
+          type="button"
+          className={`adminButton adminButtonSmall${mode === "link" ? "" : " adminButtonPrimary"}`}
+          onClick={() => toggleMode("link")}
+        >
+          {mode === "link" ? "Đóng" : "Dán link YouTube"}
         </button>
-        {canManageAny && (
+        {canBrowseChannel && (
           <button type="button" className="adminButton adminButtonSmall" onClick={() => toggleMode("browse")}>
             {mode === "browse" ? "Đóng" : "Chọn từ kênh"}
           </button>
@@ -106,7 +110,7 @@ export function AddVideoPanel({ canUpload, canManageAny }: { canUpload: boolean;
             name="input"
             className="adminInput"
             style={{ flex: 1 }}
-            placeholder="URL YouTube hoặc video ID"
+            placeholder="Dán link video YouTube công khai (hoặc video ID)"
             value={linkInput}
             onChange={(e) => setLinkInput(e.target.value)}
           />

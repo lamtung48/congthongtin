@@ -48,6 +48,27 @@ function parseHashtagList(raw: FormDataEntryValue | null): string[] {
     .filter((s) => s.length > 0);
 }
 
+/** "6" (hours) -> 360 (minutes); empty / invalid -> null (manual only). */
+function parseSyncEveryMinutes(raw: FormDataEntryValue | null): number | null {
+  const h = Number(String(raw ?? "").trim());
+  if (!Number.isFinite(h) || h <= 0) return null;
+  return Math.round(Math.min(168, Math.max(1, h)) * 60);
+}
+
+function parsePositiveIntOrNull(raw: FormDataEntryValue | null): number | null {
+  const n = Number(String(raw ?? "").trim());
+  return Number.isFinite(n) && n > 0 ? Math.min(500, Math.round(n)) : null;
+}
+
+function collectorFields(formData: FormData) {
+  return {
+    syncEveryMinutes: parseSyncEveryMinutes(formData.get("syncEveryHours")),
+    maxItemsPerSync: parsePositiveIntOrNull(formData.get("maxItemsPerSync")),
+    fetchFullBody: formData.get("fetchFullBody") === "on",
+    contentSelector: String(formData.get("contentSelector") ?? "").trim() || null,
+  };
+}
+
 export async function createSourceAction(formData: FormData): Promise<void> {
   const actor = await requireSession();
   assertNotRateLimited(actor.id);
@@ -61,6 +82,7 @@ export async function createSourceAction(formData: FormData): Promise<void> {
     includeHashtags: parseHashtagList(formData.get("includeHashtags")),
     excludeHashtags: parseHashtagList(formData.get("excludeHashtags")),
     categoryId: String(formData.get("categoryId") ?? "").trim() || null,
+    ...collectorFields(formData),
   });
   revalidatePath("/admin/sources");
   redirect(`/admin/sources/${source.id}/edit`);
@@ -80,6 +102,7 @@ export async function updateSourceAction(formData: FormData): Promise<void> {
     includeHashtags: parseHashtagList(formData.get("includeHashtags")),
     excludeHashtags: parseHashtagList(formData.get("excludeHashtags")),
     categoryId: String(formData.get("categoryId") ?? "").trim() || null,
+    ...collectorFields(formData),
   };
   // Only touch the credential if the write-only field was actually filled
   // in — an empty submit must never silently wipe an existing credential.

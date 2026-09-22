@@ -47,16 +47,24 @@ export const homepageRepository = {
         include: articleWithRelations,
       });
     },
+    /**
+     * No `provinceId` requirement. It used to have one, back when
+     * `DatabaseProvider.getStoryRail` needed a province to render the card's
+     * "place" line; that mapper now falls back to the article's organization
+     * and then to "Toàn quốc", so the filter only had the effect of starving
+     * the rail — with no article on this site carrying a province, it matched
+     * zero rows and the section showed nothing but its CMS-pinned items.
+     */
     storyRailArticles(limit: number) {
       return prisma.article.findMany({
-        where: { status: "PUBLISHED", provinceId: { not: null } },
+        where: { status: "PUBLISHED" },
         orderBy: { publishedAt: "desc" },
         take: limit,
         include: articleWithRelations,
       });
     },
     latestVideo() {
-      return prisma.video.findFirst({ orderBy: { publishedAt: "desc" }, include: { category: true, media: true } });
+      return prisma.video.findFirst({ orderBy: { publishedAt: "desc" }, include: { category: true, media: { include: { thumbnail: true } } } });
     },
     /** Ecosystem integration task: `order` (admin-set bento position), not
      *  `createdAt` — and only `isEnabled` rows, so a platform an Admin/
@@ -109,7 +117,7 @@ export const homepageRepository = {
    */
   resolvers: {
     video(id: string) {
-      return prisma.video.findUnique({ where: { id }, include: { category: true, media: true } });
+      return prisma.video.findUnique({ where: { id }, include: { category: true, media: { include: { thumbnail: true } } } });
     },
     event(id: string) {
       return prisma.event.findUnique({ where: { id }, include: eventWithRelationsInclude });

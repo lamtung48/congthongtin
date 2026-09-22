@@ -1,0 +1,261 @@
+/*
+ * A scaled-down stand-in for the public site, used only by the background
+ * picker. It reproduces the *token structure* of the real pages — page
+ * surface, card surface, alternating band, hairline borders, dark hero and
+ * footer — rather than any specific article, so what an admin judges here is
+ * exactly what the chosen colour changes.
+ *
+ * It is a mock rather than an iframe of the live homepage on purpose: this
+ * app sends `X-Frame-Options: DENY` and `frame-ancestors 'none'`
+ * (next.config.ts), and relaxing that site-wide so one admin screen can
+ * embed itself would trade real clickjacking protection for a preview.
+ */
+
+.frame {
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  overflow: hidden;
+  background: var(--surface-page);
+  color: var(--text-body);
+  font-family: var(--admin-font);
+  container-type: inline-size;
+  transition: background 120ms linear;
+}
+
+/* "Điện thoại" preview width. */
+.frameNarrow {
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface-page);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.logo {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--brand-primary);
+  flex: 0 0 auto;
+  position: relative;
+}
+
+.logo::after {
+  content: "★";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--brand-gold);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.brandName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-strong);
+  line-height: 1.25;
+}
+
+.brandSub {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.25;
+}
+
+.nav {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-body);
+}
+
+.navActive {
+  color: var(--brand-primary);
+  font-weight: 600;
+}
+
+.searchDot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+.hero {
+  padding: 22px 16px 24px;
+  background: linear-gradient(90deg, #04162b 0%, #083a6a 55%, #0b5fa5 100%);
+  color: #fff;
+}
+
+.heroEyebrow {
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--brand-gold);
+  font-weight: 600;
+}
+
+.heroTitle {
+  margin: 6px 0 0;
+  font-size: 19px;
+  line-height: 1.25;
+  font-weight: 600;
+  max-width: 26ch;
+}
+
+.heroMeta {
+  margin-top: 8px;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.band {
+  padding: 16px 14px 18px;
+  background: var(--surface-page);
+}
+
+.bandAlt {
+  background: var(--surface-subtle);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.bandHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.bandTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.bandMore {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--text-link);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+@container (max-width: 420px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.cardThumb {
+  height: 52px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.cardBody {
+  padding: 8px 9px 10px;
+}
+
+.cardKicker {
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--brand-primary);
+  font-weight: 600;
+}
+
+.cardTitle {
+  margin: 3px 0 5px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--text-strong);
+  font-weight: 500;
+}
+
+.cardMeta {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.rail {
+  display: flex;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.railItem {
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  padding: 9px 10px 10px;
+}
+
+.railThumb {
+  height: 34px;
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  margin-bottom: 7px;
+}
+
+.railTitle {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-strong);
+}
+
+.railMeta {
+  margin-top: 4px;
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+
+.footer {
+  padding: 14px 14px 16px;
+  background: var(--surface-invert);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.footerCol {
+  display: grid;
+  gap: 3px;
+}
+
+.footerHead {
+  color: #fff;
+  font-weight: 600;
+  font-size: 10.5px;
+  margin-bottom: 2px;
+}

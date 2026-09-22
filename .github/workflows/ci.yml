@@ -57,6 +57,19 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
+      # @hsv/membership-card (Thẻ Hội viên, shared with Hoạt động / Đào tạo)
+      # is a PRIVATE git dependency fetched over SSH. Needs the repository
+      # secret MEMBERSHIP_CARD_DEPLOY_KEY = the private half of the read-only
+      # deploy key of lamtung48/hsv-membership-card (on the VPS:
+      # /root/.ssh/deploykey_membership_card_readonly).
+      - name: SSH key for private git dependency
+        env:
+          DEPLOY_KEY: ${{ secrets.MEMBERSHIP_CARD_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
       - name: Install dependencies
         run: npm ci
 

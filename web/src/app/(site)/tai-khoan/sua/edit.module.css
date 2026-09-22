@@ -1,0 +1,50 @@
+.page { background: var(--surface-subtle); padding: clamp(24px, 4vw, 56px) var(--gutter) var(--sp-20); }
+.inner { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.back { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: 14px; font-weight: var(--fw-semibold); color: var(--text-muted); text-decoration: none; }
+.back:hover { color: var(--text-brand); text-decoration: none; }
+.head { display: flex; flex-direction: column; gap: 6px; }
+.title { font-family: var(--font-editorial); font-size: clamp(28px, 3vw, 36px); font-weight: var(--fw-medium); }
+.sub { font-size: 15px; line-height: 1.55; color: var(--text-muted); }
+.card { padding: clamp(20px, 3vw, 32px); border-radius: var(--radius-xl); background: var(--surface-card); box-shadow: var(--shadow-md), var(--shadow-inset-hair); }
+.foot { font-size: 13px; color: var(--text-muted); text-align: center; }
+
+/* Classes handed to ProfileForm (see ProfileFormUi). */
+.field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 18px; }
+.label { font-size: 13.5px; font-weight: var(--fw-semibold); color: var(--text-strong); }
+.input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  font: inherit;
+  font-size: 15px;
+  color: var(--text-strong);
+  transition: border-color var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
+}
+.input:hover:not(:disabled) { border-color: var(--border-strong); }
+.input:focus { outline: none; border-color: var(--brand-primary); box-shadow: 0 0 0 4px rgba(11, 95, 165, 0.14); }
+.input:disabled { background: var(--surface-subtle); color: var(--text-muted); }
+select.input { appearance: none; padding-right: 40px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23647081' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+.hint { font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
+.error { padding: 10px 12px; border-radius: var(--radius-sm); background: var(--status-danger-soft); color: var(--red-700); font-size: 13.5px; line-height: 1.5; }
+.badge { display: inline-flex; align-items: center; height: 26px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: var(--fw-semibold); }
+.badgeSuccess { background: var(--gold-50); color: var(--amber-600); box-shadow: inset 0 0 0 1px var(--gold-200); }
+.badgeNeutral { background: var(--surface-sunken); color: var(--text-muted); }
+.submit {
+  display: inline-flex;
+  align-items: center;
+  height: 50px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--brand-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  box-shadow: var(--shadow-brand);
+}
+.submit:hover:not(:disabled) { background: var(--brand-primary-hover); }
+.submit:disabled { opacity: 0.7; cursor: progress; }

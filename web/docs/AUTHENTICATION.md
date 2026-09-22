@@ -6,6 +6,59 @@ deliberately separate documents because they're separate concerns in the
 code (`src/server/auth/session.ts` vs. `src/server/auth/permissions.ts` +
 `guard.ts`).
 
+> **Cập nhật 2026-09-19 — SSO (hsv-id).** Phiên đăng nhập của `/admin` nay là phiên SSO do `hsv-id`
+> giữ (mục "SSO (hsv-id)" bên dưới). Các mục "database sessions", "Session lifecycle" và "Shared identity
+> (hsv-id)" mô tả thiết kế TRƯỚC SSO (bảng `Session` cục bộ, cookie `admin_session`, mật khẩu cục bộ dự
+> phòng) — chỉ còn giá trị lịch sử; đọc mục SSO để biết hành vi hiện tại. Bảng `Session` còn trong schema
+> nhưng không còn được dùng (bỏ bảng cần migration riêng).
+
+> **Cập nhật 2026-09-22 — Hai luồng đăng nhập.** Đăng nhập tách thành *Tài khoản cá nhân* và *Ban biên tập*
+> trên cùng trang `/dang-nhap` — xem mục "Hai luồng đăng nhập" ngay dưới đây. `/admin/login` chỉ còn chuyển hướng.
+
+## Hai luồng đăng nhập (2026-09-22)
+
+Một trang `/dang-nhap`, hai tab là hai đường dẫn thật (chạy cả khi không có JS):
+
+| | Tài khoản cá nhân (`/dang-nhap`) | Ban biên tập (`/dang-nhap?luong=bien-tap`) |
+|---|---|---|
+| Ai | Mọi tài khoản HSV-ID (cùng tài khoản với Hoạt động, Đào tạo) | Admin / Quản trị viên / Cộng tác viên của Cổng |
+| Xử lý | `personalLoginAction` → `authService.personalLogin`: chỉ mở phiên SSO ở hsv-id + đặt cookie `hsv_sso`. **Không** tìm/liên kết/tạo hàng `User` cục bộ | `loginAction` → `authService.login` (không đổi): phiên SSO + hàng `User` đã liên kết, còn hoạt động |
+| Sau khi đăng nhập | Quay lại trang `next` (chỉ nhận đường dẫn nội bộ — `safeNextPath`, chặn `//host`) | `/admin/dashboard` |
+| Đã đăng nhập mà mở lại | → `next` hoặc `/tai-khoan` | Có quyền biên tập → `/admin/dashboard`; chỉ là tài khoản cá nhân → hiện ghi chú và form |
+
+- **Phiên cá nhân** (`src/server/auth/person.ts`, `getPerson`) = phiên SSO hợp lệ, không cần hàng `User`. `editor` được
+  điền khi người đó *cũng* có tài khoản CMS (dùng `getSession` như cũ). Một biên tập viên đăng nhập ở tab cá nhân
+  vẫn giữ quyền CMS vì hàng `User` đã liên kết sẵn.
+- **Không còn tự cấp CONTRIBUTOR ở bất kỳ đâu** (người dùng chốt 2026-09-22: "phải do admin phân quyền"). Mở `/admin` bằng
+  cookie SSO → `requireSession` chuyển tới tab Ban biên tập; đăng nhập tab Ban biên tập bằng tài khoản HSV-ID chưa được cấp
+  quyền → từ chối với thông báo riêng "chưa được cấp quyền Ban biên tập" (chỉ hiện SAU khi mật khẩu đã đúng — không lộ gì
+  người không có mật khẩu biết được) và chỉ huỷ đúng phiên vừa mở. Tài khoản đã tự cấp trước đó vẫn giữ nguyên.
+- **Admin phân quyền** (`/admin/users` → "Cấp quyền Ban biên tập cho tài khoản HSV-ID"): Admin nhập **đúng** email hoặc SĐT
+  (`GET /internal/users/by-identifier` — không tìm gần đúng, CMS không duyệt danh bạ hội viên), xem họ tên / email / SĐT đã
+  che / đơn vị / địa phương (`GET /internal/profile/:hsvId`) để chắc đúng người, chọn vai trò → `userService.grantRole`: đọc lại
+  tài khoản từ hsv-id theo id (không tin dữ liệu trình duyệt gửi), tạo hàng `User` liên kết thẳng `identityUserId`, không
+  mật khẩu cục bộ, `hsvIdLink` (best-effort), audit `CREATE_USER {via:"admin-grant"}`. Từ chối khi: tài khoản HSV-ID bị
+  khoá/chưa kích hoạt; chỉ có SĐT (CMS cần email); email thuộc hàng CMS cũ chưa liên kết (không gắn theo email, kể cả do
+  Admin — người đó tự liên kết bằng mật khẩu cũ) hoặc đã gắn với HSV-ID khác; đã có quyền (đổi vai trò ở bảng).
+  "Tạo tài khoản mới hoàn toàn" (có mật khẩu) chỉ còn cho email CHƯA có HSV-ID — `userService.create` từ chối nếu đã có.
+- **SSO với Hoạt động, Đào tạo**: `SSO_COOKIE_DOMAIN=.hoisinhvien.com.vn` (docker-compose.yml) — cùng giá trị hai nền tảng
+  kia đang dùng, nên đăng nhập một nơi là vào được nơi khác, đăng xuất một nơi là ra khỏi mọi nơi. Hội nghị chưa nối SSO.
+  Cookie `hsv_sso` cũ chỉ-cho-host (trước khi đặt biến) vẫn có thể còn trong trình duyệt: Next lấy giá trị **cuối** khi
+  trùng tên, trình duyệt gửi cookie mới tạo sau → cookie tên miền cha thắng; cookie cũ bị hsv-id từ chối và tự hết hạn.
+- **Tài khoản cá nhân** (`/tai-khoan`, `/tai-khoan/sua`, cùng trong khung `(site)`): Thẻ Hội viên, hồ sơ dùng chung,
+  nền tảng dùng chung tài khoản, lối vào trang quản trị nếu có quyền. Bấm tên trên header mở `AccountPanel` (thẻ + sửa
+  thông tin + vào thẳng Hoạt động/Đào tạo + đăng xuất). `/api/session` trả `{user:{displayName, editorRole}}` cho mọi
+  phiên SSO hợp lệ. `saveProfileAction` chỉ cần phiên SSO (hồ sơ là của chính người đó — hsv-id tự kiểm soát).
+- **Thẻ Hội viên**: dữ liệu chỉ có ở Hoạt động → `src/server/integrations/hoatdong.ts` gọi
+  `GET /api/internal/member-card/:hsvId` (header `X-Training-Key`, cùng khoá Đào tạo dùng; `HOATDONG_URL`,
+  `HOATDONG_TRAINING_KEY`, `HOATDONG_PUBLIC_URL`). Hiển thị bằng gói dùng chung `@hsv/membership-card` (git dependency
+  riêng tư — Dockerfile dùng `RUN --mount=type=ssh`, compose `build.ssh` trỏ deploy key read-only; CI cần secret
+  `MEMBERSHIP_CARD_DEPLOY_KEY`). `GET /api/me/membership-card` (dữ liệu thẻ của chính mình), `GET /api/me/membership-card-image`
+  (ảnh PNG do Hoạt động dựng; `verifyToken` tra từ hsvId của chính người gọi, không nhận từ request).
+- Kiểm thử: `src/server/__tests__/sso-login.test.mts` — `requireSession` (không tự cấp từ cookie trần), `authService.login`
+  (tài khoản HSV-ID chưa được cấp quyền → từ chối, không tạo hàng), `authService.personalLogin` (không tạo hàng `User`, lỗi
+  chung, hsv-id gián đoạn), `userService.grantRole` / `lookupIdentity` (chỉ Admin, các ca từ chối ở trên).
+
 ## Chosen solution: database-backed sessions, not JWT
 
 Brief section 5 said: use server-side sessions or a solution appropriate for
@@ -133,6 +186,116 @@ be imported into a Client Component even by mistake).
   effect immediately, not at next natural expiry) and from
   `userService.resetPassword()` (an old password shouldn't leave old
   sessions valid).
+
+## SSO (hsv-id)
+
+`hsv-id` (`/opt/hsv-id`, hợp đồng đầy đủ ở `/opt/hsv-id/docs/sso.md`) là **lõi** đăng nhập/phiên/hồ sơ của cả
+hệ sinh thái; Cổng thông tin chỉ giữ giao diện riêng + hàng `User` cục bộ (VAI TRÒ, trạng thái, tác giả).
+
+| Việc | Cách làm |
+|---|---|
+| Đăng nhập | `/admin/login` → `authService.login` → `POST /internal/sso/login` (clientId `congthongtin`). Thành công: cookie `hsv_sso` (httpOnly, `Secure` ở production, SameSite=Lax) chứa token đục; hsv-id lưu phiên (băm SHA-256), hết hạn tuyệt đối 30 ngày / 7 ngày không hoạt động |
+| Kiểm tra phiên | Mỗi request gọi `POST /internal/sso/session/validate`, **cache 30 giây** (`globalThis`, không phải biến module — Next nạp module thành nhiều bản). Khoá/xoá mềm/đổi mật khẩu/đăng xuất ở nền tảng khác có hiệu lực ở đây trong tối đa ~30 giây |
+| Vai trò | Lấy từ hàng `User` cục bộ, tìm theo `identityUserId`. `status` cục bộ đọc từ DB **mỗi request** (không cache) → Admin vô hiệu hoá tài khoản CMS chặn ngay, và KHÔNG đăng xuất người đó khỏi nền tảng khác |
+| Đăng xuất | `logout-all` ở hsv-id: đăng xuất một nơi = đăng xuất mọi nền tảng, xoá cookie |
+| Đổi mật khẩu | Admin đặt lại ở `/admin/users` → hsv-id `change-password` (huỷ mọi phiên) → cache 30 giây của tiến trình này bị bỏ. Người dùng tự đổi: chưa có giao diện ở CMS |
+| Hồ sơ dùng chung | `/admin/profile` (xem) và `/admin/profile/edit` (sửa) — giao diện riêng của CMS, dữ liệu + danh mục + xử lý chức vụ 3 cấp/đề xuất duyệt/Hội viên đều do hsv-id; CMS chỉ chuyển tiếp token của chính người dùng (không sửa được hồ sơ người khác). **Không** bắt khai hồ sơ trước khi vào `/admin` (người dùng chốt 2026-09-19: nhân sự CMS không cần cổng chặn này) |
+| Tên hiển thị | Theo hồ sơ dùng chung (sửa ở nền tảng nào cũng cập nhật `User.displayName` khi đăng nhập/vào trang) |
+
+**Liên kết tài khoản — quy tắc bảo mật.** hsv-id KHÔNG xác minh email và bất kỳ nền tảng nào cũng cho tự đăng ký
+bằng email tuỳ ý. Vì vậy một hàng `User` cục bộ chưa liên kết (ví dụ ADMIN) **không bao giờ** được gắn vào tài
+khoản hsv-id chỉ vì trùng email: chỉ liên kết khi có BẰNG CHỨNG sở hữu — mật khẩu cục bộ của hàng đó đúng
+(`authService.login`). Một cookie SSO trần không liên kết gì cả (`getSession` trả `null`; `requireSession` không cấp
+tài khoản khi email đã thuộc hàng cục bộ). Email đã liên kết với một tài khoản hsv-id KHÁC → từ chối. Mọi trường hợp
+từ chối trả cùng thông báo chung, và chỉ huỷ đúng phiên vừa mở (`/internal/sso/logout`), không đăng xuất nơi khác.
+
+**Tài khoản cũ (chưa từng đồng bộ hsv-id).** Lần đăng nhập đầu, hsv-id trả sai thông tin → nếu mật khẩu CỤC BỘ đúng
+thì tạo tài khoản ở hsv-id bằng mật khẩu đó + liên kết + đăng nhập lại (migration lười như trước, không cần bước
+hàng loạt). Nếu email đã có ở hsv-id với mật khẩu KHÁC thì không liên kết được: người đó phải dùng mật khẩu hsv-id
+(khi đó bị từ chối vì không có bằng chứng sở hữu) — cần Admin xử lý tay.
+
+**Đăng nhập bằng `username`:** hsv-id chỉ biết email/số điện thoại, nên `username` được đổi thành email của tài khoản
+trước khi hỏi hsv-id.
+
+**hsv-id gián đoạn = không đăng nhập được và phiên hiện có coi như hết** (mất khả năng dự phòng bằng mật khẩu cục
+bộ của thiết kế cũ — đánh đổi có chủ ý khi phiên nằm ở lõi). Form đăng nhập báo riêng "hệ thống định danh đang gián
+đoạn" (không tiết lộ gì về tài khoản).
+
+**Tự cấp CONTRIBUTOR: đã bỏ (2026-09-22).** Quyền CMS chỉ do Admin cấp — xem "Hai luồng đăng nhập", mục "Admin phân quyền".
+
+**Cookie dùng chung:** `SSO_COOKIE_DOMAIN` (ví dụ `.hoisinhvien.com.vn`) để nhiều nền tảng cùng tên miền cha dùng chung
+cookie; để trống = cookie riêng từng host (staging/dev). Production đặt `.hoisinhvien.com.vn` từ 2026-09-22 (cùng Hoạt động, Đào tạo).
+
+**Chưa thuộc SSO:** tài khoản đơn vị (tổ chức) của các nền tảng khác; `hoinghi.doanthanhnien.vn` (khác tên miền cha).
+Người dùng ĐANG đăng nhập bằng cookie `admin_session` cũ sẽ bị đăng xuất một lần khi triển khai.
+
+Kiểm thử: `src/server/__tests__/sso-login.test.mts` (26 ca, thuần đơn vị — mock hsv-id/repository, không cần DB;
+gồm các ca bảo mật ở trên).
+
+## Shared identity (hsv-id) — thiết kế trước SSO
+
+The password behind `/admin/login` is shared with the other HSV platforms
+(`hoinghi`, `daotaohsv`) through the internal identity service `hsv-id`
+(`/opt/hsv-id` on the VPS). One person, one password, everywhere.
+
+**This is not SSO.** This CMS keeps everything in "Session lifecycle" above
+exactly as-is — its own `admin_session` cookie, its own `Session` table,
+its own 7-day expiry, its own immediate disabled-account check. `hsv-id`
+only owns the canonical password + root profile; it never issues a session
+or a token this app trusts.
+
+`src/server/integrations/hsvId.ts` is the client — same fault-tolerant
+contract as `hoinghi`/`daotaohsv`'s own `lib/hsv-id.ts`: every call returns
+`null`/`false` instead of throwing, and every caller falls back to the
+local `User.passwordHash`. If `hsv-id` is down, login/reset/create all keep
+working against local data. Config: `HSV_ID_URL` + `HSV_ID_INTERNAL_KEY`
+(the shared `X-Internal-Key`); absent ⇒ the integration is simply inert.
+
+`User.identityUserId` links a local row to its `hsv-id` account. It is
+backfilled lazily, never in a bulk migration:
+
+| Event | What happens |
+|---|---|
+| Login, account already linked | `hsv-id` verifies the password; local hash used only if `hsv-id` is unreachable |
+| Login, not yet linked | local hash verified, then — on success — the account is created in `hsv-id` with the password from that request, and `identityUserId` stored |
+| Admin creates a user (`userService.create`) | synced to `hsv-id` immediately with the temp password |
+| Admin resets a password (`userService.resetPassword`) | new password pushed to `hsv-id` (or the account created there if still unlinked) |
+
+### Auto-provisioning
+
+> **Đã bỏ 2026-09-22** — mục này chỉ còn giá trị lịch sử. Quyền CMS nay chỉ do Admin cấp (mục "Hai luồng đăng nhập").
+
+If someone signs in with credentials that `hsv-id` accepts but has no
+local `User` row, `authService.login` creates one: role **CONTRIBUTOR**,
+status **ACTIVE**, linked by `identityUserId`, email + display name taken
+from the `hsv-id` account. They can immediately draft and submit their own
+articles and upload their own media (`ROLE_PERMISSIONS.CONTRIBUTOR` —
+nothing more: no publish, no approve, no admin). An Admin promotes them via
+`/admin/users` if they need `MANAGER`/`ADMIN`.
+
+Practical effect: anyone with a `hoinghi` or `daotaohsv` account can log
+into this CMS as a Contributor. That is the intended behaviour ("tài khoản
+không có quyền ở nền tảng khác → giữ vai trò cộng tác viên"), not a leak —
+Contributor is a deliberately small role and nothing they create is public
+until a Manager/Admin publishes it.
+
+Provisioned accounts have **no local password** (`passwordHash` is a random
+throwaway) — `hsv-id` is their only credential authority. If `hsv-id` is
+unreachable, such an account can't sign in until it's back (a plain
+`hoinghi`/`daotaohsv`-style account that was later linked still falls back
+to its real local hash; a provisioned-only one has nothing to fall back
+to). Provisioning is skipped for a phone-only `hsv-id` account (this CMS is
+email-keyed) and for a `LOCKED` one. The flow is idempotent — a race or a
+retry reuses the existing row.
+
+An Admin who wants to keep a specific person out disables their `User` row
+(`status = DISABLED`); the generic-error login path and the immediate
+session kill both apply exactly as for any other account.
+
+A `409` from `hsv-id` (the email already belongs to a different `hsv-id`
+account) is left unlinked on purpose — auto-linking would replace the
+person's working local password with another platform's. An Admin resolves
+those by hand via the `hsv-id` API.
 
 ## Brute-force / rate limiting
 

@@ -4,13 +4,15 @@ import { useMemo, useRef, useState } from "react";
 import styles from "./ActivityMapSection.module.css";
 import { VietnamMapSvg } from "./activity-map/VietnamMapSvg";
 import { useActivityMapData } from "./activity-map/useActivityMapData";
-import { provinceValue } from "./activity-map/provinceValue";
+import { provinceValue, provinceValueLabel } from "./activity-map/provinceValue";
 import { useViewport } from "@/lib/hooks/useViewport";
 import { useModalDialog } from "@/lib/hooks/useModalDialog";
-import { IconArrowRight, IconChevronDown, IconClose, IconSearch } from "@/components/icons";
-import type { ActivityMapOverseasCountry } from "@/domain/activity";
+import { IconActivity, IconArrowRight, IconChevronDown, IconClose, IconExternal, IconSearch } from "@/components/icons";
+import type { ActivityMapOverseasCountry, PlatformActivityItem } from "@/domain/activity";
+import { HOAT_DONG_URL } from "@/lib/siteChrome";
 import { localityHref, unitHref } from "@/lib/routes";
 import { slugifyOverseasName } from "@/lib/slug";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 function fmt(n: number) {
   return n.toLocaleString("vi-VN");
@@ -23,58 +25,93 @@ function norm(v: string) {
     .toLowerCase();
 }
 
-const DEFAULT_CATEGORIES = [
-  { slug: "all", label: "Tất cả" },
-  { slug: "sv5tot", label: "Sinh viên 5 tốt" },
-  { slug: "tinhnguyen", label: "Tình nguyện" },
-  { slug: "nckh", label: "Nghiên cứu khoa học" },
-  { slug: "hoinhap", label: "Hội nhập" },
-];
+const STATUS_LABEL: Record<string, string> = { UPCOMING: "Sắp diễn ra", ONGOING: "Đang diễn ra", COMPLETED: "Đã kết thúc" };
+
+/** dd/mm/yyyy in Vietnam time (the map's own dates are ISO strings). */
+function vnDate(iso: string) {
+  return new Date(iso).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+/**
+ * An activity from the Hoạt động platform, listed like an article: image,
+ * title, date · organiser, status. Opens the activity's landing page on Hoạt
+ * động (new tab).
+ */
+function ActivityItem({ a, compact = false }: { a: PlatformActivityItem; compact?: boolean }) {
+  const [imgBroken, setImgBroken] = useState(false);
+  const showImg = !!a.thumbnail_url && !imgBroken;
+  return (
+    <a href={a.url} target="_blank" rel="noopener noreferrer" className={compact ? `${styles.actItem} ${styles.actItemCompact}` : styles.actItem}>
+      <span className={styles.actThumb} aria-hidden>
+        {showImg ? (
+          // eslint-disable-next-line @next/next/no-img-element -- external image (Hoạt động / Google Drive), unoptimized on purpose
+          <img src={a.thumbnail_url!} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setImgBroken(true)} />
+        ) : (
+          <IconActivity size={18} />
+        )}
+      </span>
+      <span className={styles.actBody}>
+        {a.place && <span className={styles.actPlace}>{a.place}</span>}
+        <span className={styles.actTitle}>{a.title}</span>
+        <span className={styles.actMeta}>
+          <span className={styles.actStatus} data-status={a.status}>
+            {STATUS_LABEL[a.status] ?? a.status}
+          </span>
+          {vnDate(a.start_at)} · {a.organization_name}
+        </span>
+      </span>
+      <IconExternal size={13} className={styles.actExt} />
+    </a>
+  );
+}
+
+function ActivityBlock({ items, count, compact = false }: { items: PlatformActivityItem[]; count: number; compact?: boolean }) {
+  return (
+    <div className={styles.actBlock}>
+      <span className={styles.newsLabel}>
+        Hoạt động trên nền tảng Hoạt động{count > 0 ? ` (${count.toLocaleString("vi-VN")})` : ""}
+      </span>
+      {items.length > 0 ? (
+        items.map((a) => <ActivityItem key={a.id} a={a} compact={compact} />)
+      ) : (
+        <span className={styles.newsEmpty}>Chưa có hoạt động nào của đơn vị trên nền tảng Hoạt động.</span>
+      )}
+      <a href={HOAT_DONG_URL} target="_blank" rel="noopener noreferrer" className={styles.actMore}>
+        {count > items.length ? "Xem tất cả trên nền tảng Hoạt động" : "Khám phá hoạt động"} <IconArrowRight size={13} />
+      </a>
+    </div>
+  );
+}
 
 export function ActivityMapSection() {
   const { state, data, vnFeature, nearFeatures } = useActivityMapData();
   const { mobile } = useViewport();
-  const [filter, setFilter] = useState("all");
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [selectedOverseas, setSelectedOverseas] = useState<ActivityMapOverseasCountry | null>(null);
   const [listOpen, setListOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [retryTick, setRetryTick] = useState(0);
 
-  const categories = data?.categories ?? DEFAULT_CATEGORIES;
-  const allCats = filter === "all";
-  const catLabel = categories.find((c) => c.slug === filter)?.label ?? "Tất cả";
   const provinces = useMemo(() => data?.provinces ?? [], [data]);
+  const withData = useMemo(() => provinces.filter((p) => provinceValue(p) != null), [provinces]);
+  const totalArticles = provinces.reduce((s, p) => s + (p.article_count ?? 0), 0);
+  const totalActivities = data?.summary?.total_platform_activities ?? provinces.reduce((s, p) => s + (p.platform_activity_count ?? 0), 0);
+  const latestActivities = data?.platform_activities_latest ?? [];
 
-  const withData = useMemo(
-    () => provinces.filter((p) => provinceValue(p, filter) != null),
-    [provinces, filter]
-  );
-  const catTotal = withData.reduce((s, p) => s + (provinceValue(p, filter) ?? 0), 0);
-  const period = data?.reporting_period?.label ?? "";
   const mapStats = !provinces.length
     ? []
-    : allCats
-      ? [
-          { value: fmt(catTotal), label: "Tổng hoạt động" },
-          { value: fmt(withData.reduce((s, p) => s + (p.article_count || 0), 0)), label: "Tin bài" },
-          { value: fmt(withData.reduce((s, p) => s + (p.student_count || 0), 0)), label: "Sinh viên tham gia" },
-          { value: `${withData.length}/${provinces.length}`, label: "Đơn vị đã báo cáo" },
-        ]
-      : [
-          { value: fmt(catTotal), label: `Hoạt động · ${catLabel}` },
-          { value: String(withData.length), label: "Tỉnh, thành có dữ liệu" },
-          { value: String(provinces.length - withData.length), label: "Chưa có dữ liệu" },
-        ];
+    : [
+        { value: fmt(totalArticles), label: "Tin bài" },
+        { value: fmt(totalActivities), label: "Hoạt động" },
+      ];
   const updatedAt =
-    data?.updated_at && state === "loaded"
-      ? new Date(data.updated_at).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
-      : "";
-  const periodLine = [period ? `Kỳ thống kê: ${period}` : "", updatedAt ? `Cập nhật ${updatedAt}` : ""].filter(Boolean).join(" · ");
+    data?.updated_at && state === "loaded" ? formatDateTimeVi(data.updated_at) : "";
+  const coverage = provinces.length ? `${withData.length}/${provinces.length} tỉnh, thành có dữ liệu` : "";
+  const periodLine = [coverage, updatedAt ? `Cập nhật ${updatedAt}` : ""].filter(Boolean).join(" · ");
 
   function byValue(a: (typeof provinces)[number], b: (typeof provinces)[number]) {
-    const va = provinceValue(a, filter);
-    const vb = provinceValue(b, filter);
+    const va = provinceValue(a);
+    const vb = provinceValue(b);
     if (va == null && vb == null) return a.province_name.localeCompare(b.province_name, "vi");
     if (va == null) return 1;
     if (vb == null) return -1;
@@ -92,27 +129,29 @@ export function ActivityMapSection() {
   const listShown = q ? listAll.filter((p) => norm(p.province_name).includes(q)) : listAll;
 
   const selP = selectedSlug ? provinces.find((p) => p.slug === selectedSlug) ?? null : null;
-  const selVal = selP ? provinceValue(selP, filter) : null;
+  const selVal = selP ? provinceValue(selP) : null;
   const selMetrics: { value: string; label: string }[] = [];
   if (selP && selVal != null) {
-    selMetrics.push({ value: fmt(selVal), label: allCats ? "hoạt động" : `hoạt động ${catLabel.toLowerCase()}` });
-    if (allCats && selP.article_count != null) selMetrics.push({ value: fmt(selP.article_count), label: "tin bài" });
-    if (allCats && selP.student_count != null) selMetrics.push({ value: fmt(selP.student_count), label: "sinh viên" });
+    if (selP.article_count) selMetrics.push({ value: fmt(selP.article_count), label: "tin bài" });
+    if (selP.platform_activity_count) selMetrics.push({ value: fmt(selP.platform_activity_count), label: "hoạt động" });
   }
-  const selNews = selP?.latest_article && selVal != null ? [selP.latest_article] : [];
+  const selNews = selP?.latest_article ? [selP.latest_article] : [];
 
   const ovList = data?.overseas?.countries ?? [];
-  const ovVal = selectedOverseas && allCats ? selectedOverseas.activity_count : null;
+  const ovVal = selectedOverseas ? selectedOverseas.activity_count : null;
   const ovMetrics: { value: string; label: string }[] = [];
-  if (selectedOverseas && ovVal != null) {
+  if (selectedOverseas && ovVal) {
     const rank =
       ovList
         .slice()
         .sort((a, b) => (b.activity_count || 0) - (a.activity_count || 0))
         .findIndex((c) => c.name === selectedOverseas.name) + 1;
-    ovMetrics.push({ value: fmt(ovVal), label: "hoạt động" });
+    if (selectedOverseas.platform_activity_count) ovMetrics.push({ value: fmt(selectedOverseas.platform_activity_count), label: "hoạt động" });
+    if (selectedOverseas.article_count) ovMetrics.push({ value: fmt(selectedOverseas.article_count), label: "tin bài" });
     ovMetrics.push({ value: `${rank}/${ovList.length}`, label: "xếp trong khối" });
   }
+  const selActivities = selectedOverseas ? (selectedOverseas.platform_activities ?? []) : (selP?.platform_activities ?? []);
+  const selActivityCount = selectedOverseas ? (selectedOverseas.platform_activity_count ?? 0) : (selP?.platform_activity_count ?? 0);
 
   const unitSelected = !!(selP || selectedOverseas);
   const showAside = unitSelected && !mobile;
@@ -135,25 +174,16 @@ export function ActivityMapSection() {
   }
 
   const detailName = selectedOverseas ? selectedOverseas.name : selP ? selP.province_name : "";
-  const detailPeriodLine = selectedOverseas
-    ? `Khối ngoài nước${period ? ` · Kỳ thống kê: ${period}` : ""}`
-    : selP
-      ? `Kỳ thống kê: ${selP.period || period}`
-      : "";
+  const detailPeriodLine = selectedOverseas ? "Khối ngoài nước" : "";
   const activeMetrics = selectedOverseas ? ovMetrics : selMetrics;
   const noData = selectedOverseas ? ovMetrics.length === 0 : !!selP && selVal == null;
   const noDataMsg = selectedOverseas
-    ? allCats
-      ? "Hội này chưa gửi số liệu trong kỳ thống kê này."
-      : `Khối ngoài nước chỉ có số liệu tổng, chưa tách theo chuyên mục “${catLabel}”.`
+    ? "Hội này chưa có hoạt động hay tin bài."
     : selP
-      ? selP.reported === false
-        ? "Đơn vị chưa gửi báo cáo trong kỳ thống kê này."
-        : `Chuyên mục “${catLabel}” chưa có dữ liệu của đơn vị này.`
+      ? "Đơn vị này chưa có tin bài hay hoạt động."
       : "";
-  const activities = selectedOverseas ? (ovVal == null ? "—" : fmt(ovVal)) : selVal == null ? "—" : fmt(selVal);
-  const articles = selectedOverseas ? "—" : selP && selP.article_count != null ? fmt(selP.article_count) : "—";
-  const latestTitle = !selectedOverseas && selNews.length ? selNews[0].title : "Chưa có tin bài trong kỳ này";
+  const articles = selectedOverseas ? (selectedOverseas.article_count ? fmt(selectedOverseas.article_count) : "—") : selP && selP.article_count != null ? fmt(selP.article_count) : "—";
+  const latestTitle = !selectedOverseas && selNews.length ? selNews[0].title : "Chưa có tin bài";
   // A province click goes to its locality page — see docs/LOCALITY_PAGE.md —
   // while an overseas chapter (not a geographic locality) still goes to its
   // `/don-vi/[slug]` unit page, same as before.
@@ -172,21 +202,8 @@ export function ActivityMapSection() {
             <span className={styles.eyebrow}>Bản đồ phong trào</span>
             <h2 className={styles.title}>Hoạt động sinh viên trên toàn quốc</h2>
             <p className={styles.desc}>
-              Chọn một tỉnh, thành trên bản đồ để xem hoạt động, tin bài và tin mới nhất của đơn vị đó. Chọn chuyên mục để xem riêng từng mảng phong trào.
+              Chọn một tỉnh, thành hoặc Hội Sinh viên ở nước ngoài để xem tin bài và các hoạt động của đơn vị trên nền tảng Hoạt động.
             </p>
-          </div>
-          <div role="group" aria-label="Lọc hoạt động theo chuyên mục" className={styles.filters}>
-            {categories.map((c) => (
-              <button
-                key={c.slug}
-                type="button"
-                onClick={() => setFilter(c.slug)}
-                aria-pressed={filter === c.slug}
-                className={filter === c.slug ? styles.filterBtnOn : styles.filterBtn}
-              >
-                {c.label}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -197,7 +214,6 @@ export function ActivityMapSection() {
               data={data}
               vnFeature={vnFeature}
               nearFeatures={nearFeatures}
-              filter={filter}
               selectedSlug={selectedSlug}
               selectedOverseasName={selectedOverseas?.name ?? null}
               onSelectProvince={selectProvince}
@@ -205,9 +221,6 @@ export function ActivityMapSection() {
               onRetry={() => setRetryTick((n) => n + 1)}
               key={retryTick}
             />
-            <p className={styles.mapFootnote}>
-              Quần đảo Hoàng Sa và quần đảo Trường Sa thuộc chủ quyền Việt Nam. Vị trí hai quần đảo trên bản đồ mang tính chất minh hoạ, không theo tỷ lệ và không phải đơn vị hành chính cấp tỉnh. Hội Sinh viên Việt Nam ở ngoài nước được tính riêng, ngoài 34 tỉnh, thành.
-            </p>
           </div>
 
           <aside aria-label="Số liệu hoạt động" className={styles.aside}>
@@ -221,7 +234,7 @@ export function ActivityMapSection() {
                     </div>
                   ))}
                 </div>
-                <span className={styles.periodLine}>{periodLine}</span>
+                {periodLine && <span className={styles.periodLine}>{periodLine}</span>}
               </div>
             )}
 
@@ -231,7 +244,7 @@ export function ActivityMapSection() {
                   <span>
                     <span className={styles.detailEyebrow}>Đang chọn</span>
                     <div className={styles.detailName}>{detailName}</div>
-                    <span className={styles.detailPeriod}>{detailPeriodLine}</span>
+                    {detailPeriodLine && <span className={styles.detailPeriod}>{detailPeriodLine}</span>}
                   </span>
                   <button type="button" onClick={clearSelection} aria-label="Xem toàn quốc, bỏ chọn đơn vị" className={styles.detailCloseBtn}>
                     <IconClose size={15} />
@@ -262,13 +275,15 @@ export function ActivityMapSection() {
                     selNews.map((n) => (
                       <span key={n.title} className={styles.newsItem}>
                         <span className={styles.newsTitle}>{n.title}</span>
-                        <span className={styles.newsDate}>{n.published_at}</span>
+                        <span className={styles.newsDate}>{vnDate(n.published_at)}</span>
                       </span>
                     ))
                   ) : (
-                    <span className={styles.newsEmpty}>Đơn vị chưa có tin bài trong kỳ này.</span>
+                    <span className={styles.newsEmpty}>Đơn vị chưa có tin bài.</span>
                   )}
                 </div>
+
+                <ActivityBlock items={selActivities} count={selActivityCount} />
 
                 <div className={styles.detailActions}>
                   <a href={selUrl} className={styles.ctaPrimary}>
@@ -286,10 +301,18 @@ export function ActivityMapSection() {
                     <a key={p.slug} href={localityHref(p.slug)} className={styles.unselectedLink}>
                       <span className={styles.unselectedPlace}>{p.province_name}</span>
                       <span className={styles.unselectedTitle}>{p.latest_article?.title}</span>
-                      <span className={styles.unselectedDate}>{p.latest_article?.published_at}</span>
+                      <span className={styles.unselectedDate}>{p.latest_article ? vnDate(p.latest_article.published_at) : ""}</span>
                     </a>
                   ))}
-                  <span className={styles.unselectedHint}>Chọn một tỉnh, thành trên bản đồ để xem số liệu và tin bài của đơn vị đó.</span>
+                  {latestActivities.length > 0 && (
+                    <div className={styles.actBlock}>
+                      <span className={styles.unselectedLabel}>Hoạt động mới trên nền tảng Hoạt động</span>
+                      {latestActivities.map((a) => (
+                        <ActivityItem key={a.id} a={a} />
+                      ))}
+                    </div>
+                  )}
+                  <span className={styles.unselectedHint}>Chọn một tỉnh, thành hoặc Hội ở nước ngoài trên bản đồ để xem tin bài và hoạt động của đơn vị đó.</span>
                 </div>
               )
             )}
@@ -323,7 +346,7 @@ export function ActivityMapSection() {
 
               <div className={styles.listGrid}>
                 {listShown.map((p) => {
-                  const v = provinceValue(p, filter);
+                  const v = provinceValue(p);
                   const none = v == null;
                   return (
                     <button
@@ -334,9 +357,7 @@ export function ActivityMapSection() {
                       className={styles.listItem}
                     >
                       <span className={styles.listItemName}>{p.province_name}</span>
-                      <span className={none ? styles.listItemNoValue : styles.listItemValue}>
-                        {none ? (p.reported === false ? "Chưa báo cáo" : "Chưa có dữ liệu") : `${fmt(v)} hoạt động`}
-                      </span>
+                      <span className={none ? styles.listItemNoValue : styles.listItemValue}>{provinceValueLabel(p)}</span>
                     </button>
                   );
                 })}
@@ -364,18 +385,19 @@ export function ActivityMapSection() {
             </span>
             <span className={styles.sheetStats}>
               <span className={styles.sheetStat}>
-                <span className={styles.sheetStatValue}>{activities}</span>
-                <span className={styles.sheetStatLabel}>hoạt động</span>
-              </span>
-              <span className={styles.sheetStat}>
                 <span className={styles.sheetStatValue}>{articles}</span>
                 <span className={styles.sheetStatLabel}>tin bài</span>
+              </span>
+              <span className={styles.sheetStat}>
+                <span className={styles.sheetStatValue}>{selActivityCount ? fmt(selActivityCount) : "—"}</span>
+                <span className={styles.sheetStatLabel}>hoạt động</span>
               </span>
             </span>
             <span className={styles.sheetNewsBlock}>
               <span className={styles.sheetNewsLabel}>Tin mới nhất</span>
               <span className={styles.sheetNewsTitle}>{latestTitle}</span>
             </span>
+            <ActivityBlock items={selActivities.slice(0, 2)} count={selActivityCount} compact />
             <a href={selUrl} className={styles.sheetCta}>{selCtaLabel}</a>
           </div>
         </>

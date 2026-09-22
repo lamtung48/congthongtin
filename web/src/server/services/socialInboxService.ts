@@ -2,10 +2,12 @@ import { externalItemRepository, type ExternalItemWithRelations, type ExternalIt
 import { userRepository } from "@/server/repositories/userRepository";
 import { auditLogRepository } from "@/server/repositories/auditLogRepository";
 import { notificationService } from "@/server/services/notificationService";
-import { articleService } from "@/server/services/articleService";
+import { articleService, type ArticleBlockInput } from "@/server/services/articleService";
+import { importImagesFromUrls } from "@/server/media/storeImage";
 import { slugify } from "@/lib/slug";
 import { hasPermission } from "@/server/auth/permissions";
 import { normalizedContentHash, extractHashtags } from "@/server/integrations/socialCollector/normalize";
+import type { ExtractedBlock } from "@/server/integrations/socialCollector/articleExtractor";
 import type { SessionUser } from "@/server/auth/session";
 
 /** Brief section 2: every manually-pasted item shares this one seeded
@@ -105,6 +107,27 @@ export const socialInboxService = {
     return updated;
   },
 
+  /** Undo an "bỏ qua" — back to `PENDING_REVIEW` so the item reappears in
+   *  the working queue and can be assigned like any other. Logged as a
+   *  generic `UPDATE` with the transition in `metadata` rather than adding a
+   *  fourth `*_EXTERNAL` enum value (which would need its own migration for
+   *  what is literally the inverse of an action already recorded). */
+  async restore(actor: SessionUser, item: ExternalItemWithRelations) {
+    assertHasPermission(actor, "social_inbox.manage");
+    if (item.status !== "IGNORED") {
+      throw new Error("Chỉ có thể khôi phục nội dung đang ở trạng thái đã bỏ qua.");
+    }
+    const updated = await externalItemRepository.restore(item.id);
+    await auditLogRepository.record({
+      actorId: actor.id,
+      action: "UPDATE",
+      entityType: "ExternalItem",
+      entityId: item.id,
+      metadata: { from: "IGNORED", to: "PENDING_REVIEW" },
+    });
+    return updated;
+  },
+
   /** Brief section 8: "Manager có thể Assign to Contributor. Tạo
    *  notification." */
   async assign(actor: SessionUser, item: ExternalItemWithRelations, contributorId: string) {
@@ -135,8 +158,16 @@ export const socialInboxService = {
    * never defaults to anything else.
    */
   async convertToArticle(actor: SessionUser, item: ExternalItemWithRelations, fields: { categoryId: string; title?: string }) {
+    // CONVERTED is the one hard stop: `ExternalItem.articleId` is unique, so
+    // a second conversion would either fail at the database or orphan the
+    // first article. IGNORED is deliberately *not* a stop — "bỏ qua" is a
+    // triage decision an editor is allowed to change their mind about, and
+    // what conversion produces is a DRAFT that still has to go through
+    // review before anyone sees it. Blocking it here only pushed the editor
+    // through a pointless "khôi phục rồi mới chuyển" round trip — and, until
+    // this was fixed, the button was rendered on ignored rows anyway and
+    // simply threw.
     if (item.status === "CONVERTED") throw new Error("Nội dung này đã được chuyển thành bài viết.");
-    if (item.status === "IGNORED") throw new Error("Không thể chuyển một nội dung đã bị bỏ qua.");
 
     if (hasPermission(actor.role, "social_inbox.manage")) {
       // Any PENDING_REVIEW or ASSIGNED item — no ownership check.
@@ -149,21 +180,58 @@ export const socialInboxService = {
     }
 
     const title = fields.title?.trim() || item.title || deriveTitleFromContent(item.contentText);
+
+    const extracted = Array.isArray(item.bodyBlocks) ? (item.bodyBlocks as unknown as ExtractedBlock[]) : null;
+
+    // Every image the collector found is copied into Drive here, exactly as
+    // if an editor had uploaded it — same validate → resize → Drive →
+    // `MediaAsset` pipeline, so a converted article's images behave like any
+    // other (previewable in the editor, servable from `/api/media/[id]`,
+    // independent of whether the source CDN keeps the file around).
+    //
+    // Gathered up front and imported together rather than one at a time
+    // inside the block loop: each Drive upload is a ~3s round trip that is
+    // almost pure waiting, so a sequential loop kept an 8-image article's
+    // "Chuyển thành bài viết" click blocked for ~28s.
+    const imageRequests: { url: string; nameHint: string; caption?: string }[] = [];
+    if (item.coverImageUrl) imageRequests.push({ url: item.coverImageUrl, nameHint: title });
+    for (const b of extracted ?? []) {
+      if (b.type === "IMAGE") {
+        imageRequests.push({ url: b.data.externalUrl, nameHint: title, caption: b.data.caption || undefined });
+      }
+    }
+    const mediaByUrl = await importImagesFromUrls(actor, imageRequests);
+
+    // Cover: the source page's og:image, else the first body image.
+    let coverMediaId = item.coverImageUrl ? mediaByUrl.get(item.coverImageUrl) : undefined;
+
+    // Real body when the collector extracted one; otherwise the summary.
+    const blocks: ArticleBlockInput[] = [];
+    let order = 0;
+    if (extracted && extracted.length > 0) {
+      for (const b of extracted) {
+        if (b.type === "PARAGRAPH") blocks.push({ type: "PARAGRAPH", order: order++, data: b.data });
+        else if (b.type === "HEADING") blocks.push({ type: "HEADING", order: order++, data: b.data });
+        else if (b.type === "IMAGE") {
+          const mediaId = mediaByUrl.get(b.data.externalUrl);
+          if (!mediaId) continue; // unreachable image — drop the block, keep the article
+          if (!coverMediaId) coverMediaId = mediaId;
+          blocks.push({ type: "IMAGE", order: order++, data: { mediaId, caption: b.data.caption } });
+        }
+      }
+    } else {
+      blocks.push({ type: "PARAGRAPH", order: order++, data: { runs: [{ text: item.contentText }] } });
+    }
+
     const article = await articleService.create(actor, {
       fields: {
         slug: `${slugify(title)}-${Math.random().toString(36).slice(2, 7)}`,
         title,
         categoryId: fields.categoryId,
         excerpt: item.excerpt ?? undefined,
+        coverMediaId,
       },
-      blocks: [
-        { type: "PARAGRAPH", order: 0, data: { runs: [{ text: item.contentText }] } },
-        {
-          type: "QUOTE",
-          order: 1,
-          data: { text: "Nội dung được tổng hợp từ nguồn bên ngoài — vui lòng biên tập lại trước khi xuất bản.", cite: item.url },
-        },
-      ],
+      blocks,
     });
     if (!article) throw new Error("Không thể tạo bài viết từ nội dung này.");
 

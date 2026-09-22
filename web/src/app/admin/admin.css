@@ -273,6 +273,12 @@ table.adminTable {
   color: var(--admin-danger);
 }
 
+/* Informational, not a status: marks a row as pinned to a homepage slot. */
+.adminBadgeBrand {
+  background: color-mix(in srgb, var(--admin-brand) 12%, transparent);
+  color: var(--admin-brand);
+}
+
 .adminButton {
   display: inline-flex;
   align-items: center;

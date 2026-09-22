@@ -28,6 +28,7 @@ import type {
 
 const MEDIA_PROVIDER_MAP: Record<PrismaMediaProvider, MediaAsset["provider"]> = {
   GOOGLE_DRIVE: "drive",
+  EXTERNAL: "external",
   YOUTUBE: "youtube",
   LOCAL_PLACEHOLDER: "local-placeholder",
 };
@@ -35,6 +36,7 @@ const MEDIA_PROVIDER_MAP: Record<PrismaMediaProvider, MediaAsset["provider"]> = 
 const MEDIA_TYPE_MAP: Record<PrismaMediaType, MediaAsset["type"]> = {
   IMAGE: "image",
   VIDEO: "video",
+  DOCUMENT: "document",
 };
 
 const MEDIA_STATUS_MAP: Record<PrismaMediaStatus, MediaAsset["status"]> = {
@@ -44,7 +46,9 @@ const MEDIA_STATUS_MAP: Record<PrismaMediaStatus, MediaAsset["status"]> = {
   PROCESSING: "processing",
 };
 
-export function mapMedia(media: PrismaMediaAsset): MediaAsset {
+/** `thumbnail` is mapped only when the caller's query included it
+ *  (`include: { thumbnail: true }`) — every video-listing query does. */
+export function mapMedia(media: PrismaMediaAsset & { thumbnail?: PrismaMediaAsset | null }): MediaAsset {
   return {
     id: media.id,
     provider: MEDIA_PROVIDER_MAP[media.provider],
@@ -57,6 +61,7 @@ export function mapMedia(media: PrismaMediaAsset): MediaAsset {
     mimeType: media.mimeType ?? undefined,
     status: MEDIA_STATUS_MAP[media.status],
     errorReason: media.errorReason ?? undefined,
+    thumbnail: media.thumbnail ? mapMedia(media.thumbnail) : undefined,
   };
 }
 
@@ -128,7 +133,7 @@ export async function resolveArticleContent(article: ArticleWithRelations): Prom
   const blockMediaIds = collectMediaIdsFromBlocks(article.blocks);
   const [author, blockMediaRows] = await Promise.all([
     resolveAuthor(article),
-    blockMediaIds.length > 0 ? prisma.mediaAsset.findMany({ where: { id: { in: blockMediaIds } } }) : Promise.resolve([]),
+    blockMediaIds.length > 0 ? prisma.mediaAsset.findMany({ where: { id: { in: blockMediaIds } }, include: { thumbnail: true } }) : Promise.resolve([]),
   ]);
   const mediaById = new Map(blockMediaRows.map((m) => [m.id, mapMedia(m)] as const));
 

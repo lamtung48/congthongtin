@@ -1,7 +1,9 @@
 .section {
   max-width: var(--container-wide);
   margin: 0 auto;
-  padding: var(--sp-16) var(--gutter) 0;
+  /* Bottom padding, not a margin on the dark section that follows: the dark
+     band is full-bleed, so spacing put outside it renders as a white gap. */
+  padding: var(--sp-16) var(--gutter);
 }
 .head {
   display: flex;

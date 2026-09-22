@@ -39,3 +39,21 @@ export async function createCategoryAction(
   revalidatePath("/admin/categories");
   return {};
 }
+
+/**
+ * Deletion goes through `taxonomyService.removeCategory`, which re-checks
+ * `taxonomy.manage` and refuses anything still in use — this returns the
+ * message rather than throwing so the row can show it inline instead of
+ * replacing the page with an error boundary.
+ */
+export async function deleteCategoryAction(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const actor = await requireSession();
+    await taxonomyService.removeCategory(actor, id);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Không thể xoá." };
+  }
+  revalidatePath("/admin/categories");
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

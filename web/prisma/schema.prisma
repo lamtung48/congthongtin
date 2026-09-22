@@ -102,11 +102,17 @@ enum MediaProvider {
   GOOGLE_DRIVE
   YOUTUBE
   LOCAL_PLACEHOLDER
+  /// Image hot-linked from its original source (news-site CDN). `sourceId`
+  /// holds the absolute URL; never downloaded/stored by this app.
+  EXTERNAL
 }
 
 enum MediaType {
   IMAGE
   VIDEO
+  /// Van ban dinh kem (PDF / Word / Excel / PowerPoint) — luu tren Google
+  /// Drive nhu anh, nhung khong bao gio di qua sharp va khong co width/height.
+  DOCUMENT
 }
 
 enum MediaStatus {
@@ -155,6 +161,8 @@ enum EventStatus {
 enum PlatformCategory {
   CONFERENCE
   TRAINING
+  /// Nền tảng Hoạt động (hoatdong.hoisinhvien.com.vn) — đăng ký hoạt động, điểm danh QR, Thẻ Hội viên.
+  ACTIVITY
   SV5TOT
   VOLUNTEER
   DATA
@@ -374,18 +382,26 @@ enum NotificationType {
 /// would have meant two competing "what can this user do" answers in the
 /// same schema).
 model User {
-  id            String     @id @default(cuid())
-  email         String     @unique
-  username      String?    @unique
-  passwordHash  String
-  displayName   String
-  avatarMediaId String?
-  role          AdminRole  @default(CONTRIBUTOR)
-  status        UserStatus @default(ACTIVE)
-  lastLoginAt   DateTime?
-  createdById   String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id             String     @id @default(cuid())
+  email          String     @unique
+  username       String?    @unique
+  passwordHash   String
+  /// Shared-identity link: the `hsv-id` (/opt/hsv-id) account this CMS user
+  /// maps to. Null until the account is first synced (on Admin-create, on
+  /// Admin password-reset, or lazily on the first successful local login
+  /// after the integration was enabled). Once set, `hsv-id` is the primary
+  /// password authority and the local `passwordHash` is only a fallback for
+  /// when `hsv-id` is unreachable — see src/server/integrations/hsvId.ts and
+  /// docs/AUTHENTICATION.md, "Shared identity (hsv-id)".
+  identityUserId String?    @unique
+  displayName    String
+  avatarMediaId  String?
+  role           AdminRole  @default(CONTRIBUTOR)
+  status         UserStatus @default(ACTIVE)
+  lastLoginAt    DateTime?
+  createdById    String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   avatarMedia   MediaAsset?    @relation("UserAvatar", fields: [avatarMediaId], references: [id])
   createdBy     User?          @relation("UserCreatedBy", fields: [createdById], references: [id])
@@ -403,9 +419,10 @@ model User {
   youtubeConnections         YoutubeConnection[]
   notifications              Notification[]
   createdSources             Source[]                @relation("SourceCreatedBy")
-  assignedExternalItems      ExternalItem[]           @relation("ExternalItemAssignedTo")
-  ignoredExternalItems       ExternalItem[]           @relation("ExternalItemIgnoredBy")
-  createdExternalItems       ExternalItem[]           @relation("ExternalItemCreatedBy")
+  assignedExternalItems      ExternalItem[]          @relation("ExternalItemAssignedTo")
+  ignoredExternalItems       ExternalItem[]          @relation("ExternalItemIgnoredBy")
+  createdExternalItems       ExternalItem[]          @relation("ExternalItemCreatedBy")
+  createdDocuments           Document[]              @relation("DocumentCreatedBy")
 
   @@index([role])
 }
@@ -554,6 +571,7 @@ model Province {
   articles           Article[]
   events             Event[]
   activityStatistics ActivityStatistic[]
+  platformActivities PlatformActivity[]
 }
 
 /// The Activity Map's overseas globe panel — one row per country chapter
@@ -573,7 +591,49 @@ model OverseasOrganization {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization? @relation(fields: [organizationId], references: [id])
+  organization       Organization?      @relation(fields: [organizationId], references: [id])
+  platformActivities PlatformActivity[]
+}
+
+/// A public activity on the Hoạt động platform (hoatdong.hoisinhvien.com.vn),
+/// mirrored here so the homepage's "Bản đồ phong trào" can list it under the
+/// province / overseas association it belongs to — shown like an article, but
+/// clicking opens the activity's own landing page on Hoạt động. Written ONLY
+/// by `scripts/syncPlatformActivities.ts` (refresher sidecar): Hoạt động is
+/// the source of truth, nothing here is edited by hand, and a row that
+/// disappears from Hoạt động's public list is deleted on the next full sync.
+/// `id` = the activity id on Hoạt động. `provinceId` / `overseasOrganizationId`
+/// are resolved by name from the organising unit's hsv-id locality / name
+/// (central bodies resolve to neither and stay off the map).
+model PlatformActivity {
+  id                     String   @id
+  code                   String
+  title                  String
+  /// Absolute URL of the activity's landing page on Hoạt động.
+  url                    String
+  thumbnailUrl           String?
+  organizationName       String
+  /// hsv-id Organization.type of the organiser (CENTRAL / PROVINCE / SCHOOL …).
+  organizationType       String?
+  /// The organiser's hsv-id locality name, as Hoạt động reports it.
+  localityName           String?
+  provinceId             String?
+  overseasOrganizationId String?
+  /// UPCOMING / ONGOING / COMPLETED / CANCELLED (Hoạt động's lifecycle view).
+  status                 String
+  tags                   String[]
+  participantCount       Int      @default(0)
+  startAt                DateTime
+  endAt                  DateTime
+  syncedAt               DateTime
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  province             Province?             @relation(fields: [provinceId], references: [id], onDelete: SetNull)
+  overseasOrganization OverseasOrganization? @relation(fields: [overseasOrganizationId], references: [id], onDelete: SetNull)
+
+  @@index([provinceId, startAt])
+  @@index([overseasOrganizationId, startAt])
 }
 
 /// Trung ương Hội, Hội Sinh viên tỉnh/thành, Hội Sinh viên trường, Hội Sinh
@@ -644,8 +704,8 @@ model MediaAsset {
   /// the video's own YouTube title and `caption` as its description for a
   /// YOUTUBE asset — reusing the existing display fields rather than adding
   /// two near-duplicate columns.
-  visibility      YoutubeVisibility?
-  durationSeconds Int?
+  visibility       YoutubeVisibility?
+  durationSeconds  Int?
   /// A short machine-readable code (`"private"`, `"embed_disabled"`,
   /// `"removed"`, `"quota_exceeded"`, `"upload_failed"`, `"processing"`) set
   /// whenever a status check finds the video isn't currently playable —
@@ -653,22 +713,31 @@ model MediaAsset {
   /// healthy again. Deliberately a free-form string, not a DB enum: the set
   /// of reasons is defined and validated in `youtubeService.ts`, not the
   /// schema, so a new one never needs a migration.
-  errorReason     String?
+  errorReason      String?
+  /// Custom cover image for a VIDEO asset — a Drive IMAGE asset uploaded
+  /// alongside (or after) the video, shown instead of YouTube's own
+  /// thumbnail everywhere the video appears (homepage "Kênh YouTube của
+  /// Hội", /video, article YouTube blocks). Null → YouTube's default
+  /// thumbnail. Only stored here, never pushed to YouTube itself.
+  thumbnailMediaId String?
 
-  createdBy User? @relation("MediaCreatedBy", fields: [createdById], references: [id])
+  createdBy User?       @relation("MediaCreatedBy", fields: [createdById], references: [id])
+  thumbnail MediaAsset? @relation("VideoThumbnail", fields: [thumbnailMediaId], references: [id], onDelete: SetNull)
 
   usages MediaUsage[]
 
-  usedAsUserAvatar   User[]          @relation("UserAvatar")
-  usedAsAuthorAvatar AuthorProfile[] @relation("AuthorAvatar")
-  usedAsOrgLogo      Organization[]  @relation("OrganizationLogo")
-  usedAsTopicCover   Topic[]         @relation("TopicCover")
-  usedAsArticleCover Article[]       @relation("ArticleCover")
-  usedAsArticleOg    Article[]       @relation("ArticleOg")
-  usedAsEventCover   Event[]         @relation("EventCover")
-  usedAsPlatformIcon Platform[]      @relation("PlatformIcon")
-  galleryItems       GalleryItem[]
-  videos             Video[]
+  usedAsUserAvatar     User[]          @relation("UserAvatar")
+  usedAsAuthorAvatar   AuthorProfile[] @relation("AuthorAvatar")
+  usedAsOrgLogo        Organization[]  @relation("OrganizationLogo")
+  usedAsTopicCover     Topic[]         @relation("TopicCover")
+  usedAsArticleCover   Article[]       @relation("ArticleCover")
+  usedAsDocumentFile   Document[]      @relation("DocumentFile")
+  usedAsArticleOg      Article[]       @relation("ArticleOg")
+  usedAsEventCover     Event[]         @relation("EventCover")
+  usedAsPlatformIcon   Platform[]      @relation("PlatformIcon")
+  galleryItems         GalleryItem[]
+  videos               Video[]
+  usedAsVideoThumbnail MediaAsset[]    @relation("VideoThumbnail")
 
   @@index([provider, providerFileId])
 }
@@ -803,6 +872,16 @@ model Article {
   seoDescription String?
   canonicalUrl   String?
   ogMediaId      String?
+  /// Per-article overrides for the homepage "Editorial Image Canvas" Hero
+  /// when this article is one of the (up to 4) Hero slides — focal point
+  /// (desktop/mobile, 0–100 % → object-position), overlay strength, text
+  /// theme, an optional caption, an optional mobile-specific image id, and
+  /// a title-accent phrase. `null` (the default) means the Hero renders
+  /// this slide from safe auto-defaults. Shape:
+  /// `{ focalDesktop?: {x,y}, focalMobile?: {x,y}, overlay?: "soft"|"medium"|"strong",
+  ///    theme?: "light"|"dark", caption?: string, mobileMediaId?: string, titleAccent?: string }`
+  /// Written by the (not-yet-built) Hero editor — see docs/HERO.md.
+  heroConfig     Json?
 
   category     Category       @relation(fields: [categoryId], references: [id])
   author       AuthorProfile? @relation(fields: [authorId], references: [id])
@@ -825,7 +904,7 @@ model Article {
   /// Article" (`ExternalItem.articleId`, the FK actually lives there —
   /// see that model). `@relation` back-reference only, so a plain
   /// `articleRepository.findById` doesn't have to always join it.
-  externalItem ExternalItem?
+  externalItem               ExternalItem?
 
   @@index([status, publishedAt])
   @@index([categoryId])
@@ -992,15 +1071,15 @@ model Event {
 /// docs/ECOSYSTEM_INTEGRATION.md, "Failure isolation" for why the public
 /// path never blocks on an external platform's own uptime.
 model Platform {
-  id          String                  @id @default(cuid())
-  slug        String                  @unique
-  name        String
-  url         String
-  description String
-  category    PlatformCategory
-  status      PlatformStatus
-  accessLevel String
-  metric      String?
+  id                       String                  @id @default(cuid())
+  slug                     String                  @unique
+  name                     String
+  url                      String
+  description              String
+  category                 PlatformCategory
+  status                   PlatformStatus
+  accessLevel              String
+  metric                   String?
   /// What's happening right now, shown on the homepage bento card (e.g.
   /// "Phiên biểu quyết đang mở", "14 khoá đang mở"). Renamed from
   /// `liveActivityNote` — same field, now also writable by
@@ -1015,20 +1094,20 @@ model Platform {
   /// Overrides the per-category default CTA copy `buildPlatformView`
   /// (`src/lib/view/platformView.ts`) would otherwise use — `null` keeps
   /// that default, so existing content needs no migration backfill.
-  ctaLabel    String?
-  iconMediaId String?
+  ctaLabel                 String?
+  iconMediaId              String?
   /// See `PlatformIntegrationType`'s own comment. Never changes what the
   /// public CTA renders as (always a real link, brief section 3: "Không
   /// iframe mặc định") — only which adapter (if any) `refreshActivity` is
   /// allowed to call.
-  integrationType PlatformIntegrationType @default(EXTERNAL_LINK)
+  integrationType          PlatformIntegrationType @default(EXTERNAL_LINK)
   /// The base URL `src/server/integrations/platformAdapters/*` calls for
   /// this platform's live activity — meaningless (and ignored) unless
   /// `integrationType: API`. Never exposed to any public route.
-  apiBaseUrl  String?
+  apiBaseUrl               String?
   /// Homepage bento position among platforms sharing a render slot, and
   /// the admin listing's default sort — ascending, lower first.
-  order       Int                     @default(0)
+  order                    Int                     @default(0)
   /// Hard on/off switch, independent of `status` (brief section 7: "quản
   /// lý display state") — a disabled platform never appears on the public
   /// homepage regardless of `status`, e.g. to unpublish a platform being
@@ -1037,9 +1116,9 @@ model Platform {
   /// `AuditAction.ENABLE_PLATFORM`/`DISABLE_PLATFORM` — this specific
   /// toggle gets its own audit action, not folded into generic
   /// `UPDATE_PLATFORM`.
-  isEnabled   Boolean                 @default(true)
-  createdAt   DateTime                @default(now())
-  updatedAt   DateTime                @updatedAt
+  isEnabled                Boolean                 @default(true)
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
 
   iconMedia MediaAsset? @relation("PlatformIcon", fields: [iconMediaId], references: [id])
 
@@ -1199,6 +1278,19 @@ model Source {
   categoryId          String?
   lastSyncedAt        DateTime?
   lastSyncItemCount   Int?
+  /// Auto-sync interval in minutes. `null` = manual-only ("Sync" button).
+  /// The `collector` sidecar (docker-compose.yml) runs every RSS/WEBSITE
+  /// source whose `lastSyncedAt + syncEveryMinutes` has passed. See
+  /// `scripts/runDueSourceSyncs.ts` and `docs/SOCIAL_COLLECTOR.md`.
+  syncEveryMinutes    Int?
+  /// Cap on items stored per sync run (newest first). `null` = no cap.
+  maxItemsPerSync     Int?
+  /// When true, the collector also fetches each item's article page and
+  /// extracts a real body (paragraphs/headings/images) — see
+  /// `socialCollector/articleExtractor.ts`. Images stay hot-linked.
+  fetchFullBody       Boolean      @default(false)
+  /// Optional CSS selector for the article body container; blank = auto.
+  contentSelector     String?
   /// Brief section 10's four failure kinds, already rendered as a
   /// human-readable Vietnamese message by the adapter that hit them — see
   /// `socialCollector/types.ts`'s `SourceFetchFailure`. Cleared on the
@@ -1225,35 +1317,43 @@ model Source {
 /// slightly-edited repost with no matching id/url. See
 /// `sourceService.ts`'s `findDuplicate()`.
 model ExternalItem {
-  id                     String             @id @default(cuid())
-  sourceId               String
-  externalId             String?
-  url                    String
-  title                  String?
-  excerpt                String?
-  contentText            String
+  id                    String             @id @default(cuid())
+  sourceId              String
+  externalId            String?
+  url                   String
+  title                 String?
+  excerpt               String?
+  contentText           String
+  /// Extracted article body as an ArticleBlockInput-shaped JSON array
+  /// (only when the Source has `fetchFullBody`). Used by convertToArticle
+  /// to build real blocks instead of one paragraph. Image blocks carry an
+  /// `externalUrl` (hot-linked).
+  bodyBlocks            Json?
+  /// og:image of the source article — becomes the DRAFT's cover (as an
+  /// EXTERNAL MediaAsset) on convert.
+  coverImageUrl         String?
   /// Lowercased, whitespace-collapsed `contentText` — never displayed,
   /// only compared for near-duplicate detection (see model comment).
-  normalizedContentHash  String
-  hashtags               String[]           @default([])
-  publishedAt            DateTime?
-  fetchedAt              DateTime           @default(now())
-  status                 ExternalItemStatus @default(PENDING_REVIEW)
-  assignedToId           String?
+  normalizedContentHash String
+  hashtags              String[]           @default([])
+  publishedAt           DateTime?
+  fetchedAt             DateTime           @default(now())
+  status                ExternalItemStatus @default(PENDING_REVIEW)
+  assignedToId          String?
   /// Set once "Convert to Article" runs — `@unique` makes this a true 1:1
   /// with `Article`, and its mere presence is what "CONVERTED" means (the
   /// enum value is redundant with this being non-null, kept anyway because
   /// a plain status column is what every list/filter query in this
   /// codebase already reads, matching `ArticleStatus`'s own precedent).
-  articleId              String?            @unique
-  ignoredAt              DateTime?
-  ignoredById            String?
+  articleId             String?            @unique
+  ignoredAt             DateTime?
+  ignoredById           String?
   /// Who pasted this in, for a `MANUAL_EXTERNAL` item — `null` for
   /// anything fetched by a real adapter (attribution is the `Source`
   /// itself, not a staff member).
-  createdById            String?
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
+  createdById           String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
 
   source     Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   assignedTo User?    @relation("ExternalItemAssignedTo", fields: [assignedToId], references: [id])
@@ -1289,4 +1389,79 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([actorId, createdAt])
+}
+
+/// Site-wide appearance settings — currently just the public site's
+/// background colour. A singleton, using the same fixed-id-row pattern as
+/// `YoutubeConnection` (`id: "default"`): there is exactly one public site,
+/// so a table of many rows would only ever have one meaningful member.
+///
+/// `updatedById` is an unconstrained scalar rather than a `User` relation on
+/// purpose — a singleton settings row does not need a back-relation field
+/// added to `User`, and the authoritative "who changed what, when" record is
+/// the `AuditLog` entry this write also creates. It exists only so the admin
+/// screen can show the last editor without a second lookup path.
+model SiteAppearance {
+  id             String   @id @default("default")
+  /// Canonical lowercase `#rrggbb`. `#ffffff` means "no override" — the
+  /// design system's own `--surface-page` — and is what a missing row
+  /// resolves to as well. See `src/lib/appearance.ts`.
+  pageBackground String   @default("#ffffff")
+  updatedAt      DateTime @updatedAt
+  updatedById    String?
+}
+
+// ============================================================
+// Tai lieu (van ban dieu hanh) — muc "Tài liệu" tren trang chu
+// ============================================================
+
+/// Nhan phan loai tai lieu ("Thông báo", "Kế hoạch", ...). Mot bang rieng
+/// chu khong phai enum: yeu cau la nguoi quan tri phai TU THEM duoc nhan moi,
+/// ma them mot gia tri enum thi phai sua schema + chay migration. Sau nhan
+/// dau tien duoc chen san trong migration
+/// `20260908100000_documents`.
+model DocumentLabel {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  /// Thu tu hien thi trong bo loc; nho truoc.
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents Document[]
+}
+
+/// Mot van ban tai ve duoc. Noi dung nam o MOT trong hai cho, khong bao gio
+/// ca hai va khong bao gio khong cai nao (rang buoc nay do
+/// `documentService` giu, khong phai schema — Prisma khong dien dat duoc
+/// "chinh xac mot trong hai" o tang bang):
+///   - `mediaId`: tep da tai len, di qua dung duong ong Drive nhu anh
+///     (`MediaAsset` type DOCUMENT), phuc vu qua `/api/tai-lieu/[id]`.
+///   - `externalUrl`: lien ket Drive/URL ngoai, mo thang o tab moi.
+model Document {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  title          String
+  description    String?
+  /// So/ky hieu van ban, vd "1234-KH/TWHSV". Text tu do vi moi cap ban hanh
+  /// mot kieu.
+  documentNumber String?
+  /// Ngay ban hanh — khac `createdAt` (ngay dua len cong).
+  issuedAt       DateTime?
+  labelId        String?
+  mediaId        String?
+  externalUrl    String?
+  /// An/hien tren trang cong khai ma khong phai xoa ban ghi.
+  isPublished    Boolean   @default(true)
+  createdById    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  label     DocumentLabel? @relation(fields: [labelId], references: [id], onDelete: SetNull)
+  media     MediaAsset?    @relation("DocumentFile", fields: [mediaId], references: [id], onDelete: SetNull)
+  createdBy User?          @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+
+  @@index([isPublished, issuedAt])
+  @@index([labelId])
 }

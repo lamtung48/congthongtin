@@ -159,7 +159,13 @@ export async function uploadFileToDrive(buffer: Buffer, filename: string, mimeTy
 export async function deleteFileFromDrive(fileId: string): Promise<void> {
   const drive = getClient();
   try {
-    await drive.files.delete({ fileId, supportsAllDrives: true });
+    // Move to trash rather than `files.delete` (permanent). On a Shared
+    // Drive, permanent deletion needs the caller to be a *Manager*; the
+    // service account is only a Content Manager/Contributor, which can
+    // trash (`capabilities.canTrash`) but not hard-delete
+    // (`capabilities.canDelete`). Trash is also recoverable and the Shared
+    // Drive empties it automatically after 30 days.
+    await drive.files.update({ fileId, requestBody: { trashed: true }, supportsAllDrives: true });
   } catch (err) {
     if (err instanceof GoogleDriveNotConfiguredError) throw err;
     throw new GoogleDriveOperationError(describeDriveError(err), { cause: err });
@@ -187,6 +193,39 @@ export async function getDriveFileStream(fileId: string): Promise<DriveFileStrea
       stream: contentRes.data,
       mimeType: metaRes.data.mimeType ?? "application/octet-stream",
       size: metaRes.data.size ? Number(metaRes.data.size) : undefined,
+    };
+  } catch (err) {
+    if (err instanceof GoogleDriveNotConfiguredError) throw err;
+    throw new GoogleDriveOperationError(describeDriveError(err), { cause: err });
+  }
+}
+
+export interface DriveFileContent {
+  stream: NodeJS.ReadableStream;
+  /** From the content response's `content-length`, when Drive sends it. */
+  size?: number;
+}
+
+/**
+ * Content-only fetch: a single `files.get?alt=media` call, with no companion
+ * metadata request. Every caller that already holds the file's MIME type —
+ * which is every caller that reaches this via a `MediaAsset`/`Document` row,
+ * since the type is stored at upload time — should use this instead of
+ * `getDriveFileStream` so a media request costs one Drive round trip, not
+ * two.
+ */
+export async function getDriveFileContent(fileId: string): Promise<DriveFileContent> {
+  const drive = getClient();
+  try {
+    const res = await drive.files.get(
+      { fileId, alt: "media", supportsAllDrives: true },
+      { responseType: "stream" },
+    );
+    const headers = (res.headers ?? {}) as Record<string, string | undefined>;
+    const len = Number(headers["content-length"]);
+    return {
+      stream: res.data as unknown as NodeJS.ReadableStream,
+      size: Number.isFinite(len) && len > 0 ? len : undefined,
     };
   } catch (err) {
     if (err instanceof GoogleDriveNotConfiguredError) throw err;

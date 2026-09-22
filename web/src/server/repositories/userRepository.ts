@@ -1,4 +1,6 @@
+import { randomBytes } from "node:crypto";
 import { prisma } from "@/server/db/client";
+import { hashPassword } from "@/server/auth/password";
 import type { AdminRole, Prisma, UserStatus } from "@/generated/prisma/client";
 
 const publicUserSelect = {
@@ -27,6 +29,52 @@ export const userRepository = {
   findByEmailOrUsernameWithHash(identifier: string) {
     return prisma.user.findFirst({
       where: { OR: [{ email: identifier }, { username: identifier }] },
+    });
+  },
+
+  /** Just the fields the shared-identity (`hsv-id`) sync needs — used by
+   *  the login lazy-sync and the Admin password-reset path. `identityUserId`
+   *  is deliberately kept out of `publicUserSelect` (it has no place in any
+   *  list/detail view). */
+  findIdentitySyncFields(id: string) {
+    return prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, displayName: true, identityUserId: true },
+    });
+  },
+
+  setIdentityUserId(id: string, identityUserId: string) {
+    return prisma.user.update({ where: { id }, data: { identityUserId } });
+  },
+
+  findByIdentityUserId(identityUserId: string) {
+    return prisma.user.findUnique({ where: { identityUserId } });
+  },
+
+  /** Case-insensitive: `hsv-id` normalises emails to lower case, this CMS historically did not. */
+  findByEmailInsensitive(email: string) {
+    return prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
+  },
+
+  /**
+   * A CMS account for an existing HSV-ID account, created because an Admin
+   * granted it a role (`userService.grantRole`) — never automatically. No
+   * local password: `hsv-id` is its only credential authority, so the hash
+   * is a random throwaway nobody knows.
+   */
+  async createFromIdentity(input: { email: string; displayName: string; identityUserId: string; role: AdminRole; createdById: string }): Promise<PublicUser> {
+    const passwordHash = await hashPassword(`hsv-id:${randomBytes(24).toString("hex")}`);
+    return prisma.user.create({
+      data: {
+        email: input.email,
+        displayName: input.displayName,
+        role: input.role,
+        status: "ACTIVE",
+        identityUserId: input.identityUserId,
+        passwordHash,
+        createdBy: { connect: { id: input.createdById } },
+      },
+      select: publicUserSelect,
     });
   },
 

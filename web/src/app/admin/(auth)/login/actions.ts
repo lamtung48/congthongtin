@@ -33,7 +33,7 @@ export async function loginAction(_prevState: LoginFormState | undefined, formDa
   const requestHeaders = await headers();
   const ip = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
 
-  const result = await authService.login(parsed.data.identifier, parsed.data.password, ip);
+  const result = await authService.login(parsed.data.identifier, parsed.data.password, ip, requestHeaders.get("user-agent"));
   if (!result.ok) {
     return { error: result.error };
   }

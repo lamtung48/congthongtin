@@ -8,6 +8,7 @@ import type { PlatformCategory, PlatformStatus, PlatformIntegrationType } from "
 export const PLATFORM_CATEGORY_LABELS: Record<PlatformCategory, string> = {
   CONFERENCE: "Hội nghị",
   TRAINING: "Đào tạo",
+  ACTIVITY: "Hoạt động",
   SV5TOT: "Sinh viên 5 tốt",
   VOLUNTEER: "Tình nguyện",
   DATA: "Dữ liệu & Báo cáo",

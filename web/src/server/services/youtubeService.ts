@@ -9,11 +9,14 @@ import {
   isYoutubeConfigured,
   uploadVideoToYoutube,
   getVideoStatus,
+  getPublicVideoInfo,
   updateVideoMetadata as updateYoutubeVideoMetadata,
   listChannelUploads,
   type YoutubePrivacyStatus,
 } from "@/server/integrations/youtube";
 import { parseYoutubeVideoId } from "@/server/validation/youtubeUrl";
+import { videoRepository } from "@/server/repositories/videoRepository";
+import { slugify } from "@/lib/slug";
 import { hasPermission } from "@/server/auth/permissions";
 import type { SessionUser } from "@/server/auth/session";
 import type { MediaAsset, MediaStatus, YoutubeVisibility } from "@/generated/prisma/client";
@@ -96,6 +99,17 @@ function toYoutubeVisibility(privacyStatus: YoutubePrivacyStatus): YoutubeVisibi
   return privacyStatus.toUpperCase() as YoutubeVisibility;
 }
 
+/** A custom video thumbnail must be an image that actually made it to
+ *  Google Drive — uploaded first through the ordinary image route
+ *  (`/api/admin/media/upload`), then referenced here by id. Never a YouTube
+ *  or hot-linked asset, and never the video itself. */
+async function assertUsableThumbnail(thumbnailMediaId: string) {
+  const image = await mediaRepository.findById(thumbnailMediaId);
+  if (!image || image.type !== "IMAGE" || image.provider !== "GOOGLE_DRIVE" || image.status !== "READY") {
+    throw new Error("Ảnh thumbnail không hợp lệ — vui lòng tải lại ảnh (JPG, PNG hoặc WEBP).");
+  }
+}
+
 export const youtubeService = {
   isConfigured: isYoutubeConfigured,
   isContributorUploadAllowed: isContributorVideoUploadAllowed,
@@ -163,9 +177,11 @@ export const youtubeService = {
    *  succeeds — never a placeholder for one that might fail. */
   async uploadVideo(
     actor: SessionUser,
-    data: { buffer: Buffer; mimeType: string; title: string; description: string; visibility: YoutubePrivacyStatus },
+    data: { buffer: Buffer; mimeType: string; title: string; description: string; visibility: YoutubePrivacyStatus; thumbnailMediaId?: string },
   ): Promise<MediaAsset> {
     assertCanUpload(actor);
+    // Checked before the (slow, quota-costing) YouTube upload, not after.
+    if (data.thumbnailMediaId) await assertUsableThumbnail(data.thumbnailMediaId);
     const privacyStatus = resolvePrivacyForUpload(actor, data.visibility);
     const { videoId } = await uploadVideoToYoutube(data.buffer, data.mimeType, { title: data.title, description: data.description, privacyStatus });
 
@@ -187,13 +203,14 @@ export const youtubeService = {
       status: mapped.status,
       errorReason: mapped.errorReason,
       createdBy: { connect: { id: actor.id } },
+      ...(data.thumbnailMediaId ? { thumbnail: { connect: { id: data.thumbnailMediaId } } } : {}),
     });
     await auditLogRepository.record({
       actorId: actor.id,
       action: "UPLOAD_VIDEO",
       entityType: "MediaAsset",
       entityId: asset.id,
-      metadata: { videoId, title: data.title, visibility: privacyStatus },
+      metadata: { videoId, title: data.title, visibility: privacyStatus, thumbnailMediaId: data.thumbnailMediaId ?? null },
     });
     return asset;
   },
@@ -203,7 +220,7 @@ export const youtubeService = {
    *  channel. Verifies the id against the real API before creating
    *  anything (never trusts a client-typed id/title the way the old manual-
    *  link form used to for YOUTUBE assets). */
-  async linkExistingVideo(actor: SessionUser, input: string): Promise<MediaAsset> {
+  async linkExistingVideo(actor: SessionUser, input: string, options: { thumbnailMediaId?: string } = {}): Promise<MediaAsset> {
     if (!hasPermission(actor.role, "media.manage.own") && !hasPermission(actor.role, "media.manage.any")) {
       throw new Error("Không có quyền thêm video.");
     }
@@ -211,7 +228,8 @@ export const youtubeService = {
     if (!videoId) {
       throw new Error("Không nhận diện được URL hoặc video ID YouTube hợp lệ.");
     }
-    return importChannelVideoById(actor, videoId, "LINK_VIDEO");
+    if (options.thumbnailMediaId) await assertUsableThumbnail(options.thumbnailMediaId);
+    return attachPublicVideoById(actor, videoId, "LINK_VIDEO", options.thumbnailMediaId);
   },
 
   /** Brief section 2: "Chọn video đã có trên kênh" — browsing the raw
@@ -233,7 +251,7 @@ export const youtubeService = {
     if (!hasPermission(actor.role, "media.manage.any")) {
       throw new Error("Chỉ Admin/Quản trị viên mới có thể chọn video từ kênh YouTube.");
     }
-    return importChannelVideoById(actor, videoId, "LINK_VIDEO");
+    return attachPublicVideoById(actor, videoId, "LINK_VIDEO");
   },
 
   /** Pushes the change to the real YouTube video (title/description/
@@ -278,7 +296,7 @@ export const youtubeService = {
     if (!asset.providerFileId || asset.provider !== "YOUTUBE") {
       throw new Error("Media này không phải video YouTube.");
     }
-    const status = await getVideoStatus(asset.providerFileId);
+    const status = await getPublicVideoInfo(asset.providerFileId);
     if (!status) {
       return mediaRepository.updateVideoDetails(mediaId, { status: "REMOVED", errorReason: "removed" });
     }
@@ -292,12 +310,33 @@ export const youtubeService = {
       errorReason: mapped.errorReason,
     });
   },
+
+  /** Sets (or, with `null`, clears) a video's custom cover image — the
+   *  "Ảnh thumbnail" control on `/admin/media/videos`. CMS-side only: the
+   *  YouTube video's own thumbnail is left untouched, and clearing simply
+   *  falls back to it. Same who-may-manage rule as editing the video. */
+  async setThumbnail(actor: SessionUser, mediaId: string, thumbnailMediaId: string | null) {
+    const asset = await mediaRepository.findById(mediaId);
+    if (!asset) throw new Error("Không tìm thấy video.");
+    assertCanManageAsset(actor, asset);
+    if (asset.type !== "VIDEO") throw new Error("Media này không phải video.");
+    if (thumbnailMediaId) await assertUsableThumbnail(thumbnailMediaId);
+    const updated = await mediaRepository.setVideoThumbnail(mediaId, thumbnailMediaId);
+    await auditLogRepository.record({
+      actorId: actor.id,
+      action: "UPDATE_VIDEO",
+      entityType: "MediaAsset",
+      entityId: mediaId,
+      metadata: { thumbnailMediaId },
+    });
+    return updated;
+  },
 };
 
-async function importChannelVideoById(actor: SessionUser, videoId: string, auditAction: "LINK_VIDEO"): Promise<MediaAsset> {
-  const status = await getVideoStatus(videoId);
+async function attachPublicVideoById(actor: SessionUser, videoId: string, auditAction: "LINK_VIDEO", thumbnailMediaId?: string): Promise<MediaAsset> {
+  const status = await getPublicVideoInfo(videoId);
   if (!status) {
-    throw new Error("Không tìm thấy video này trên YouTube (có thể riêng tư, đã bị xoá, hoặc ID không đúng).");
+    throw new Error("Không tìm thấy video công khai với ID này (có thể video riêng tư, đã bị xoá, tắt nhúng, hoặc ID không đúng).");
   }
   const mapped = mapUploadStatusToMedia(status.uploadStatus, status.privacyStatus, status.embeddable);
   const asset = await mediaRepository.create({
@@ -311,13 +350,29 @@ async function importChannelVideoById(actor: SessionUser, videoId: string, audit
     status: mapped.status,
     errorReason: mapped.errorReason,
     createdBy: { connect: { id: actor.id } },
+    ...(thumbnailMediaId ? { thumbnail: { connect: { id: thumbnailMediaId } } } : {}),
   });
+  // Also publish it to the public site — the homepage's "Video và phóng sự"
+  // section and /video read `Video` rows, not raw media. Gated on
+  // `video.manage` (ADMIN/MANAGER) so a Contributor pasting a link still gets
+  // an embeddable asset for their article without that link appearing on the
+  // public homepage by itself.
+  if (mapped.status === "READY" && !mapped.errorReason && hasPermission(actor.role, "video.manage")) {
+    await videoRepository.publishFromMedia({
+      mediaId: asset.id,
+      title: status.title || videoId,
+      description: status.description || "",
+      durationSeconds: status.durationSeconds ?? null,
+      slug: `${slugify(status.title || videoId).slice(0, 70) || "video"}-${videoId.slice(0, 6).toLowerCase()}`,
+    });
+  }
+
   await auditLogRepository.record({
     actorId: actor.id,
     action: auditAction,
     entityType: "MediaAsset",
     entityId: asset.id,
-    metadata: { videoId, title: status.title },
+    metadata: { videoId, title: status.title, thumbnailMediaId: thumbnailMediaId ?? null },
   });
   return asset;
 }

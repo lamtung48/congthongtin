@@ -93,6 +93,17 @@ export const externalItemRepository = {
     });
   },
 
+  /** IGNORED -> PENDING_REVIEW. Clears `ignoredBy`/`ignoredAt` so the row
+   *  looks exactly like one that was never triaged — "bỏ qua" is a triage
+   *  decision, not a soft delete, and undoing it should leave no residue. */
+  restore(id: string) {
+    return prisma.externalItem.update({
+      where: { id },
+      data: { status: "PENDING_REVIEW", ignoredById: null, ignoredAt: null },
+      include: externalItemWithRelations,
+    });
+  },
+
   markConverted(id: string, articleId: string) {
     return prisma.externalItem.update({
       where: { id },

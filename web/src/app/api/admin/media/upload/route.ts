@@ -3,6 +3,8 @@ import { getSession } from "@/server/auth/session";
 import { hasPermission } from "@/server/auth/permissions";
 import { mediaService } from "@/server/services/mediaService";
 import { validateImageUpload, buildStorageFilename } from "@/server/validation/mediaUpload";
+import { processImageForStorage } from "@/server/media/processImage";
+import { slugify } from "@/lib/slug";
 import { uploadRateLimiter } from "@/server/security/rateLimit";
 import {
   uploadFileToDrive,
@@ -64,18 +66,29 @@ export async function POST(request: Request) {
   }
 
   const { format, mimeType, dimensions } = validation.value;
-  const storageFilename = buildStorageFilename(crypto.randomUUID(), format);
+
+  // Downscale to ≤ 1600px on the longest edge and strip EXIF before storage
+  // — raw camera/phone images are multi-MB and nothing on the site needs
+  // them at full size. Falls back to the original bytes if sharp can't
+  // process the file (see processImageForStorage).
+  const processed = await processImageForStorage(buffer, format);
+  // Optional hint from the article editor — slugified + capped here so it's
+  // safe as a filename (never the raw client name, brief section 9).
+  const rawHint = formData.get("nameHint");
+  const slugHint =
+    typeof rawHint === "string" && rawHint.trim() ? slugify(rawHint).slice(0, 80).replace(/-+$/, "") || undefined : undefined;
+  const storageFilename = buildStorageFilename(crypto.randomUUID(), format, slugHint);
 
   try {
-    const uploaded = await uploadFileToDrive(buffer, storageFilename, mimeType);
+    const uploaded = await uploadFileToDrive(processed.buffer, storageFilename, mimeType);
     const asset = await mediaService.registerUpload(actor, {
       providerFileId: uploaded.fileId,
       type: "IMAGE",
       filename: file.name,
       mimeType,
       size: uploaded.size,
-      width: dimensions?.width,
-      height: dimensions?.height,
+      width: processed.width ?? dimensions?.width,
+      height: processed.height ?? dimensions?.height,
     });
     return NextResponse.json({ media: asset }, { status: 201 });
   } catch (err) {

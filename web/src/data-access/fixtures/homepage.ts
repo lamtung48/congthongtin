@@ -1,6 +1,25 @@
-import type { HeroContent } from "@/domain/homepage";
+import type { Author } from "@/domain/people";
+import type { MediaAsset } from "@/domain/media";
 import type { SearchResultItem } from "@/domain/search";
 import { articleHref } from "@/lib/routes";
+
+/** The old flat prototype shape for the single Hero. `FixtureProvider` maps
+ *  this into a one-element `HeroSlide[]` (with auto Editorial-Image-Canvas
+ *  defaults) at the provider boundary — the domain type is now `HeroSlide`. */
+interface HeroFixture {
+  eyebrow: string;
+  headline: string;
+  headlineAccent?: string;
+  lead: string;
+  author: Author;
+  readingTimeMinutes: number;
+  topicLabel: string;
+  publishedAt: string;
+  articleUrl: string;
+  secondaryCtaLabel: string;
+  secondaryCtaHref: string;
+  media: MediaAsset;
+}
 
 // Nav/footer chrome moved to `@/lib/siteChrome` — shared, non-fixture site
 // config both providers use unchanged. See that file's header comment.
@@ -10,7 +29,7 @@ export const HERO_SLUG = "dai-hoi-xii-khai-mac";
 /** Prototype fixture. Used to be hardcoded directly in `Hero.tsx` JSX (an
  *  audit-flagged inconsistency with every other section, which reads its
  *  copy from data) — now sourced the same way as the rest of the homepage. */
-export const HERO: HeroContent = {
+export const HERO: HeroFixture = {
   eyebrow: "Đại hội XII",
   headline: "Đại hội đại biểu toàn quốc Hội Sinh viên Việt Nam lần thứ XII",
   headlineAccent: "khai mạc tại Hà Nội",

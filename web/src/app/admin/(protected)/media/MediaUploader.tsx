@@ -33,7 +33,7 @@ interface UploadQueueItem {
   error?: string;
 }
 
-function uploadOne(file: File, onProgress: (percent: number) => void): Promise<UploadedMedia> {
+function uploadOne(file: File, onProgress: (percent: number) => void, nameHint?: string): Promise<UploadedMedia> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/admin/media/upload");
@@ -58,11 +58,12 @@ function uploadOne(file: File, onProgress: (percent: number) => void): Promise<U
     xhr.onerror = () => reject(new Error("Mất kết nối trong khi tải lên."));
     const formData = new FormData();
     formData.append("file", file);
+    if (nameHint && nameHint.trim()) formData.append("nameHint", nameHint.trim());
     xhr.send(formData);
   });
 }
 
-export function MediaUploader({ onUploaded }: { onUploaded: (media: UploadedMedia) => void }) {
+export function MediaUploader({ onUploaded, nameHint }: { onUploaded: (media: UploadedMedia) => void; nameHint?: string }) {
   const [items, setItems] = useState<UploadQueueItem[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -72,7 +73,7 @@ export function MediaUploader({ onUploaded }: { onUploaded: (media: UploadedMedi
     (file: File) => {
       const localId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       setItems((prev) => [...prev, { id: localId, file, progress: 0, state: "uploading" }]);
-      uploadOne(file, (percent) => setItems((prev) => prev.map((it) => (it.id === localId ? { ...it, progress: percent } : it))))
+      uploadOne(file, (percent) => setItems((prev) => prev.map((it) => (it.id === localId ? { ...it, progress: percent } : it))), nameHint)
         .then((media) => {
           setItems((prev) => prev.map((it) => (it.id === localId ? { ...it, progress: 100, state: "success" } : it)));
           onUploaded(media);
@@ -81,7 +82,7 @@ export function MediaUploader({ onUploaded }: { onUploaded: (media: UploadedMedi
           setItems((prev) => prev.map((it) => (it.id === localId ? { ...it, state: "error", error: err.message } : it)));
         });
     },
-    [onUploaded],
+    [onUploaded, nameHint],
   );
 
   function handleFiles(fileList: FileList | null) {

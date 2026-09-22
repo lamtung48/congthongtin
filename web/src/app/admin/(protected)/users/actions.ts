@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requirePermission } from "@/server/auth/guard";
-import { userService } from "@/server/services/userService";
+import { GrantRoleError, userService, type IdentityPreview } from "@/server/services/userService";
 import { ASSIGNABLE_ROLES } from "@/server/auth/permissions";
 import { sensitiveAdminActionRateLimiter } from "@/server/security/rateLimit";
 import type { AdminRole } from "@/generated/prisma/client";
@@ -60,8 +60,8 @@ export async function createUserAction(_prev: CreateUserFormState | undefined, f
   }
   try {
     await userService.create(actor, parsed.data);
-  } catch {
-    return { error: "Không thể tạo tài khoản — email hoặc tên đăng nhập có thể đã tồn tại." };
+  } catch (err) {
+    return { error: err instanceof GrantRoleError ? err.message : "Không thể tạo tài khoản — email hoặc tên đăng nhập có thể đã tồn tại." };
   }
   revalidatePath("/admin/users");
   return { success: true };
@@ -102,5 +102,56 @@ export async function resetPasswordAction(_prev: ResetPasswordFormState | undefi
     return { temporaryPassword };
   } catch {
     return { error: "Không thể đặt lại mật khẩu." };
+  }
+}
+
+// ---- Cấp quyền Ban biên tập cho một tài khoản HSV-ID (the only way a CMS role is granted — see userService.grantRole) ----
+
+export interface LookupIdentityState {
+  query?: string;
+  preview?: IdentityPreview;
+  notFound?: boolean;
+  error?: string;
+}
+
+export async function lookupIdentityAction(_prev: LookupIdentityState | undefined, formData: FormData): Promise<LookupIdentityState> {
+  const actor = await requirePermission("user.manage");
+  const query = String(formData.get("identifier") ?? "").trim();
+  if (query.length < 6) return { query, error: "Nhập đúng email hoặc số điện thoại của tài khoản HSV-ID." };
+  try {
+    const preview = await userService.lookupIdentity(actor, query);
+    return preview ? { query, preview } : { query, notFound: true };
+  } catch (err) {
+    return { query, error: err instanceof GrantRoleError ? err.message : "Không tra cứu được, vui lòng thử lại." };
+  }
+}
+
+const GrantRoleSchema = z.object({
+  hsvId: z.string().min(1),
+  role: z.enum(ASSIGNABLE_ROLES as [AdminRole, ...AdminRole[]]),
+});
+
+/** Tagged with the account it is about, so a result never shows under a different person looked up afterwards. */
+export interface GrantRoleState {
+  hsvId?: string;
+  error?: string;
+  granted?: { displayName: string; role: AdminRole };
+}
+
+export async function grantRoleAction(_prev: GrantRoleState | undefined, formData: FormData): Promise<GrantRoleState> {
+  const actor = await requirePermission("user.manage");
+  if (!sensitiveAdminActionRateLimiter.check(actor.id).allowed) {
+    return { error: "Bạn đang thao tác quá nhanh — vui lòng thử lại sau ít phút." };
+  }
+  sensitiveAdminActionRateLimiter.record(actor.id);
+  const parsed = GrantRoleSchema.safeParse({ hsvId: formData.get("hsvId"), role: formData.get("role") });
+  if (!parsed.success) return { error: "Dữ liệu không hợp lệ." };
+  const { hsvId } = parsed.data;
+  try {
+    const user = await userService.grantRole(actor, hsvId, parsed.data.role);
+    revalidatePath("/admin/users");
+    return { hsvId, granted: { displayName: user.displayName, role: user.role } };
+  } catch (err) {
+    return { hsvId, error: err instanceof GrantRoleError ? err.message : "Không cấp được quyền, vui lòng thử lại." };
   }
 }

@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireSession } from "@/server/auth/session";
 import { articleService } from "@/server/services/articleService";
+import { homepageService, HERO_SLIDE_LIMIT } from "@/server/services/homepageService";
 import { taxonomyService } from "@/server/services/taxonomyService";
 import { organizationRepository } from "@/server/repositories/organizationRepository";
 import { provinceRepository } from "@/server/repositories/provinceRepository";
 import { authorProfileRepository } from "@/server/repositories/authorProfileRepository";
-import { auditLogRepository } from "@/server/repositories/auditLogRepository";
 import { hasPermission } from "@/server/auth/permissions";
 import {
   submitForReviewAction,
@@ -18,9 +18,11 @@ import {
   archiveAction,
   restoreFromArchiveAction,
   deleteArticleAction,
+  toggleSectionPlacementAction,
 } from "./actions";
 import type { ArticleAdminFilter } from "@/server/repositories/articleRepository";
 import type { ArticleStatus } from "@/generated/prisma/client";
+import { formatDateTimeVi } from "@/lib/formatDate";
 
 export const metadata: Metadata = { title: "Bài viết" };
 
@@ -132,7 +134,7 @@ export default async function AdminArticlesPage({ searchParams }: { searchParams
     take: PAGE_SIZE,
   };
 
-  const [articles, total, categories, topics, tags, organizations, provinces, authors] = await Promise.all([
+  const [articles, total, categories, topics, tags, organizations, provinces, authors, heroPinnedIds, storyRailPinnedIds] = await Promise.all([
     articleService.listForAdmin(session, filter),
     articleService.countForAdmin(session, filter),
     taxonomyService.listCategories(),
@@ -141,13 +143,9 @@ export default async function AdminArticlesPage({ searchParams }: { searchParams
     organizationRepository.list(),
     provinceRepository.list(),
     authorProfileRepository.list(),
+    homepageService.listPinnedArticleIds("HERO"),
+    homepageService.listPinnedArticleIds("STORY_RAIL"),
   ]);
-
-  const submittedAtByArticle = await auditLogRepository.findLatestActionDates(
-    "SUBMIT_REVIEW",
-    "Article",
-    articles.map((a) => a.id),
-  );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const canApprove = hasPermission(session.role, "article.approve");
@@ -157,6 +155,7 @@ export default async function AdminArticlesPage({ searchParams }: { searchParams
   const canUnpublish = hasPermission(session.role, "article.unpublish");
   const canDelete = hasPermission(session.role, "article.delete");
   const canCreate = hasPermission(session.role, "article.create");
+  const canManageHomepage = hasPermission(session.role, "homepage.manage");
 
   const filterQueryOnly: Record<string, string | undefined> = {
     tab: params.tab,
@@ -257,6 +256,15 @@ export default async function AdminArticlesPage({ searchParams }: { searchParams
         <Link href="/admin/articles" className="adminButton">Xoá lọc</Link>
       </form>
 
+      {canManageHomepage && (
+        <p className="adminHint" style={{ margin: "0 0 10px" }}>
+          Hero trang chủ hiển thị tối đa {HERO_SLIDE_LIMIT} bài ghim
+          {heroPinnedIds.size > 0 && ` — hiện đã ghim ${heroPinnedIds.size}`}
+          {heroPinnedIds.size > HERO_SLIDE_LIMIT && `, ${heroPinnedIds.size - HERO_SLIDE_LIMIT} bài ghim sau cùng sẽ không hiện`}
+          . Còn lại lấy tự động theo bài mới nhất.
+        </p>
+      )}
+
       <div className="adminCard">
         {articles.length === 0 ? (
           <div className="adminEmptyState">Không có bài viết nào khớp bộ lọc.</div>
@@ -265,44 +273,95 @@ export default async function AdminArticlesPage({ searchParams }: { searchParams
             <table className="adminTable">
               <thead>
                 <tr>
-                  <th>Tiêu đề</th>
-                  <th>Chuyên mục</th>
-                  <th>Tác giả / Người tạo</th>
-                  <th>Đơn vị</th>
-                  <th>Trạng thái</th>
-                  <th>Người cập nhật</th>
-                  <th>Ngày tạo</th>
-                  <th>Ngày gửi duyệt</th>
-                  <th>Ngày xuất bản</th>
-                  <th style={{ minWidth: 280 }}>Hành động</th>
+                  {/* Four columns, not ten: the nine narrow ones squeezed the
+                      title into a 2–3 word column that wrapped on every row.
+                      Chuyên mục / tác giả / đơn vị / người cập nhật are all
+                      short hint text, so they read fine on one meta line
+                      under the title, and the three dates share one cell. */}
+                  <th style={{ width: "44%", minWidth: 280 }}>Tiêu đề</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Trạng thái</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Thời gian đăng</th>
+                  <th style={{ minWidth: 260 }}>Hành động</th>
                 </tr>
               </thead>
               <tbody>
                 {articles.map((a) => {
                   const isOwner = a.createdById === session.id;
                   const canEditThis = articleService.canEdit(session, a);
-                  const submittedAt = submittedAtByArticle.get(a.id);
                   return (
                     <tr key={a.id}>
                       <td>
-                        <Link href={`/admin/articles/${a.id}/edit`} style={{ fontWeight: 600 }}>{a.title}</Link>
+                        <Link href={`/admin/articles/${a.id}/edit`} style={{ fontWeight: 600, lineHeight: 1.35 }}>{a.title}</Link>
+                        <div className="adminHint" style={{ marginTop: 3, display: "flex", flexWrap: "wrap", gap: "2px 8px" }}>
+                          <span>{a.category.name}</span>
+                          <span>· {a.author?.displayName ?? a.createdBy?.displayName ?? "—"}</span>
+                          {a.organization && <span>· {a.organization.name}</span>}
+                          {a.updatedBy && <span>· sửa: {a.updatedBy.displayName}</span>}
+                        </div>
                         {a.returnNote && (
                           <div className="adminHint" style={{ color: "var(--admin-danger)", marginTop: 2 }}>
                             Bị trả lại: {a.returnNote}
                           </div>
                         )}
                       </td>
-                      <td className="adminHint">{a.category.name}</td>
-                      <td className="adminHint">{a.author?.displayName ?? a.createdBy?.displayName ?? "—"}</td>
-                      <td className="adminHint">{a.organization?.name ?? "—"}</td>
-                      <td><span className={`adminBadge ${STATUS_BADGE[a.status]}`}>{STATUS_LABELS[a.status]}</span></td>
-                      <td className="adminHint">{a.updatedBy?.displayName ?? "—"}</td>
-                      <td className="adminHint">{a.createdAt.toLocaleDateString("vi-VN")}</td>
-                      <td className="adminHint">{submittedAt ? submittedAt.toLocaleDateString("vi-VN") : "—"}</td>
-                      <td className="adminHint">{a.publishedAt ? a.publishedAt.toLocaleDateString("vi-VN") : "—"}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <span className={`adminBadge ${STATUS_BADGE[a.status]}`}>{STATUS_LABELS[a.status]}</span>
+                        {heroPinnedIds.has(a.id) && (
+                          <div style={{ marginTop: 4 }}>
+                            <span className="adminBadge adminBadgeBrand">★ Hero</span>
+                          </div>
+                        )}
+                        {storyRailPinnedIds.has(a.id) && (
+                          <div style={{ marginTop: 4 }}>
+                            <span className="adminBadge adminBadgeBrand">★ Dòng chảy</span>
+                          </div>
+                        )}
+                      </td>
+                      {/* Only the publication time — the created/submitted
+                          milestones that used to stack here are workflow
+                          detail the article's own edit screen already shows,
+                          and three dates in one column made the list harder
+                          to scan than the one date an editor actually looks
+                          for. To the minute, and in Vietnam time
+                          (`formatDateTimeVi`). */}
+                      <td className="adminHint" style={{ whiteSpace: "nowrap" }}>
+                        {a.publishedAt ? formatDateTimeVi(a.publishedAt) : "Chưa đăng"}
+                      </td>
                       <td>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                           <Link href={`/preview/articles/${a.id}`} target="_blank" className="adminButton adminButtonSmall">Xem trước ↗</Link>
+                          {canManageHomepage && a.status === "PUBLISHED" && (
+                            <>
+                              <form action={toggleSectionPlacementAction}>
+                                <input type="hidden" name="articleId" value={a.id} />
+                                <input type="hidden" name="sectionKey" value="HERO" />
+                                <input type="hidden" name="pinned" value={heroPinnedIds.has(a.id) ? "false" : "true"} />
+                                <button
+                                  type="submit"
+                                  className={`adminButton adminButtonSmall${heroPinnedIds.has(a.id) ? "" : " adminButtonPrimary"}`}
+                                  title={heroPinnedIds.has(a.id) ? "Bỏ ghim bài này khỏi Hero trang chủ" : "Ghim bài này lên Hero trang chủ"}
+                                >
+                                  {heroPinnedIds.has(a.id) ? "Gỡ khỏi Hero" : "★ Đưa lên Hero"}
+                                </button>
+                              </form>
+                              <form action={toggleSectionPlacementAction}>
+                                <input type="hidden" name="articleId" value={a.id} />
+                                <input type="hidden" name="sectionKey" value="STORY_RAIL" />
+                                <input type="hidden" name="pinned" value={storyRailPinnedIds.has(a.id) ? "false" : "true"} />
+                                <button
+                                  type="submit"
+                                  className="adminButton adminButtonSmall"
+                                  title={
+                                    storyRailPinnedIds.has(a.id)
+                                      ? "Bỏ ghim bài này khỏi Dòng chảy sinh viên"
+                                      : "Ghim bài này vào Dòng chảy sinh viên"
+                                  }
+                                >
+                                  {storyRailPinnedIds.has(a.id) ? "Gỡ dòng chảy" : "★ Dòng chảy"}
+                                </button>
+                              </form>
+                            </>
+                          )}
                           {a.status === "DRAFT" && canEditThis && (
                             <form action={submitForReviewAction}>
                               <input type="hidden" name="articleId" value={a.id} />

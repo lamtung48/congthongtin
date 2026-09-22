@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import styles from "./MediaPicker.module.css";
 import { linkMediaAction } from "./mediaActions";
 import { MediaUploader, type UploadedMedia } from "../media/MediaUploader";
 
 export interface MediaOption {
   id: string;
   label: string;
-  /** Set only for a `GOOGLE_DRIVE`+`READY` asset — the `/api/media/[id]`
+  /** Built by `adminImagePreviewUrl` — the `/api/media/[id]`
    *  delivery URL a caller can drop straight into an `<img>` for a real
    *  thumbnail (brief: "embed ảnh ... trong cùng một khung"). `undefined`
    *  for anything else (a placeholder, or a Drive asset still missing its
@@ -52,15 +53,22 @@ export function MediaPicker({
   onChange,
   options,
   canManageAny = false,
+  nameHint,
 }: {
   label: string;
   value: string | null;
   onChange: (mediaId: string | null, option?: MediaOption) => void;
   options: MediaOption[];
   canManageAny?: boolean;
+  /** When set, an upload made through this picker is stored in Drive as
+   *  `<slugified hint>-<id>.<ext>` — the article editor passes the slug so
+   *  cover/OG images are traceable to their article in the Drive folder. */
+  nameHint?: string;
 }) {
   const [localOptions, setLocalOptions] = useState(options);
   const [showManualLink, setShowManualLink] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [filter, setFilter] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -103,30 +111,83 @@ export function MediaPicker({
     });
   }
 
+  const selected = localOptions.find((o) => o.id === value) ?? null;
+  const q = filter.trim().toLowerCase();
+  const filtered = q ? localOptions.filter((o) => o.label.toLowerCase().includes(q)) : localOptions;
+
   return (
     <div className="adminField" style={{ marginBottom: 0 }}>
       <label className="adminLabel">{label}</label>
-      <div style={{ display: "flex", gap: 6 }}>
-        <select
-          className="adminSelect"
-          style={{ flex: 1 }}
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value || null)}
-        >
-          <option value="">— Không chọn —</option>
-          {localOptions.map((o) => (
-            <option key={o.id} value={o.id}>{o.label}</option>
-          ))}
-        </select>
-        {canManageAny && (
-          <button type="button" className="adminButton adminButtonSmall" onClick={() => setShowManualLink((s) => !s)}>
-            {showManualLink ? "Đóng" : "Nâng cao"}
-          </button>
-        )}
+
+      <div className={styles.selectedRow}>
+        <span className={styles.thumb} data-empty={!selected?.previewUrl || undefined}>
+          {selected?.previewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={selected.previewUrl} alt="" />
+          ) : (
+            <span className={styles.thumbTxt}>{selected ? "Không có xem trước" : "Chưa chọn"}</span>
+          )}
+        </span>
+        <span className={styles.selMeta}>
+          <span className={styles.selLabel}>{selected ? selected.label : "Chưa chọn ảnh"}</span>
+          <span className={styles.selActions}>
+            <button type="button" className="adminButton adminButtonSmall" onClick={() => setPickerOpen((o) => !o)}>
+              {pickerOpen ? "Ẩn thư viện" : "Chọn từ thư viện"}
+            </button>
+            {selected && (
+              <button type="button" className="adminButton adminButtonSmall" onClick={() => onChange(null)}>
+                Bỏ chọn
+              </button>
+            )}
+            {canManageAny && (
+              <button type="button" className="adminButton adminButtonSmall" onClick={() => setShowManualLink((s) => !s)}>
+                {showManualLink ? "Đóng" : "Nâng cao"}
+              </button>
+            )}
+          </span>
+        </span>
       </div>
 
+      {pickerOpen && (
+        <div className={styles.picker}>
+          <input
+            type="text"
+            className="adminInput"
+            style={{ marginBottom: 8 }}
+            placeholder="Lọc theo tên ảnh…"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+          <div className={styles.grid}>
+            {filtered.length === 0 && <p className="adminHint" style={{ gridColumn: "1 / -1" }}>Không có ảnh phù hợp.</p>}
+            {filtered.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                className={styles.tile}
+                data-on={o.id === value || undefined}
+                aria-pressed={o.id === value}
+                title={o.label}
+                onClick={() => {
+                  onChange(o.id, o);
+                  setPickerOpen(false);
+                }}
+              >
+                {o.previewUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={o.previewUrl} alt="" loading="lazy" />
+                ) : (
+                  <span className={styles.tileTxt}>{o.label}</span>
+                )}
+                <span className={styles.tileLabel}>{o.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={{ marginTop: 8 }}>
-        <MediaUploader onUploaded={handleUploaded} />
+        <MediaUploader onUploaded={handleUploaded} nameHint={nameHint} />
       </div>
 
       {showManualLink && (

@@ -306,6 +306,102 @@ export async function getVideoStatus(videoId: string): Promise<YoutubeVideoStatu
   }
 }
 
+/**
+ * Metadata for any **public** YouTube video, with no channel OAuth involved
+ * — the path this CMS actually attaches videos through. Two tiers, so it
+ * works with zero extra setup and gets better if an API key is configured:
+ *
+ * - `YOUTUBE_API_KEY` set → YouTube Data API `videos.list`, which returns
+ *   duration, embeddable and privacy status as well as title/description.
+ * - no key → YouTube's public oEmbed endpoint, which needs no credential at
+ *   all but only gives title/author/thumbnail. A video that is private,
+ *   deleted or not embeddable makes oEmbed itself fail, so a successful
+ *   response already implies "public and embeddable"; duration is simply
+ *   unknown (`MediaAsset.durationSeconds` stays null and the UI shows "—").
+ *
+ * `null` means the id resolves to nothing public — deleted, private, or
+ * never existed. That is a normal answer the caller reports to the editor,
+ * not an error.
+ */
+export function isYoutubeApiKeyConfigured(): boolean {
+  return !!process.env.YOUTUBE_API_KEY;
+}
+
+const OEMBED_ENDPOINT = "https://www.youtube.com/oembed";
+const DATA_API_ENDPOINT = "https://www.googleapis.com/youtube/v3/videos";
+const PUBLIC_LOOKUP_TIMEOUT_MS = 8000;
+
+async function getViaDataApi(videoId: string): Promise<YoutubeVideoStatus | null> {
+  const url = new URL(DATA_API_ENDPOINT);
+  url.searchParams.set("part", "snippet,contentDetails,status");
+  url.searchParams.set("id", videoId);
+  url.searchParams.set("key", process.env.YOUTUBE_API_KEY!);
+
+  const res = await fetch(url, { signal: AbortSignal.timeout(PUBLIC_LOOKUP_TIMEOUT_MS) });
+  if (!res.ok) {
+    // The key itself being rejected/over quota is a configuration problem,
+    // not "this video doesn't exist" — keep the two clearly apart.
+    const reason = res.status === 403 ? "quota_exceeded" : res.status === 400 ? "unauthorized" : "unknown";
+    throw new YoutubeOperationError(
+      reason === "quota_exceeded"
+        ? "YouTube API tạm thời vượt hạn mức hoặc khoá API bị từ chối."
+        : "Không tra cứu được video trên YouTube. Vui lòng thử lại sau.",
+      reason,
+    );
+  }
+  const body = (await res.json()) as {
+    items?: {
+      snippet?: { title?: string; description?: string; thumbnails?: Record<string, { url?: string }> };
+      contentDetails?: { duration?: string };
+      status?: { privacyStatus?: string; uploadStatus?: string; embeddable?: boolean };
+    }[];
+  };
+  const item = body.items?.[0];
+  if (!item) return null;
+  return {
+    title: item.snippet?.title ?? "",
+    description: item.snippet?.description ?? "",
+    privacyStatus: (item.status?.privacyStatus as YoutubePrivacyStatus | undefined) ?? "public",
+    uploadStatus: item.status?.uploadStatus ?? "processed",
+    embeddable: item.status?.embeddable ?? true,
+    durationSeconds: item.contentDetails?.duration ? parseIso8601Duration(item.contentDetails.duration) : undefined,
+    thumbnailUrl: item.snippet?.thumbnails?.medium?.url ?? item.snippet?.thumbnails?.default?.url ?? undefined,
+  };
+}
+
+async function getViaOEmbed(videoId: string): Promise<YoutubeVideoStatus | null> {
+  const url = new URL(OEMBED_ENDPOINT);
+  url.searchParams.set("url", `https://www.youtube.com/watch?v=${videoId}`);
+  url.searchParams.set("format", "json");
+
+  let res: Response;
+  try {
+    res = await fetch(url, { signal: AbortSignal.timeout(PUBLIC_LOOKUP_TIMEOUT_MS) });
+  } catch {
+    throw new YoutubeOperationError("Không kết nối được tới YouTube. Vui lòng thử lại sau.", "unknown");
+  }
+  // 401/403/404 all mean the same thing to an editor: this link is not a
+  // publicly embeddable video.
+  if (res.status === 401 || res.status === 403 || res.status === 404) return null;
+  if (!res.ok) {
+    throw new YoutubeOperationError("Không tra cứu được video trên YouTube. Vui lòng thử lại sau.", "unknown");
+  }
+  const body = (await res.json()) as { title?: string; author_name?: string; thumbnail_url?: string };
+  return {
+    title: body.title ?? "",
+    description: body.author_name ? `Kênh: ${body.author_name}` : "",
+    privacyStatus: "public",
+    uploadStatus: "processed",
+    embeddable: true,
+    durationSeconds: undefined,
+    thumbnailUrl: body.thumbnail_url ?? undefined,
+  };
+}
+
+export async function getPublicVideoInfo(videoId: string): Promise<YoutubeVideoStatus | null> {
+  return isYoutubeApiKeyConfigured() ? getViaDataApi(videoId) : getViaOEmbed(videoId);
+}
+
 export async function updateVideoMetadata(
   videoId: string,
   changes: { title?: string; description?: string; privacyStatus?: YoutubePrivacyStatus },

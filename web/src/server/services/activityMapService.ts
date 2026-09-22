@@ -1,80 +1,144 @@
 import { activityMapRepository } from "@/server/repositories/activityMapRepository";
+import type { PlatformActivityItem } from "@/domain/activity";
+
+/** How many Hoạt động activities each province / association carries in the map payload (the detail card shows these). */
+const ACTIVITIES_PER_UNIT = 3;
+const ACTIVITIES_LATEST = 4;
+
+type MapActivityRow = Awaited<ReturnType<typeof activityMapRepository.platformActivitiesForMap>>[number];
+
+function toItem(a: MapActivityRow, withPlace: boolean): PlatformActivityItem {
+  return {
+    id: a.id,
+    title: a.title,
+    url: a.url,
+    thumbnail_url: a.thumbnailUrl,
+    organization_name: a.organizationName,
+    start_at: a.startAt.toISOString(),
+    end_at: a.endAt.toISOString(),
+    status: a.status,
+    place: withPlace ? (a.province?.name ?? a.overseasOrganization?.name ?? null) : null,
+  };
+}
+
+function groupBy(rows: MapActivityRow[], key: (a: MapActivityRow) => string | null) {
+  const map = new Map<string, { count: number; items: PlatformActivityItem[] }>();
+  for (const a of rows) {
+    const k = key(a);
+    if (!k) continue;
+    const entry = map.get(k) ?? { count: 0, items: [] };
+    entry.count += 1;
+    if (entry.items.length < ACTIVITIES_PER_UNIT) entry.items.push(toItem(a, false));
+    map.set(k, entry);
+  }
+  return map;
+}
 
 /**
- * Assembles the same shape `ActivityMapData` in `src/domain/activity.ts`
- * already documents a real backend producing — that file's own comment
- * says it plainly: "A real backend would assemble `ActivityMapData` by
- * joining `Province`/`OverseasOrganization` with `ActivityStatistic` rows
- * for the active period." This is that join, proving the schema in
- * `prisma/schema.prisma` actually carries the contract the frontend needs
- * — see brief section 8: "Database phải cung cấp được contract mà frontend
- * hiện yêu cầu."
+ * Assembles the Activity Map's DB-backed subset — the per-province figures
+ * and the overseas totals — in the wire shape `src/domain/activity.ts`
+ * documents (`DatabaseProvider.getActivityMap()` merges it with the static
+ * config for archipelago markers and dataset notes).
  *
- * Not wired into `FixtureProvider`/`ContentProvider` in this task (brief
- * item 18 excludes the CMS/consumption wiring) — archipelago markers and
- * the dataset-level `note`/`source`/`geometry_source` fields stay static
- * config on the frontend side for now (see docs/DATABASE_SCHEMA.md,
- * "Scope exclusions"), so this returns the DB-backed subset only, ready for
- * a future `DatabaseProvider.getActivityMap()` to merge with that static
- * config into the exact wire shape.
+ * The per-province numbers are derived straight from published content: a
+ * province's figure is its count of live articles, either tied to it
+ * directly (`Article.provinceId`) or through a reporting unit
+ * (`Article.organization.provinceId`). There is no separately-entered
+ * report table in the picture any more — every number the map shows traces
+ * back to an actual published article, and "tin mới nhất" is that
+ * province's newest one.
+ *
+ * Alongside the articles, each province / overseas association carries the
+ * activities its units run on the Hoạt động platform (`PlatformActivity`,
+ * mirrored by the refresher) — listed like articles, linking out to their
+ * landing pages. Overseas associations' figure is real too: activities +
+ * published articles of the linked unit (it used to be a seeded number).
  */
 export const activityMapService = {
   async getActiveMapData() {
-    const period = await activityMapRepository.latestPeriod();
-    const [provinces, overseas, statistics] = await Promise.all([
+    const now = new Date();
+    const [provinces, overseas, articles, activities, overseasArticleCounts] = await Promise.all([
       activityMapRepository.listProvinces(),
       activityMapRepository.listOverseasOrganizations(),
-      period ? activityMapRepository.listStatisticsForPeriod(period) : Promise.resolve([]),
+      activityMapRepository.publishedArticlesForProvinceMap(now),
+      activityMapRepository.platformActivitiesForMap(),
+      activityMapRepository.publishedArticleCountsForOverseas(now),
     ]);
+    // Hoạt động activities (mirrored by scripts/syncPlatformActivities.ts), newest start first.
+    const activitiesByProvince = groupBy(activities, (a) => a.provinceId);
+    const activitiesByOverseas = groupBy(activities, (a) => a.overseasOrganizationId);
+    const articlesByOrganization = new Map(overseasArticleCounts.map((r) => [r.organizationId, r._count._all]));
+
+    // provinceId -> { count, latest } — `articles` is already newest-first,
+    // so the first row seen for a province is its latest.
+    const byProvince = new Map<string, { count: number; latest: { title: string; publishedAt: Date } | null }>();
+    let newestOverall: Date | null = null;
+    for (const a of articles) {
+      const provinceId = a.provinceId ?? a.organization?.provinceId;
+      if (!provinceId || !a.publishedAt) continue;
+      const entry = byProvince.get(provinceId) ?? { count: 0, latest: null };
+      entry.count += 1;
+      if (!entry.latest) entry.latest = { title: a.title, publishedAt: a.publishedAt };
+      byProvince.set(provinceId, entry);
+      if (!newestOverall || a.publishedAt > newestOverall) newestOverall = a.publishedAt;
+    }
 
     const provinceRows = provinces.map((province) => {
-      const aggregate = statistics.find((s) => s.provinceId === province.id && s.categoryId === null);
-      const breakdown = statistics.filter((s) => s.provinceId === province.id && s.categoryId !== null);
-
+      const entry = byProvince.get(province.id);
+      const count = entry?.count ?? 0;
+      // null, not 0, when a province has no article yet — the map renders
+      // that as a hollow "chưa có tin bài" marker rather than a real zero.
+      const articleCount = count > 0 ? count : null;
       return {
         province_id: province.mapCode,
         province_name: province.name,
         slug: province.slug,
         lat: province.lat,
         lon: province.lon,
-        activity_count: aggregate?.activityCount ?? null,
-        article_count: aggregate?.articleCount ?? null,
-        unit_count: aggregate?.organizationCount ?? null,
-        student_count: aggregate?.participantCount ?? null,
-        reported: aggregate?.reported ?? false,
-        latest_article: aggregate?.latestArticle
-          ? { title: aggregate.latestArticle.title, published_at: aggregate.latestArticle.publishedAt?.toISOString() ?? "" }
+        // Kept equal to `article_count` for wire compatibility — nothing
+        // renders a separate "hoạt động" figure for a province any more.
+        activity_count: articleCount,
+        article_count: articleCount,
+        unit_count: null,
+        student_count: null,
+        reported: count > 0,
+        latest_article: entry?.latest
+          ? { title: entry.latest.title, published_at: entry.latest.publishedAt.toISOString() }
           : null,
-        category_distribution: breakdown.length
-          ? (Object.fromEntries(
-              breakdown.map((b): [string, number] => [b.category?.slug ?? b.categoryId ?? "", b.activityCount ?? 0]),
-            ) as Record<string, number>)
-          : null,
-        period: aggregate?.period ?? period ?? "",
+        category_distribution: null,
+        period: "",
         unit_url: `/don-vi/${province.slug}`,
+        platform_activity_count: activitiesByProvince.get(province.id)?.count ?? 0,
+        platform_activities: activitiesByProvince.get(province.id)?.items ?? [],
       };
     });
 
-    const updatedAt = statistics.reduce<Date | null>(
-      (latest, s) => (!latest || s.updatedAt > latest ? s.updatedAt : latest),
-      null,
-    );
+    const totalArticles = provinceRows.reduce((sum, p) => sum + (p.article_count ?? 0), 0);
 
     return {
-      period,
-      // The whole dataset's own "when was this compiled" — the latest of
-      // every `ActivityStatistic.updatedAt` for the active period, not a
-      // per-province value (the source report doesn't break it down
-      // further than this — see `ProvinceActivityProfile.updatedAt`'s own
-      // doc comment in `src/domain/activity.ts`). Falls back to "now" only
-      // when the period has no statistics rows at all yet.
-      updatedAt: (updatedAt ?? new Date()).toISOString(),
+      period: null as string | null,
+      updatedAt: (newestOverall ?? now).toISOString(),
       provinces: provinceRows,
-      overseas: overseas.map((o) => ({ name: o.name, activity_count: o.activityCount })),
+      // Real figures (was the seeded `activityCount`): its Hoạt động activities + published articles of its linked unit.
+      overseas: overseas
+        .map((o) => {
+          const acts = activitiesByOverseas.get(o.id);
+          const articleCount = o.organizationId ? (articlesByOrganization.get(o.organizationId) ?? 0) : 0;
+          return {
+            name: o.name,
+            activity_count: (acts?.count ?? 0) + articleCount,
+            article_count: articleCount,
+            platform_activity_count: acts?.count ?? 0,
+            platform_activities: acts?.items ?? [],
+          };
+        })
+        .sort((a, b) => b.activity_count - a.activity_count || a.name.localeCompare(b.name, "vi")),
+      platformActivitiesLatest: activities.slice(0, ACTIVITIES_LATEST).map((a) => toItem(a, true)),
       summary: {
-        total_activities: provinceRows.reduce((sum, p) => sum + (p.activity_count ?? 0), 0),
-        total_articles: provinceRows.reduce((sum, p) => sum + (p.article_count ?? 0), 0),
-        participating_students: provinceRows.reduce((sum, p) => sum + (p.student_count ?? 0), 0),
+        total_platform_activities: activities.length,
+        total_activities: totalArticles,
+        total_articles: totalArticles,
+        participating_students: 0,
         provinces_total: provinceRows.length,
         provinces_reported: provinceRows.filter((p) => p.reported).length,
       },
