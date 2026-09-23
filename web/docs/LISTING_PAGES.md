@@ -4,15 +4,16 @@
 
 | Component | Role | Used by |
 |---|---|---|
-| `FeaturedNewsCard` (`components/content/`) | The single large "lead story" card | `/tin-tuc`, `/chuyen-muc/[slug]` |
-| `NewsCard` (`components/content/`) | Grid tile, with a `wide` variant | `/tin-tuc`, `/chu-de/[slug]` |
+| `PageHero` (`components/ui/`) | Hero band: dotted backdrop, pill eyebrow, H1 with gold-underlined `mark`, stat tiles; `tone="brand"` = navy | `/tin-tuc`, `/chuyen-muc/[slug]`, `/tai-lieu`, `/gioi-thieu` |
+| `LeadStoryCard` (`components/content/`) | The single large "lead story" card — cover with copy over a scrim | `/tin-tuc`, `/chuyen-muc/[slug]` |
+| `CategoryChips` / `ListingAside` (`components/content/ListingParts.tsx`, styles in `Listing.module.css`) | Category filter chips with counts / #topic panel + promo tiles beside the lead story | `/tin-tuc`, `/chuyen-muc/[slug]` |
+| `NewsCard` (`components/content/`) | Grid tile (card surface, category chip on the image), with a `wide` variant (image beside copy) | `/tin-tuc`, `/chuyen-muc/[slug]`, `/chu-de/[slug]` |
 | `ArticleList` / `NewsListItem` (`components/content/ArticleList.tsx`) | Compact list row | `/chuyen-muc/[slug]`, `/tin-tuc/[slug]`'s related articles, `/tim-kiem` |
 | `Tag` / `TagList` (`components/content/`) | Pill chip / row of chips | article tags, `/chu-de/[slug]`'s related tags |
-| `TrendingTopics` (`components/home/`, pre-existing) | Full-bleed topic rail | `/tin-tuc` (reused as-is from the homepage, not reimplemented) |
 | `Pagination` (`components/content/`) | Real prev/next, no fake loading | all three routes |
 | `MediaImage` (pre-existing) | Every image, everywhere | via the cards above |
 
-None of these are new abstractions over "the same card with different spacing" — each one is a genuinely different shape (lead story vs. grid tile vs. list row vs. chip), which is also what keeps a single page from reading as one repeated card: `/tin-tuc` mixes a `FeaturedNewsCard` with a `NewsCard` grid where every 5th tile is `wide` (bigger image, lead text shown); `/chuyen-muc/[slug]` pairs the same `FeaturedNewsCard` with a compact `ArticleList`, not a grid at all; `/chu-de/[slug]` uses a `NewsCard` grid with a shorter `wide` interval (every 4th) so it doesn't look identical to `/tin-tuc`'s. Three routes, three different rhythms, four shared building blocks.
+None of these are new abstractions over "the same card with different spacing" — each one is a genuinely different shape (lead story vs. grid tile vs. list row vs. chip), which is also what keeps a single page from reading as one repeated card: `/tin-tuc` and `/chuyen-muc/[slug]` pair a `LeadStoryCard` + `ListingAside` spotlight with a 9-per-page `NewsCard` grid whose `wide` tiles come from `wideFlags()` so rows always end full; the "Phong trào Sinh viên 5 tốt" category additionally gets the navy hero and `Sv5tIntro` (criteria + award levels) on page 1; `/chu-de/[slug]` uses a `NewsCard` grid with a shorter `wide` interval (every 4th) so it doesn't look identical to `/tin-tuc`'s. Three routes, three different rhythms, four shared building blocks.
 
 ## Data contract
 

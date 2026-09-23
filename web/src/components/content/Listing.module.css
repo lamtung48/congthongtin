@@ -1,0 +1,85 @@
+/* Shared layout for the article listing routes (`/tin-tuc`, `/chuyen-muc/[slug]`)
+   — the parts under `PageHero`: category chips, spotlight + aside, card grid. */
+
+.wrap { max-width: var(--container-wide); margin: 0 auto; padding: var(--sp-2) var(--gutter) var(--sp-24); min-height: 40vh; display: flex; flex-direction: column; gap: clamp(28px, 3.4vw, 48px); }
+
+/* ---------- Category chips ---------- */
+.chips { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 4px 2px; margin: 0 -2px; }
+.chip, .chipOn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-height: 42px;
+  padding: 0 8px 0 16px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  transition: border-color var(--dur-fast) var(--ease-standard), background var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
+}
+.chip { border: 1px solid var(--border-default); background: var(--surface-page); color: var(--text-body); }
+.chip:hover { border-color: var(--border-brand); color: var(--text-brand); text-decoration: none; transform: translateY(-1px); }
+.chipOn { border: 1px solid var(--blue-900); background: var(--blue-900); color: #fff; font-weight: var(--fw-semibold); }
+.chipOn:hover { color: #fff; text-decoration: none; }
+.chipCount { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; font-family: var(--font-mono); font-size: 11px; background: var(--surface-sunken); color: var(--text-muted); }
+.chipOn .chipCount { background: var(--gold-400); color: var(--blue-950); }
+.chipSolo { padding-right: 16px; }
+
+/* ---------- Spotlight: lead story + aside ---------- */
+.spotlight { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: clamp(20px, 2.4vw, 32px); align-items: stretch; }
+.aside { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.panel { padding: 20px; border-radius: var(--radius-lg); background: var(--surface-subtle); border: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 14px; }
+.panelTitle { display: flex; align-items: center; gap: 8px; margin: 0; font-family: var(--font-mono); font-size: 11px; font-weight: var(--fw-regular); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); }
+.panelTitle svg { color: var(--red-500); }
+.tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag { display: inline-flex; align-items: center; gap: 2px; padding: 7px 12px; border-radius: 999px; background: var(--surface-page); border: 1px solid var(--border-subtle); font-size: 13.5px; font-weight: var(--fw-medium); color: var(--text-body); text-decoration: none; transition: all var(--dur-fast) var(--ease-standard); }
+.tag b { color: var(--brand-primary); font-weight: var(--fw-bold); }
+.tag:hover { background: var(--blue-50); border-color: var(--blue-200); color: var(--text-brand); text-decoration: none; }
+
+/* Promo tiles — gradient cards pointing to the campaign + documents pages. */
+.promo {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 22px 22px 20px;
+  border-radius: var(--radius-lg);
+  color: #fff;
+  text-decoration: none;
+  background: linear-gradient(135deg, var(--blue-900), var(--blue-600));
+  transition: transform var(--dur-base) var(--ease-entrance), box-shadow var(--dur-base) var(--ease-standard);
+}
+.promo::after { content: ""; position: absolute; z-index: -1; right: -40px; top: -40px; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 205, 0, 0.55), transparent 70%); }
+.promo:hover { color: #fff; text-decoration: none; transform: translateY(-3px); box-shadow: var(--shadow-brand); }
+.promoGold { background: linear-gradient(135deg, var(--gold-400), #ff9f1c); color: var(--blue-950); }
+.promoGold::after { background: radial-gradient(circle, rgba(255, 255, 255, 0.6), transparent 70%); }
+.promoGold:hover { color: var(--blue-950); box-shadow: 0 12px 28px -10px rgba(201, 154, 0, 0.55); }
+.promoKicker { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: var(--ls-eyebrow); text-transform: uppercase; opacity: 0.8; }
+.promoTitle { font-family: var(--font-editorial); font-size: 22px; font-weight: var(--fw-medium); line-height: 1.2; }
+.promoGo { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 13.5px; font-weight: var(--fw-semibold); }
+.promo:hover .promoGo svg { transform: translateX(3px); }
+.promoGo svg { transition: transform var(--dur-base) var(--ease-entrance); }
+
+/* ---------- Grid ---------- */
+.section { display: flex; flex-direction: column; gap: clamp(18px, 2vw, 26px); }
+.sectionHead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-subtle); }
+.sectionTitle { margin: 0; font-family: var(--font-editorial); font-size: clamp(24px, 2.2vw, 32px); font-weight: var(--fw-medium); color: var(--text-strong); }
+.sectionMeta { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+/* 3 columns by default; `globals.css`'s `[data-l="news-grid"]` rules take it
+   to 2 at tablet and 1 at mobile. */
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-flow: row dense; gap: clamp(20px, 2vw, 28px); }
+
+@media (max-width: 1024px) {
+  .spotlight { grid-template-columns: minmax(0, 1fr); }
+  .aside { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .aside > .panel { grid-column: 1 / -1; }
+}
+@media (max-width: 680px) {
+  .aside { grid-template-columns: minmax(0, 1fr); }
+}

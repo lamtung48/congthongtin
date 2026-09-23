@@ -47,6 +47,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   add("/");
   add("/video");
   add("/tai-lieu");
+  add("/gioi-thieu");
 
   const tinTucPageCount = await getTinTucPageCount();
   for (let p = 1; p <= tinTucPageCount; p++) add(pagedHref("/tin-tuc", p));
