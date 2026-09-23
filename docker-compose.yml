@@ -64,7 +64,7 @@ services:
       # next.config.ts reads this to cap `experimental.cpus` for the build.
       NEXT_BUILD_CPUS: "4"
       DATABASE_URL: postgresql://congthongtin:${POSTGRES_PASSWORD}@postgres:5432/congthongtin?schema=public
-      NEXT_PUBLIC_SITE_URL: https://congthongtin.hoisinhvien.com.vn
+      NEXT_PUBLIC_SITE_URL: https://hoisinhvien.com.vn
       # Two independent AES-256-GCM keys (openssl rand -hex 32) — see
       # web/.env.example / web/docs/SECURITY.md. Values live in .env.
       SOURCE_CREDENTIAL_ENCRYPTION_KEY: ${SOURCE_CREDENTIAL_ENCRYPTION_KEY:?set in .env}
@@ -95,7 +95,7 @@ services:
       GOOGLE_DRIVE_SHARED_DRIVE_ID: ${GOOGLE_DRIVE_SHARED_DRIVE_ID:-}
       YOUTUBE_OAUTH_CLIENT_ID: ${YOUTUBE_OAUTH_CLIENT_ID:-}
       YOUTUBE_OAUTH_CLIENT_SECRET: ${YOUTUBE_OAUTH_CLIENT_SECRET:-}
-      YOUTUBE_OAUTH_REDIRECT_URI: "https://congthongtin.hoisinhvien.com.vn/api/admin/youtube/oauth/callback"
+      YOUTUBE_OAUTH_REDIRECT_URI: "https://hoisinhvien.com.vn/api/admin/youtube/oauth/callback"
       # Optional: public video lookup falls back to key-less oEmbed without it,
       # but only the Data API returns a video's duration.
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
