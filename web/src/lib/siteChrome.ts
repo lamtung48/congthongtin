@@ -91,9 +91,12 @@ export const SITE_FOOTER_COLUMNS: FooterColumn[] = [
 /** Tài khoản chính thức của Trung ương Hội. Zalo bị bỏ khỏi danh sách vì
  *  chưa có địa chỉ thật — một dòng chữ "Zalo" không bấm được thì không phải
  *  là một liên kết, chỉ là chỗ trống. */
+/** Kênh YouTube chính thức — cũng là nút "Đăng ký kênh" ở mục Video trang chủ. */
+export const YOUTUBE_CHANNEL_URL = "https://youtube.com/@hoisinhvienvietnam7228";
+
 export const SITE_FOOTER_SOCIALS: SocialLink[] = [
   { name: "Facebook", url: "https://facebook.com/hoisinhvien.com.vn" },
-  { name: "YouTube", url: "https://youtube.com/@hoisinhvienvietnam7228" },
+  { name: "YouTube", url: YOUTUBE_CHANNEL_URL },
   { name: "TikTok", url: "https://tiktok.com/@hoisinhvienvietnam" },
 ];
 

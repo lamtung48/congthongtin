@@ -41,6 +41,7 @@ export function MediaImage({
   className,
   priority = false,
   sizes = "(max-width: 700px) 100vw, 50vw",
+  highRes = false,
 }: {
   media: MediaAsset;
   className?: string;
@@ -49,26 +50,43 @@ export function MediaImage({
    *  full-width on phones and about half the viewport on desktop; a full-bleed
    *  slot (the Hero) should pass `"100vw"`. */
   sizes?: string;
+  /** For a large slot showing a YouTube still: try the 1280px version first
+   *  and quietly drop back to the default one if this video has none
+   *  (YouTube answers that with a 404 or a 120×90 grey tile). No effect on
+   *  Drive images, which already get a `srcset`. */
+  highRes?: boolean;
 }) {
-  const src = resolveImageUrl(media);
+  const baseSrc = resolveImageUrl(media);
+  const hiSrc = highRes ? resolveImageUrl(media, { youtubeSize: "max" }) : undefined;
   const imgRef = useRef<HTMLImageElement>(null);
   const [failed, setFailed] = useState(false);
+  const [hiFailed, setHiFailed] = useState(false);
   // Reset on a new source — computed during render (not an effect) since it's
   // state derived from a prop change.
-  const [prevSrc, setPrevSrc] = useState(src);
-  if (src !== prevSrc) {
-    setPrevSrc(src);
+  const [prevSrc, setPrevSrc] = useState(baseSrc);
+  if (baseSrc !== prevSrc) {
+    setPrevSrc(baseSrc);
     setFailed(false);
+    setHiFailed(false);
+  }
+  const tryingHi = !!hiSrc && hiSrc !== baseSrc && !hiFailed;
+  const src = tryingHi ? hiSrc : baseSrc;
+
+  function onBroken() {
+    if (tryingHi) setHiFailed(true);
+    else setFailed(true);
   }
 
   // An image that finished (or failed) before hydration fired its event with
   // no handler attached, so ask the element directly instead of waiting for
   // one that will never come. `complete` with `naturalWidth === 0` is the
-  // standard "this one errored" signal.
+  // standard "this one errored" signal; a ≤120px-wide answer to a hi-res
+  // request is YouTube's "no such size" tile.
   useEffect(() => {
     const img = imgRef.current;
     if (!img || !img.complete) return;
-    if (img.naturalWidth === 0) setFailed(true);
+    if (img.naturalWidth === 0 || (tryingHi && img.naturalWidth <= 120)) onBroken();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-check only when the requested URL changes
   }, [src]);
 
   const missing = !src || failed;
@@ -101,7 +119,8 @@ export function MediaImage({
           loading={priority ? "eager" : "lazy"}
           decoding={priority ? "sync" : "async"}
           fetchPriority={priority ? "high" : "auto"}
-          onError={() => setFailed(true)}
+          onError={onBroken}
+          onLoad={tryingHi ? (e) => { if (e.currentTarget.naturalWidth <= 120) setHiFailed(true); } : undefined}
           style={{
             position: "absolute",
             inset: 0,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 /**
  * "Ảnh thumbnail thay thế (tuỳ chọn)" — a video's own cover image, stored on
@@ -34,18 +34,12 @@ export function VideoThumbnailField({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // Object URL made in the pick handler (not an effect) and tied to the file
+  // it was made for, so a parent resetting `file` hides it immediately. The
+  // previous one is revoked on the next pick; the last is freed with the page.
+  const [preview, setPreview] = useState<{ file: File; url: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!file) {
-      setPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+  const previewUrl = preview && preview.file === file ? preview.url : null;
 
   function pick(f: File | undefined) {
     if (!f) return;
@@ -58,6 +52,8 @@ export function VideoThumbnailField({
       return;
     }
     setError(null);
+    if (preview) URL.revokeObjectURL(preview.url);
+    setPreview({ file: f, url: URL.createObjectURL(f) });
     onChange(f);
   }
 

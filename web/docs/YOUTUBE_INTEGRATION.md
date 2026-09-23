@@ -199,6 +199,33 @@ pointer the CMS forgets, never a command sent to the channel. A channel's
 videos can outlive their presence in any one CMS's content, and an Admin
 who unlinks by mistake hasn't destroyed anything.
 
+## Custom thumbnail ("Ảnh thumbnail thay thế", 2026-09-22)
+
+A video may carry its own cover image instead of YouTube's thumbnail:
+
+- **Storage**: an ordinary Drive image (Shared Drive, same as every CMS
+  image) — uploaded first through `/api/admin/media/upload` by the form
+  (`uploadImageFile`), then referenced by `MediaAsset.thumbnailMediaId` on the
+  VIDEO asset (self-relation `VideoThumbnail`, `onDelete: SetNull`; migration
+  `20260922160000_media_video_thumbnail`). Nothing is pushed to YouTube; the
+  channel's own thumbnail is never touched.
+- **Where it is set**: optional field in "Tải video lên" (`VideoUploader`, so
+  also in the article editor's `VideoPicker`), in "Dán link YouTube"
+  (`AddVideoPanel`), and per row via "Ảnh thumbnail" (`VideoRowActions` →
+  `setVideoThumbnailAction` → `youtubeService.setThumbnail`; "Dùng ảnh mặc
+  định YouTube" clears it). `assertUsableThumbnail` accepts only a READY
+  `GOOGLE_DRIVE` IMAGE; managing rights are the same as editing the video.
+- **Where it shows**: `resolveImageUrl` returns the custom image for a video
+  whenever `media.thumbnail` is present, so the homepage "Kênh YouTube của
+  Hội" stage + rail, `/video` and article YouTube blocks all pick it up.
+  Every video query includes it (`media: { include: { thumbnail: true } }`,
+  `articleContentResolver` block media). Without one, the default is
+  YouTube's `hqdefault`; large slots (`MediaImage highRes`) try
+  `maxresdefault` first and fall back when a video has none.
+- **Usage tracking**: the image lists as "Ảnh thumbnail video: …" in
+  `getUsageDetail` (not a hard block); force-delete / deleting the image
+  clears the link and the video falls back to YouTube's thumbnail.
+
 ## Article block (brief section 5/6)
 
 The `YOUTUBE` article block stores **only** `{ mediaId, title }` in its JSON

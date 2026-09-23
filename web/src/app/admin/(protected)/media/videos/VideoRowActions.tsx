@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateVideoMetadataAction, refreshVideoStatusAction, unlinkVideoAction, type VideoActionResult } from "./actions";
+import { updateVideoMetadataAction, refreshVideoStatusAction, unlinkVideoAction, setVideoThumbnailAction, type VideoActionResult } from "./actions";
+import { VideoThumbnailField } from "./VideoThumbnailField";
+import { uploadImageFile } from "@/lib/media/uploadImageClient";
 
 /**
  * Per-row manage controls on `/admin/media/videos` — the video counterpart
@@ -20,6 +22,8 @@ export function VideoRowActions({
   canManage,
   canSetAnyVisibility,
   isAdmin,
+  youtubeId,
+  thumbnailUrl,
 }: {
   mediaId: string;
   title: string;
@@ -28,8 +32,13 @@ export function VideoRowActions({
   canManage: boolean;
   canSetAnyVisibility: boolean;
   isAdmin: boolean;
+  youtubeId: string | null;
+  /** The custom cover already set (`/api/media/…`), or null → YouTube's own. */
+  thumbnailUrl: string | null;
 }) {
   const [editing, setEditing] = useState(false);
+  const [thumbOpen, setThumbOpen] = useState(false);
+  const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [usage, setUsage] = useState<VideoActionResult["usage"] | null>(null);
@@ -55,6 +64,31 @@ export function VideoRowActions({
       formData.set("mediaId", mediaId);
       const result = await refreshVideoStatusAction(formData);
       if (!result.ok) setError(result.error ?? "Không thể làm mới trạng thái.");
+    });
+  }
+
+  /** `file` → upload it to Drive, then point the video at it; `null` →
+   *  clear the custom cover so YouTube's default thumbnail shows again. */
+  function submitThumbnail(file: File | null) {
+    setError(null);
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set("mediaId", mediaId);
+      if (file) {
+        try {
+          formData.set("thumbnailMediaId", (await uploadImageFile(file, `${title || youtubeId || "video"}-thumbnail`)).id);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Không tải được ảnh thumbnail.");
+          return;
+        }
+      }
+      const result = await setVideoThumbnailAction(formData);
+      if (!result.ok) {
+        setError(result.error ?? "Không đổi được ảnh thumbnail.");
+        return;
+      }
+      setThumbFile(null);
+      setThumbOpen(false);
     });
   }
 
@@ -96,8 +130,34 @@ export function VideoRowActions({
       ) : (
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           <button type="button" className="adminButton adminButtonSmall" onClick={() => setEditing(true)}>Sửa</button>
+          <button type="button" className="adminButton adminButtonSmall" onClick={() => setThumbOpen((v) => !v)} aria-expanded={thumbOpen}>
+            {thumbOpen ? "Đóng ảnh" : "Ảnh thumbnail"}
+          </button>
           <button type="button" className="adminButton adminButtonSmall" onClick={submitRefresh} disabled={pending}>Làm mới</button>
           <button type="button" className="adminButton adminButtonSmall adminButtonDanger" onClick={() => submitUnlink(false)} disabled={pending}>Gỡ liên kết</button>
+        </div>
+      )}
+
+      {thumbOpen && !editing && (
+        <div style={{ display: "grid", gap: 6, padding: 8, border: "1px solid var(--admin-border)", borderRadius: "var(--admin-radius)", minWidth: 260 }}>
+          <VideoThumbnailField
+            file={thumbFile}
+            onChange={setThumbFile}
+            disabled={pending}
+            currentUrl={thumbnailUrl}
+            fallbackVideoId={youtubeId}
+            label="Ảnh thumbnail"
+          />
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            <button type="button" className="adminButton adminButtonSmall adminButtonPrimary" onClick={() => submitThumbnail(thumbFile)} disabled={pending || !thumbFile}>
+              {pending ? "Đang lưu…" : "Lưu ảnh"}
+            </button>
+            {thumbnailUrl && (
+              <button type="button" className="adminButton adminButtonSmall" onClick={() => submitThumbnail(null)} disabled={pending}>
+                Dùng ảnh mặc định YouTube
+              </button>
+            )}
+          </div>
         </div>
       )}
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import styles from "./page.module.css";
 import { PageShell } from "@/components/ui/PageShell";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { MediaImage } from "@/components/ui/MediaImage";
+import { VideoCardPlayer } from "./VideoCardPlayer";
 import { getVideos } from "@/services/homepageService";
 import { pageMetadata } from "@/lib/seo";
 import { formatDateVi } from "@/lib/formatDate";
@@ -31,11 +31,11 @@ export default async function VideoIndexPage() {
           {videos.map((v) => (
             <article key={v.id} className={styles.card}>
               <div className={styles.thumb}>
-                <MediaImage media={v.media} />
+                <VideoCardPlayer media={v.media} title={v.title} />
               </div>
               <div className={styles.meta}>
                 <span className={styles.cat}>{v.category.name}</span>
-                <span className={styles.duration}>{v.durationLabel}</span>
+                {v.durationLabel !== "—" && <span className={styles.duration}>{v.durationLabel}</span>}
                 <span className={styles.duration}>{formatDateVi(v.publishedAt)}</span>
               </div>
               <h3 className={styles.title}>{v.title}</h3>

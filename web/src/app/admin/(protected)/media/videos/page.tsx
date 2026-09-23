@@ -280,16 +280,22 @@ export default async function AdminVideosPage({ searchParams }: { searchParams: 
                   const usage = usageByMediaId.get(m.id) ?? [];
                   const canManageThis = canManageAny || m.createdById === session.id;
                   const videoId = m.providerFileId;
+                  // Custom cover (Drive) when one is set, else YouTube's own still.
+                  const customThumbUrl = m.thumbnail?.status === "READY" ? `/api/media/${m.thumbnail.id}` : null;
+                  const previewSrc = customThumbUrl ? `${customThumbUrl}?w=320` : videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
                   return (
                     <tr key={m.id}>
                       <td>
-                        {videoId ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- a public YouTube thumbnail URL, not a local asset next/image would optimize
-                          <img
-                            src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
-                            alt={m.filename ?? ""}
-                            style={{ width: 80, height: 45, objectFit: "cover", borderRadius: "var(--admin-radius)" }}
-                          />
+                        {previewSrc ? (
+                          <div style={{ display: "grid", gap: 2, justifyItems: "start" }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element -- a YouTube still / this app's own media route, not a local asset next/image would optimize */}
+                            <img
+                              src={previewSrc}
+                              alt={m.filename ?? ""}
+                              style={{ width: 80, height: 45, objectFit: "cover", borderRadius: "var(--admin-radius)" }}
+                            />
+                            {customThumbUrl && <span className="adminHint" style={{ fontSize: 10.5 }}>Ảnh riêng</span>}
+                          </div>
                         ) : (
                           <span className="adminHint">—</span>
                         )}
@@ -343,6 +349,8 @@ export default async function AdminVideosPage({ searchParams }: { searchParams: 
                           canManage={canManageThis}
                           canSetAnyVisibility={canManageAny}
                           isAdmin={isAdmin}
+                          youtubeId={videoId}
+                          thumbnailUrl={customThumbUrl}
                         />
                       </td>
                     </tr>

@@ -2,6 +2,8 @@
 
 import { useId, useRef, useState } from "react";
 import type { MediaStatus, MediaType, YoutubeVisibility } from "@/generated/prisma/client";
+import { uploadImageFile } from "@/lib/media/uploadImageClient";
+import { VideoThumbnailField } from "./VideoThumbnailField";
 
 /**
  * Brief section 3: a real YouTube upload with title/description/visibility
@@ -23,9 +25,20 @@ export interface UploadedVideo {
   errorReason: string | null;
 }
 
-type UploadState = { phase: "idle" } | { phase: "uploading"; progress: number } | { phase: "error"; message: string };
+type UploadState =
+  | { phase: "idle" }
+  | { phase: "thumbnail" }
+  | { phase: "uploading"; progress: number }
+  | { phase: "error"; message: string };
 
-function uploadOne(file: File, title: string, description: string, visibility: string, onProgress: (percent: number) => void): Promise<UploadedVideo> {
+function uploadOne(
+  file: File,
+  title: string,
+  description: string,
+  visibility: string,
+  thumbnailMediaId: string | null,
+  onProgress: (percent: number) => void,
+): Promise<UploadedVideo> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/admin/media/videos/upload");
@@ -52,6 +65,7 @@ function uploadOne(file: File, title: string, description: string, visibility: s
     formData.append("title", title);
     formData.append("description", description);
     formData.append("visibility", visibility);
+    if (thumbnailMediaId) formData.append("thumbnailMediaId", thumbnailMediaId);
     xhr.send(formData);
   });
 }
@@ -65,6 +79,7 @@ export function VideoUploader({ onUploaded, canChooseVisibility }: { onUploaded:
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState("unlisted");
+  const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [state, setState] = useState<UploadState>({ phase: "idle" });
   const inputRef = useRef<HTMLInputElement>(null);
@@ -77,19 +92,32 @@ export function VideoUploader({ onUploaded, canChooseVisibility }: { onUploaded:
     setState({ phase: "idle" });
   }
 
-  function startUpload() {
+  async function startUpload() {
     if (!file) return;
-    setState({ phase: "uploading", progress: 0 });
-    uploadOne(file, title.trim(), description.trim(), canChooseVisibility ? visibility : "unlisted", (progress) => setState({ phase: "uploading", progress }))
-      .then((media) => {
-        setState({ phase: "idle" });
-        setFile(null);
-        setTitle("");
-        setDescription("");
-        onUploaded(media);
-      })
-      .catch((err: Error) => setState({ phase: "error", message: err.message }));
+    try {
+      // The cover goes to Drive first (a few hundred KB, seconds) so a bad
+      // image fails before the long video upload even starts.
+      let thumbnailMediaId: string | null = null;
+      if (thumbFile) {
+        setState({ phase: "thumbnail" });
+        thumbnailMediaId = (await uploadImageFile(thumbFile, `${title.trim() || "video"}-thumbnail`)).id;
+      }
+      setState({ phase: "uploading", progress: 0 });
+      const media = await uploadOne(file, title.trim(), description.trim(), canChooseVisibility ? visibility : "unlisted", thumbnailMediaId, (progress) =>
+        setState({ phase: "uploading", progress }),
+      );
+      setState({ phase: "idle" });
+      setFile(null);
+      setTitle("");
+      setDescription("");
+      setThumbFile(null);
+      onUploaded(media);
+    } catch (err) {
+      setState({ phase: "error", message: err instanceof Error ? err.message : "Tải lên thất bại." });
+    }
   }
+
+  const busy = state.phase === "uploading" || state.phase === "thumbnail";
 
   if (!file) {
     return (
@@ -142,10 +170,10 @@ export function VideoUploader({ onUploaded, canChooseVisibility }: { onUploaded:
   return (
     <div style={{ display: "grid", gap: 8, padding: 10, border: "1px solid var(--admin-border)", borderRadius: "var(--admin-radius)" }}>
       <span className="adminHint">Tệp: {file.name} ({(file.size / (1024 * 1024)).toFixed(1)}MB)</span>
-      <input className="adminInput" placeholder="Tiêu đề video" value={title} onChange={(e) => setTitle(e.target.value)} disabled={state.phase === "uploading"} />
-      <textarea className="adminInput" rows={2} placeholder="Mô tả (tuỳ chọn)" value={description} onChange={(e) => setDescription(e.target.value)} disabled={state.phase === "uploading"} />
+      <input className="adminInput" placeholder="Tiêu đề video" value={title} onChange={(e) => setTitle(e.target.value)} disabled={busy} />
+      <textarea className="adminInput" rows={2} placeholder="Mô tả (tuỳ chọn)" value={description} onChange={(e) => setDescription(e.target.value)} disabled={busy} />
       {canChooseVisibility ? (
-        <select className="adminSelect" value={visibility} onChange={(e) => setVisibility(e.target.value)} disabled={state.phase === "uploading"}>
+        <select className="adminSelect" value={visibility} onChange={(e) => setVisibility(e.target.value)} disabled={busy}>
           <option value="public">Công khai (Public)</option>
           <option value="unlisted">Không công khai (Unlisted)</option>
           <option value="private">Riêng tư (Private)</option>
@@ -154,6 +182,9 @@ export function VideoUploader({ onUploaded, canChooseVisibility }: { onUploaded:
         <span className="adminHint">Video sẽ ở trạng thái &quot;Không công khai&quot; (unlisted).</span>
       )}
 
+      <VideoThumbnailField file={thumbFile} onChange={setThumbFile} disabled={busy} />
+
+      {state.phase === "thumbnail" && <span className="adminHint">Đang tải ảnh thumbnail lên Google Drive…</span>}
       {state.phase === "uploading" && (
         <div style={{ height: 6, background: "var(--admin-border)", borderRadius: 3, overflow: "hidden" }}>
           <div style={{ width: `${state.progress}%`, height: "100%", background: "var(--admin-brand)" }} />
@@ -162,10 +193,10 @@ export function VideoUploader({ onUploaded, canChooseVisibility }: { onUploaded:
       {state.phase === "error" && <p className="adminErrorText" role="alert">{state.message}</p>}
 
       <div style={{ display: "flex", gap: 6 }}>
-        <button type="button" className="adminButton adminButtonSmall adminButtonPrimary" onClick={startUpload} disabled={!title.trim() || state.phase === "uploading"}>
-          {state.phase === "uploading" ? "Đang tải lên…" : "Tải video lên"}
+        <button type="button" className="adminButton adminButtonSmall adminButtonPrimary" onClick={startUpload} disabled={!title.trim() || busy}>
+          {busy ? "Đang tải lên…" : "Tải video lên"}
         </button>
-        <button type="button" className="adminButton adminButtonSmall" onClick={() => setFile(null)} disabled={state.phase === "uploading"}>Huỷ</button>
+        <button type="button" className="adminButton adminButtonSmall" onClick={() => setFile(null)} disabled={busy}>Huỷ</button>
       </div>
     </div>
   );

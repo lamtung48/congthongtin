@@ -1,6 +1,9 @@
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-6); }
 .card { display: flex; flex-direction: column; gap: 10px; }
-.thumb { position: relative; aspect-ratio: 16/9; border-radius: var(--radius-md); overflow: hidden; background: var(--surface-sunken); }
+.thumb { position: relative; aspect-ratio: 16/9; border-radius: var(--radius-lg); overflow: hidden; background: var(--surface-sunken); box-shadow: var(--shadow-sm); transition: box-shadow var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-entrance); }
+.thumb img { transition: transform var(--dur-slow) var(--ease-entrance); }
+.card:hover .thumb { box-shadow: var(--shadow-lg); transform: translateY(var(--hover-lift)); }
+.card:hover .thumb img { transform: scale(1.05); }
 .meta { display: flex; align-items: center; gap: 10px; }
 .cat { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--brand-primary); }
 .duration { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }

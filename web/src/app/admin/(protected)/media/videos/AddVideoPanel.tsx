@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { linkVideoAction, importChannelVideoAction, browseChannelVideosAction } from "./actions";
 import { VideoUploader, type UploadedVideo } from "./VideoUploader";
+import { VideoThumbnailField } from "./VideoThumbnailField";
+import { uploadImageFile } from "@/lib/media/uploadImageClient";
+import { parseYoutubeVideoId } from "@/server/validation/youtubeUrl";
 
 /**
  * "Thêm video" panel on `/admin/media/videos` itself — the same three
@@ -21,6 +24,7 @@ export function AddVideoPanel({ canUpload, canManageAny, canBrowseChannel }: { c
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [linkInput, setLinkInput] = useState("");
+  const [linkThumb, setLinkThumb] = useState<File | null>(null);
   const [browseItems, setBrowseItems] = useState<{ videoId: string; title: string; thumbnailUrl: string | undefined }[] | null>(null);
   const [browseNextToken, setBrowseNextToken] = useState<string | undefined>();
 
@@ -36,12 +40,22 @@ export function AddVideoPanel({ canUpload, canManageAny, canBrowseChannel }: { c
   function handleLink(formData: FormData) {
     setError(null);
     startTransition(async () => {
+      if (linkThumb) {
+        try {
+          const image = await uploadImageFile(linkThumb, `${parseYoutubeVideoId(linkInput) ?? "video"}-thumbnail`);
+          formData.set("thumbnailMediaId", image.id);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Không tải được ảnh thumbnail.");
+          return;
+        }
+      }
       const result = await linkVideoAction(formData);
       if (!result.ok) {
         setError(result.error ?? "Không thể thêm video.");
         return;
       }
       setLinkInput("");
+      setLinkThumb(null);
       setMode("none");
     });
   }
@@ -105,18 +119,26 @@ export function AddVideoPanel({ canUpload, canManageAny, canBrowseChannel }: { c
       {mode === "upload" && <VideoUploader onUploaded={handleUploaded} canChooseVisibility={canManageAny} />}
 
       {mode === "link" && (
-        <form action={handleLink} style={{ display: "flex", gap: 6 }}>
-          <input
-            name="input"
-            className="adminInput"
-            style={{ flex: 1 }}
-            placeholder="Dán link video YouTube công khai (hoặc video ID)"
-            value={linkInput}
-            onChange={(e) => setLinkInput(e.target.value)}
+        <form action={handleLink} style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input
+              name="input"
+              className="adminInput"
+              style={{ flex: 1 }}
+              placeholder="Dán link video YouTube công khai (hoặc video ID)"
+              value={linkInput}
+              onChange={(e) => setLinkInput(e.target.value)}
+            />
+            <button type="submit" className="adminButton adminButtonSmall adminButtonPrimary" disabled={pending}>
+              {pending ? (linkThumb ? "Đang tải ảnh & thêm…" : "Đang thêm…") : "Thêm"}
+            </button>
+          </div>
+          <VideoThumbnailField
+            file={linkThumb}
+            onChange={setLinkThumb}
+            disabled={pending}
+            fallbackVideoId={parseYoutubeVideoId(linkInput)}
           />
-          <button type="submit" className="adminButton adminButtonSmall adminButtonPrimary" disabled={pending}>
-            {pending ? "Đang thêm…" : "Thêm"}
-          </button>
         </form>
       )}
 

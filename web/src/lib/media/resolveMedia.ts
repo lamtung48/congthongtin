@@ -21,8 +21,11 @@ import type { MediaAsset } from "@/domain/media";
  */
 
 /** Resolves the URL `MediaImage` should load for one asset, or `undefined`
- *  to render `MediaPlaceholder` instead. */
-export function resolveImageUrl(media: MediaAsset): string | undefined {
+ *  to render `MediaPlaceholder` instead. `youtubeSize: "max"` asks for
+ *  YouTube's 1280px still (`maxresdefault`) — not every video has one, so a
+ *  caller using it must be ready to fall back to the default (`MediaImage`'s
+ *  `highRes` does exactly that). */
+export function resolveImageUrl(media: MediaAsset, options: { youtubeSize?: "default" | "max" } = {}): string | undefined {
   // A video's custom cover (a Drive image uploaded in the CMS) wins over the
   // provider's own thumbnail — and still shows while the video itself is
   // processing/removed, since the slot is only ever a still here.
@@ -32,7 +35,9 @@ export function resolveImageUrl(media: MediaAsset): string | undefined {
   }
   if (media.status !== "ready" || !media.sourceId) return undefined;
   if (media.provider === "drive") return `/api/media/${media.id}`;
-  if (media.provider === "youtube") return `https://img.youtube.com/vi/${media.sourceId}/hqdefault.jpg`;
+  if (media.provider === "youtube") {
+    return `https://img.youtube.com/vi/${media.sourceId}/${options.youtubeSize === "max" ? "maxresdefault" : "hqdefault"}.jpg`;
+  }
   // Hot-linked from the original source (news collector) — `sourceId` is the
   // absolute image URL. Served straight from the source CDN; `img-src https:`
   // in next.config.ts's CSP allows it.
@@ -64,13 +69,23 @@ export function resolveVideoUnavailableReason(media: MediaAsset): VideoUnavailab
 /** Resolves an embeddable playback URL for `MediaVideo`'s "playing" state,
  *  or `undefined` when nothing can be embedded (missing/removed source, or
  *  one of the `youtube`-specific reasons above). `youtube-nocookie.com` is
- *  YouTube's own privacy-enhanced embed domain — it doesn't set cookies
- *  until the visitor actually presses play inside the iframe, which
- *  `MediaVideo` only renders once `playing` is already true. */
+ *  YouTube's own privacy-enhanced embed domain. `MediaVideo` only renders
+ *  the iframe once the visitor has pressed *our* play button, so
+ *  `autoplay=1` just saves them a second click inside the player — nothing
+ *  ever starts on its own, and the click is the user gesture browsers
+ *  require for playback with sound. */
 export function resolveVideoPlaybackSource(media: MediaAsset): VideoPlaybackSource | undefined {
   if (resolveVideoUnavailableReason(media)) return undefined;
   if (media.provider === "youtube" && media.sourceId) {
-    return { url: `https://www.youtube-nocookie.com/embed/${media.sourceId}?rel=0` };
+    return { url: `https://www.youtube-nocookie.com/embed/${media.sourceId}?rel=0&autoplay=1&playsinline=1` };
   }
   return undefined;
+}
+
+/** The video's own page on its provider ("Mở trên YouTube"), or `undefined`
+ *  when there is nothing public to open. */
+export function resolveVideoWatchUrl(media: MediaAsset): string | undefined {
+  if (media.provider !== "youtube" || !media.sourceId) return undefined;
+  if (media.status === "removed" || media.errorReason === "private") return undefined;
+  return `https://www.youtube.com/watch?v=${media.sourceId}`;
 }
