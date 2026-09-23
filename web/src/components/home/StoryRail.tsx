@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef } from "react";
 import styles from "./StoryRail.module.css";
 import { MediaImage } from "@/components/ui/MediaImage";
-import { IconArrowLeft, IconArrowRight } from "@/components/icons";
+import { IconArrowLeft, IconArrowRight, IconMapPin } from "@/components/icons";
 import type { StoryRailItem } from "@/data-access/types";
 import { formatDateVi } from "@/lib/formatDate";
 
@@ -232,18 +232,29 @@ export function StoryRail({ stories }: { stories: StoryRailItem[] }) {
         className={styles.card}
         {...(clone ? { tabIndex: -1, "aria-hidden": true } : {})}
       >
-        <span className={styles.cardMedia}>
-          <MediaImage media={s.media} sizes="(max-width: 700px) 88vw, 470px" />
-          <span className={styles.cardNumber}>{String(i + 1).padStart(2, "0")}</span>
-        </span>
-        <span className={styles.cardBody}>
-          <span className={styles.cardMetaRow}>
-            <span className={styles.cardPlace}>{s.place}</span>
-            <span className={styles.cardDot} />
-            <span className={styles.cardDate}>{formatDateVi(s.publishedAt)}</span>
+        {/* Inner layer: the scroll-driven "focus" scale lives here, the hover lift on the link. */}
+        <span className={styles.cardInner}>
+          <span className={styles.cardMedia}>
+            <MediaImage media={s.media} sizes="(max-width: 700px) 76vw, 340px" />
           </span>
-          <span className={styles.cardHeadline}>{s.headline}</span>
-          <span className={styles.cardCategory}>{s.category.name}</span>
+          <span aria-hidden className={styles.cardShade} />
+          <span className={styles.cardTop}>
+            <span className={styles.cardPlace}>
+              <IconMapPin size={12} />
+              <span>{s.place}</span>
+            </span>
+            <span className={styles.cardNumber}>{String(i + 1).padStart(2, "0")}</span>
+          </span>
+          <span className={styles.cardBottom}>
+            <span className={styles.cardCategory}>{s.category.name}</span>
+            <span className={styles.cardHeadline}>{s.headline}</span>
+            <span className={styles.cardFoot}>
+              <span className={styles.cardDate}>{formatDateVi(s.publishedAt)}</span>
+              <span className={styles.cardGo} aria-hidden>
+                <IconArrowRight size={14} />
+              </span>
+            </span>
+          </span>
         </span>
       </Link>
     );
@@ -251,10 +262,34 @@ export function StoryRail({ stories }: { stories: StoryRailItem[] }) {
 
   return (
     <section aria-labelledby="storyrail-title" className={styles.section}>
+      {/* The section's name, literally: slow waves drifting across the back. */}
+      <svg aria-hidden className={styles.waves} viewBox="0 0 1440 320" preserveAspectRatio="none">
+        <g className={styles.waveSlow}>
+          <path d={wave(170, 60, 360)} className={styles.waveBlue} />
+          <path d={wave(205, 40, 480)} className={styles.waveBlueSoft} />
+        </g>
+        <g className={styles.waveFast}>
+          <path d={wave(236, 30, 288)} className={styles.waveGold} />
+        </g>
+      </svg>
+
+      <div aria-hidden className={styles.marquee}>
+        <div className={styles.marqueeTrack}>
+          {[0, 1].map((k) => (
+            <span key={k} className={styles.marqueeText}>
+              Dòng chảy sinh viên <i>✦</i> Khắp mọi miền <i>✦</i> Dòng chảy sinh viên <i>✦</i> Khắp mọi miền <i>✦</i>&nbsp;
+            </span>
+          ))}
+        </div>
+      </div>
+
       <div className={styles.inner}>
         <div className={styles.headRow}>
           <div className={styles.headText}>
-            <h2 id="storyrail-title" className={styles.title}>Dòng chảy sinh viên</h2>
+            <span className={styles.eyebrow}>Câu chuyện · Khắp mọi miền</span>
+            <h2 id="storyrail-title" className={styles.title}>
+              Dòng chảy <span className={styles.titleGlow}>sinh viên</span>
+            </h2>
             <p className={styles.desc}>
               Những câu chuyện từ các địa phương và du học sinh Việt Nam — mỗi nơi một cách sinh viên có mặt trong đời sống cộng đồng.
             </p>
@@ -278,6 +313,7 @@ export function StoryRail({ stories }: { stories: StoryRailItem[] }) {
               {looping && stories.map((s, i) => card(s, i, true))}
             </div>
           </div>
+          <span className={styles.fadeLeft} />
           <span className={styles.fade} />
         </div>
 
@@ -292,4 +328,17 @@ export function StoryRail({ stories }: { stories: StoryRailItem[] }) {
       </div>
     </section>
   );
+}
+
+/** A horizontal sine wave two viewBox-widths long (0–2880 in a 1440-wide
+ *  viewBox). Every period used divides 1440, so the CSS animation's shift by
+ *  exactly one viewBox width lands on an identical shape — a seamless loop.
+ *  The fade at both ends is a mask on the (static) `<svg>`, not a gradient on
+ *  the moving stroke, which would jump at the loop point. */
+function wave(y: number, amp: number, period: number): string {
+  let d = `M0 ${y}`;
+  for (let x = 0; x < 2880; x += period) {
+    d += ` q ${period / 4} ${-amp} ${period / 2} 0 t ${period / 2} 0`;
+  }
+  return d;
 }

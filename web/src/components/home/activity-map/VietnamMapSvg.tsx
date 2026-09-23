@@ -39,6 +39,10 @@ interface Props {
   onSelectProvince: (slug: string | null) => void;
   onSelectOverseas: (country: ActivityMapOverseasCountry | null) => void;
   onRetry: () => void;
+  /** Entrance choreography (see ActivityMapSection): "armed" hides the land
+   *  and markers until the map scrolls into view, "in" plays the rise + pop,
+   *  "static" (reduced motion / no IntersectionObserver) shows everything. */
+  phase?: "static" | "armed" | "in";
 }
 
 export function VietnamMapSvg({
@@ -51,6 +55,7 @@ export function VietnamMapSvg({
   onSelectProvince,
   onSelectOverseas,
   onRetry,
+  phase = "static",
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [hostWidth, setHostWidth] = useState(640);
@@ -268,7 +273,7 @@ export function VietnamMapSvg({
 
   return (
     <div ref={hostRef}>
-      <div className={styles.stage} style={{ width: W, height: H }}>
+      <div className={styles.stage} style={{ width: W, height: H }} data-phase={phase}>
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="group" aria-label="Bản đồ hoạt động sinh viên theo tỉnh, thành phố">
           <defs>
             {/* Top face of the landmass block: white at the coast, sinking to a pale
@@ -314,16 +319,19 @@ export function VietnamMapSvg({
            * (aria-hidden) — every interactive/labelled element below reads
            * off the real `vnFeature`/`provinces` data, not these copies.
            */}
-          <g aria-hidden="true" filter={`url(#${shadowId})`}>
-            <path d={vnPath} fill="#04162b" />
+          {/* One group so the whole slab can rise into place on entrance (CSS, `.land`). */}
+          <g className={styles.land}>
+            <g aria-hidden="true" filter={`url(#${shadowId})`}>
+              <path d={vnPath} fill="#04162b" />
+            </g>
+            <g aria-hidden="true">
+              <path d={vnPath} transform="translate(0, 7)" fill="var(--blue-900)" />
+              <path d={vnPath} transform="translate(0, 5)" fill="var(--blue-800)" />
+              <path d={vnPath} transform="translate(0, 3)" fill="var(--blue-700)" />
+              <path d={vnPath} transform="translate(0, 1.5)" fill="var(--blue-600)" />
+            </g>
+            <path d={vnPath} fill={`url(#${topId})`} stroke="var(--blue-600)" strokeWidth={1.1} strokeLinejoin="round" />
           </g>
-          <g aria-hidden="true">
-            <path d={vnPath} transform="translate(0, 7)" fill="var(--blue-900)" />
-            <path d={vnPath} transform="translate(0, 5)" fill="var(--blue-800)" />
-            <path d={vnPath} transform="translate(0, 3)" fill="var(--blue-700)" />
-            <path d={vnPath} transform="translate(0, 1.5)" fill="var(--blue-600)" />
-          </g>
-          <path d={vnPath} fill={`url(#${topId})`} stroke="var(--blue-600)" strokeWidth={1.1} strokeLinejoin="round" />
 
           {(data.archipelagos ?? []).map((a) => {
             const c = projectPoint(a.lon, a.lat);
@@ -410,7 +418,7 @@ export function VietnamMapSvg({
               if (hit) onSelectProvince(selectedSlug === hit.p.slug ? null : hit.p.slug);
             }}
           >
-            {provinceMarkers.map(({ p, x, y, v, none, rad }) => {
+            {provinceMarkers.map(({ p, x, y, v, none, rad }, idx) => {
               const sel = selectedSlug === p.slug;
               const hovered = hoverSlug === p.slug;
               const active = sel || hovered;
@@ -434,13 +442,18 @@ export function VietnamMapSvg({
                     }
                   }}
                 >
-                  <circle className={styles.ring} r={rad + 6.5} fill="none" stroke="var(--blue-700)" strokeWidth={sel ? 1.8 : 0} opacity={sel ? 1 : 0} />
+                  <circle className={styles.ring} data-sel={sel || undefined} r={rad + 6.5} fill="none" stroke="var(--blue-700)" strokeWidth={sel ? 1.8 : 0} opacity={sel ? 1 : 0} />
+                  {/* Entrance pop, staggered by rank (`order` puts the biggest first). */}
+                  <g className={styles.markerPop} style={{ "--d": idx } as React.CSSProperties}>
                   {none ? (
                     // No tin bài/hoạt động yet: a faint outline only — no emblem, so an
                     // early-stage province doesn't compete visually with ones that have data.
                     <circle className={styles.dot} r={rad} fill="var(--white)" fillOpacity={active ? 1 : 0.9} stroke="var(--ink-400)" strokeWidth={1.3} strokeDasharray="2.6 2.2" />
                   ) : (
                     <g className={styles.markerScale}>
+                      {/* "Đèn sáng": two rings ripple out from every province that has content. */}
+                      <circle className={styles.ripple} r={rad} />
+                      <circle className={styles.ripple} r={rad} data-delay="true" />
                       {/* Glow: brighter/bigger the more tin bài & hoạt động this province has. */}
                       <circle
                         className={styles.markerGlow}
@@ -459,6 +472,7 @@ export function VietnamMapSvg({
                       />
                     </g>
                   )}
+                  </g>
                 </g>
               );
             })}

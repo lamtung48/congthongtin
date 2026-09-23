@@ -95,7 +95,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body>
         {appearanceCss && <style dangerouslySetInnerHTML={{ __html: appearanceCss }} />}
-        <div style={{ background: "var(--surface-page)", minHeight: "100vh", overflowX: "hidden" }}>
+        <div className="siteShell">
           <Header nav={homepage.nav} searchTopics={homepage.trendingTopics} searchCorpus={homepage.search.corpus} />
           <main>{children}</main>
           <Footer footer={homepage.footer} />

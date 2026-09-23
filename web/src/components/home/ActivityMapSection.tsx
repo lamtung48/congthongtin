@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import styles from "./ActivityMapSection.module.css";
 import { VietnamMapSvg } from "./activity-map/VietnamMapSvg";
 import { useActivityMapData } from "./activity-map/useActivityMapData";
 import { provinceValue, provinceValueLabel } from "./activity-map/provinceValue";
 import { useViewport } from "@/lib/hooks/useViewport";
 import { useModalDialog } from "@/lib/hooks/useModalDialog";
-import { IconActivity, IconArrowRight, IconChevronDown, IconClose, IconExternal, IconSearch } from "@/components/icons";
+import { IconActivity, IconArrowRight, IconChevronDown, IconClose, IconExternal, IconGlobe, IconPen, IconSearch } from "@/components/icons";
 import type { ActivityMapOverseasCountry, PlatformActivityItem } from "@/domain/activity";
 import { HOAT_DONG_URL } from "@/lib/siteChrome";
 import { localityHref, unitHref } from "@/lib/routes";
@@ -23,6 +23,76 @@ function norm(v: string) {
     .replace(/[̀-ͯ]/g, "")
     .replace(/đ/g, "d")
     .toLowerCase();
+}
+
+type Phase = "static" | "armed" | "in";
+
+/**
+ * Entrance choreography for the whole section, keyed off the map/aside grid:
+ * "armed" (hidden, waiting) once it is known to be below the fold, "in" when
+ * it scrolls into view — the map's slab rises, markers pop, numbers count up,
+ * the coverage ring fills. Stays "static" (everything simply shown) under
+ * reduced motion or without IntersectionObserver. Every state change happens
+ * in the observer callback, never synchronously in the effect.
+ */
+function useEntrancePhase<T extends HTMLElement>(): [React.RefObject<T | null>, Phase] {
+  const ref = useRef<T | null>(null);
+  const [phase, setPhase] = useState<Phase>("static");
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !("IntersectionObserver" in window)) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setPhase("in");
+            io.disconnect();
+          } else {
+            setPhase((p) => (p === "static" ? "armed" : p));
+          }
+        }
+      },
+      { threshold: 0.18 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return [ref, phase];
+}
+
+/** Counts from 0 up to `target` (ease-out, ~1.2s) once `phase` is "in";
+ *  shows 0 while "armed" (so nothing flashes before it starts) and the plain
+ *  value when "static". State only changes inside animation frames. */
+function useCountUp(target: number, phase: Phase): number {
+  const [shown, setShown] = useState<number | null>(null);
+  useEffect(() => {
+    if (phase !== "in") return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / 1200);
+      setShown(t >= 1 ? null : Math.round(target * (1 - Math.pow(1 - t, 3))));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [phase, target]);
+  if (phase === "armed") return 0;
+  return shown ?? target;
+}
+
+function StatTile({ icon, value, label, phase, tone }: { icon: React.ReactNode; value: number; label: string; phase: Phase; tone: string }) {
+  const n = useCountUp(value, phase);
+  return (
+    <div className={styles.statTile} data-tone={tone}>
+      <span className={styles.statIcon} aria-hidden>
+        {icon}
+      </span>
+      <span className={styles.statValue}>{fmt(n)}</span>
+      <span className={styles.statLabel}>{label}</span>
+    </div>
+  );
 }
 
 const STATUS_LABEL: Record<string, string> = { UPCOMING: "Sắp diễn ra", ONGOING: "Đang diễn ra", COMPLETED: "Đã kết thúc" };
@@ -91,6 +161,7 @@ export function ActivityMapSection() {
   const [listOpen, setListOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [retryTick, setRetryTick] = useState(0);
+  const [gridRef, phase] = useEntrancePhase<HTMLDivElement>();
 
   const provinces = useMemo(() => data?.provinces ?? [], [data]);
   const withData = useMemo(() => provinces.filter((p) => provinceValue(p) != null), [provinces]);
@@ -98,16 +169,12 @@ export function ActivityMapSection() {
   const totalActivities = data?.summary?.total_platform_activities ?? provinces.reduce((s, p) => s + (p.platform_activity_count ?? 0), 0);
   const latestActivities = data?.platform_activities_latest ?? [];
 
-  const mapStats = !provinces.length
-    ? []
-    : [
-        { value: fmt(totalArticles), label: "Tin bài" },
-        { value: fmt(totalActivities), label: "Hoạt động" },
-      ];
+  const overseasCount = data?.overseas?.countries?.length ?? 0;
+  const litCount = useCountUp(withData.length, phase);
+  const coverageFrac = provinces.length ? withData.length / provinces.length : 0;
   const updatedAt =
     data?.updated_at && state === "loaded" ? formatDateTimeVi(data.updated_at) : "";
-  const coverage = provinces.length ? `${withData.length}/${provinces.length} tỉnh, thành có dữ liệu` : "";
-  const periodLine = [coverage, updatedAt ? `Cập nhật ${updatedAt}` : ""].filter(Boolean).join(" · ");
+  const periodLine = updatedAt ? `Cập nhật ${updatedAt}` : "";
 
   function byValue(a: (typeof provinces)[number], b: (typeof provinces)[number]) {
     const va = provinceValue(a);
@@ -123,6 +190,9 @@ export function ActivityMapSection() {
     .sort(byValue)
     .filter((p) => p.latest_article)
     .slice(0, 3);
+  // "Sôi nổi nhất" — only meaningful once there is someone to compare with.
+  const leaders = withData.length >= 2 ? withData.slice().sort(byValue).slice(0, 3) : [];
+  const leaderMax = Math.max(1, ...leaders.map((p) => provinceValue(p) ?? 0));
 
   const listAll = provinces.slice().sort(byValue);
   const q = norm(query.trim());
@@ -195,20 +265,32 @@ export function ActivityMapSection() {
   const selCtaLabel = selectedOverseas ? "Xem hoạt động của đơn vị" : "Xem trang địa phương";
 
   return (
-    <section aria-label="Hoạt động sinh viên trên toàn quốc" className={styles.section}>
+    <section aria-labelledby="map-title" className={styles.section} data-phase={phase}>
+      <span aria-hidden className={styles.bg} />
       <div className={styles.inner}>
         <div className={styles.head}>
           <div className={styles.headText}>
-            <span className={styles.eyebrow}>Bản đồ phong trào</span>
-            <h2 className={styles.title}>Hoạt động sinh viên trên toàn quốc</h2>
+            <span className={styles.eyebrow}>
+              <span className={styles.liveDot} />
+              Bản đồ phong trào
+            </span>
+            <h2 id="map-title" className={styles.title}>
+              Hoạt động sinh viên trên <span className={styles.titleAccent}>toàn quốc</span>
+            </h2>
             <p className={styles.desc}>
               Chọn một tỉnh, thành hoặc Hội Sinh viên ở nước ngoài để xem tin bài và các hoạt động của đơn vị trên nền tảng Hoạt động.
             </p>
           </div>
         </div>
 
-        <div data-l="map" className={styles.grid}>
+        <div ref={gridRef} data-l="map" className={styles.grid}>
           <div className={styles.mapCard}>
+            {!unitSelected && state === "loaded" && (
+              <span className={styles.mapHint} aria-hidden>
+                <span className={styles.mapHintDot} />
+                Chạm vào điểm sáng để khám phá
+              </span>
+            )}
             <VietnamMapSvg
               state={state}
               data={data}
@@ -219,27 +301,51 @@ export function ActivityMapSection() {
               onSelectProvince={selectProvince}
               onSelectOverseas={selectOverseas}
               onRetry={() => setRetryTick((n) => n + 1)}
+              phase={phase}
               key={retryTick}
             />
           </div>
 
           <aside aria-label="Số liệu hoạt động" className={styles.aside}>
-            {mapStats.length > 0 && (
+            {provinces.length > 0 && (
               <div className={styles.statsBlock}>
                 <div className={styles.statsGrid}>
-                  {mapStats.map((s) => (
-                    <div key={s.label} className={styles.statCell}>
-                      <span className={styles.statValue}>{s.value}</span>
-                      <span className={styles.statLabel}>{s.label}</span>
-                    </div>
-                  ))}
+                  <StatTile icon={<IconPen size={16} />} value={totalArticles} label="Tin bài" phase={phase} tone="blue" />
+                  <StatTile icon={<IconActivity size={16} />} value={totalActivities} label="Hoạt động" phase={phase} tone="red" />
+                  {overseasCount > 0 && <StatTile icon={<IconGlobe size={16} />} value={overseasCount} label="Hội ngoài nước" phase={phase} tone="gold" />}
                 </div>
                 {periodLine && <span className={styles.periodLine}>{periodLine}</span>}
               </div>
             )}
 
+            {provinces.length > 0 && !unitSelected && (
+              <div className={styles.coverCard}>
+                <span className={styles.coverRing} aria-hidden>
+                  <svg viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="42" className={styles.coverTrack} />
+                    <circle cx="50" cy="50" r="42" pathLength={100} className={styles.coverFill} style={{ "--frac": coverageFrac } as CSSProperties} />
+                  </svg>
+                  <span className={styles.coverNum}>
+                    {litCount}
+                    <small>/{provinces.length}</small>
+                  </span>
+                </span>
+                <span className={styles.coverBody}>
+                  <span className={styles.coverTitle}>Thắp sáng bản đồ</span>
+                  <span className={styles.coverText}>
+                    {withData.length}/{provinces.length} tỉnh, thành đã sáng đèn. Mỗi tin bài, mỗi hoạt động của Hội Sinh viên địa phương thắp thêm một điểm trên bản đồ.
+                  </span>
+                  <a href={HOAT_DONG_URL} target="_blank" rel="noopener noreferrer" className={styles.coverCta}>
+                    Tạo hoạt động trên nền tảng Hoạt động
+                    <IconExternal size={12} />
+                  </a>
+                </span>
+              </div>
+            )}
+
             {showAside ? (
-              <div className={styles.detailCard} aria-live="polite">
+              <div key={detailName} className={styles.detailCard} aria-live="polite">
+                <span aria-hidden className={styles.detailGlow} />
                 <div className={styles.detailHead}>
                   <span>
                     <span className={styles.detailEyebrow}>Đang chọn</span>
@@ -296,12 +402,37 @@ export function ActivityMapSection() {
             ) : (
               !showSheet && (
                 <div className={styles.unselectedCard}>
+                  {leaders.length > 0 && (
+                    <div className={styles.leaderBlock}>
+                      <span className={styles.unselectedLabel}>Sôi nổi nhất</span>
+                      <ol className={styles.leaderList}>
+                        {leaders.map((p, i) => {
+                          const v = provinceValue(p) ?? 0;
+                          return (
+                            <li key={p.slug}>
+                              <button type="button" className={styles.leaderRow} onClick={() => selectProvince(p.slug)}>
+                                <span className={styles.leaderRank} data-rank={i + 1}>{i + 1}</span>
+                                <span className={styles.leaderName}>{p.province_name}</span>
+                                <span className={styles.leaderBar} aria-hidden>
+                                  <span style={{ "--w": v / leaderMax, "--i": i } as CSSProperties} />
+                                </span>
+                                <span className={styles.leaderValue}>{provinceValueLabel(p)}</span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
+                  )}
                   <span className={styles.unselectedLabel}>Tin mới nhất từ các địa phương</span>
                   {mapLatest.map((p) => (
                     <a key={p.slug} href={localityHref(p.slug)} className={styles.unselectedLink}>
                       <span className={styles.unselectedPlace}>{p.province_name}</span>
                       <span className={styles.unselectedTitle}>{p.latest_article?.title}</span>
                       <span className={styles.unselectedDate}>{p.latest_article ? vnDate(p.latest_article.published_at) : ""}</span>
+                      <span className={styles.unselectedGo} aria-hidden>
+                        <IconArrowRight size={14} />
+                      </span>
                     </a>
                   ))}
                   {latestActivities.length > 0 && (
