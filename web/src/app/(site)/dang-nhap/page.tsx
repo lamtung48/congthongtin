@@ -1,12 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import styles from "./login.module.css";
 import { EditorialLoginForm, PersonalLoginForm } from "./LoginForms";
 import { getPerson, safeNextPath } from "@/server/auth/person";
+import { SSO_COOKIE } from "@/server/auth/session";
+import { buildHoatdongAuthUrl, shouldRedirectToHoatdong } from "@/lib/hoatdongAuth";
+import { SITE_URL } from "@/lib/siteConfig";
 import { IconActivity, IconExternal, IconPen, IconShield, IconTraining, IconUser } from "@/components/icons";
-import { HOAT_DONG_URL } from "@/lib/siteChrome";
 
 export const metadata: Metadata = { title: "Đăng nhập", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -19,7 +22,7 @@ export const dynamic = "force-dynamic";
  *    this CMS → `/admin/dashboard`. `/admin/login` redirects here.
  * The tabs are plain links, so each flow has its own URL and works without JS.
  */
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ luong?: string; next?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ luong?: string; next?: string; local?: string }> }) {
   const params = await searchParams;
   const editorial = params.luong === "bien-tap";
   const next = safeNextPath(params.next, "/");
@@ -27,6 +30,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
   if (editorial && person?.editor) redirect("/admin/dashboard");
   if (!editorial && person) redirect(next === "/" ? "/tai-khoan" : next);
+
+  // CỔNG ĐĂNG NHẬP CHUNG (2026-10-07): tài khoản cá nhân chưa đăng nhập ở đâu cả -> sang đăng nhập của Hoạt động, làm xong (hồ sơ, câu hỏi Hội viên...)
+  // quay lại đây. Ban biên tập vẫn đăng nhập tại chỗ; có cookie rồi / ?local=1 (cửa thoát khi Hoạt động gián đoạn) -> giữ form cũ.
+  if (!editorial && shouldRedirectToHoatdong({ hasSsoCookie: Boolean((await cookies()).get(SSO_COOKIE)?.value), local: params.local === "1" })) {
+    redirect(buildHoatdongAuthUrl("login", { siteUrl: SITE_URL, nextPath: next === "/" ? "/tai-khoan" : next }));
+  }
 
   const personalHref = next === "/" ? "/dang-nhap" : `/dang-nhap?next=${encodeURIComponent(next)}`;
 
@@ -135,7 +144,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             ) : (
               <p>
                 Chưa có tài khoản?{" "}
-                <a href={`${HOAT_DONG_URL}/dang-ky`} target="_blank" rel="noopener noreferrer">
+                <a href={buildHoatdongAuthUrl("register", { siteUrl: SITE_URL, nextPath: next === "/" ? "/tai-khoan" : next })}>
                   Đăng ký tại nền tảng Hoạt động <IconExternal size={12} />
                 </a>
               </p>
