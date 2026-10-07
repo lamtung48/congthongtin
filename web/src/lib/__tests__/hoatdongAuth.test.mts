@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { buildHoatdongAuthUrl, hoatdongBaseUrl, safeSitePath, shouldRedirectToHoatdong } from "@/lib/hoatdongAuth";
+import { buildHoatdongAuthUrl, cameFromHoatdong, hoatdongBaseUrl, safeSitePath, shouldRedirectToHoatdong } from "@/lib/hoatdongAuth";
 
 // Cổng đăng nhập/đăng ký chung (2026-10-07): Cổng thông tin chuyển đăng nhập/đăng ký cá nhân về Hoạt động kèm URL quay lại. Thuần, không DB/mạng.
 
@@ -48,11 +48,24 @@ describe("safeSitePath", () => {
   });
 });
 
-describe("shouldRedirectToHoatdong", () => {
-  test("chỉ chuyển khi chưa có cookie SSO và không phải ?local=1", () => {
-    assert.equal(shouldRedirectToHoatdong({ hasSsoCookie: false }), true);
-    assert.equal(shouldRedirectToHoatdong({ hasSsoCookie: true }), false);
-    assert.equal(shouldRedirectToHoatdong({ hasSsoCookie: false, local: true }), false);
+describe("shouldRedirectToHoatdong: LUÔN mở Hoạt động, trừ local=1 và vừa từ Hoạt động quay về", () => {
+  test("mặc định chuyển (không còn ngoại lệ theo cookie SSO)", () => {
+    assert.equal(shouldRedirectToHoatdong({}), true);
+  });
+  test("?local=1 hoặc vừa từ Hoạt động quay về -> không chuyển (cửa thoát / tránh vòng lặp)", () => {
+    assert.equal(shouldRedirectToHoatdong({ local: true }), false);
+    assert.equal(shouldRedirectToHoatdong({ cameFromHoatdong: true }), false);
+  });
+});
+
+describe("cameFromHoatdong", () => {
+  test("Referer cùng tên miền Hoạt động -> true; thiếu/khác/rác/giả mạo hậu tố -> false", () => {
+    assert.equal(cameFromHoatdong("https://hoatdong.hoisinhvien.com.vn/", BASE), true);
+    assert.equal(cameFromHoatdong("https://hoatdong.hoisinhvien.com.vn/tiep-tuc?next=x", BASE), true);
+    assert.equal(cameFromHoatdong(null, BASE), false);
+    assert.equal(cameFromHoatdong("https://hoisinhvien.com.vn/tai-khoan", BASE), false);
+    assert.equal(cameFromHoatdong("https://hoatdong.hoisinhvien.com.vn.evil.example/", BASE), false);
+    assert.equal(cameFromHoatdong("khong-phai-url", BASE), false);
   });
 });
 

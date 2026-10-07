@@ -1,13 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import styles from "./login.module.css";
 import { EditorialLoginForm, PersonalLoginForm } from "./LoginForms";
 import { getPerson, safeNextPath } from "@/server/auth/person";
-import { SSO_COOKIE } from "@/server/auth/session";
-import { buildHoatdongAuthUrl, shouldRedirectToHoatdong } from "@/lib/hoatdongAuth";
+import { buildHoatdongAuthUrl, cameFromHoatdong, shouldRedirectToHoatdong } from "@/lib/hoatdongAuth";
 import { SITE_URL } from "@/lib/siteConfig";
 import { IconActivity, IconExternal, IconPen, IconShield, IconTraining, IconUser } from "@/components/icons";
 
@@ -31,9 +30,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (editorial && person?.editor) redirect("/admin/dashboard");
   if (!editorial && person) redirect(next === "/" ? "/tai-khoan" : next);
 
-  // CỔNG ĐĂNG NHẬP CHUNG (2026-10-07): tài khoản cá nhân chưa đăng nhập ở đâu cả -> sang đăng nhập của Hoạt động, làm xong (hồ sơ, câu hỏi Hội viên...)
-  // quay lại đây. Ban biên tập vẫn đăng nhập tại chỗ; có cookie rồi / ?local=1 (cửa thoát khi Hoạt động gián đoạn) -> giữ form cũ.
-  if (!editorial && shouldRedirectToHoatdong({ hasSsoCookie: Boolean((await cookies()).get(SSO_COOKIE)?.value), local: params.local === "1" })) {
+  // CỔNG ĐĂNG NHẬP CHUNG: tài khoản cá nhân LUÔN mở trang đăng nhập của Hoạt động, làm xong (hồ sơ, câu hỏi Hội viên...) quay lại đây. Ban biên tập vẫn đăng nhập
+  // tại chỗ. Ngoại lệ: ?local=1 (cửa thoát khi Hoạt động gián đoạn) và vừa từ Hoạt động quay về mà Cổng vẫn đòi đăng nhập (tránh vòng lặp).
+  if (!editorial && shouldRedirectToHoatdong({ local: params.local === "1", cameFromHoatdong: cameFromHoatdong((await headers()).get("referer")) })) {
     redirect(buildHoatdongAuthUrl("login", { siteUrl: SITE_URL, nextPath: next === "/" ? "/tai-khoan" : next }));
   }
 

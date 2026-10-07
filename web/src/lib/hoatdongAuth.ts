@@ -36,8 +36,18 @@ export function buildHoatdongAuthUrl(kind: HoatdongAuthKind, opts: { siteUrl: st
   return `${base}/dang-ky?${q}`;
 }
 
-/** Chỉ chuyển khi CHƯA có cookie SSO (chưa đăng nhập ở đâu cả). Đã có cookie mà vẫn vào trang này -> giữ form cũ, tránh vòng chuyển hướng qua lại.
- *  `?local=1` = cửa thoát khi Hoạt động gián đoạn. */
-export function shouldRedirectToHoatdong(input: { hasSsoCookie: boolean; local?: boolean }): boolean {
-  return !input.hasSsoCookie && !input.local;
+/** Người dùng vừa từ Hoạt động quay về (Referer là Hoạt động)? Chuyển hướng giữ nguyên Referer của trang gốc nên kiểm tra được cả sau chuỗi 307. */
+export function cameFromHoatdong(referer: string | null | undefined, hoatdongBase: string = hoatdongBaseUrl()): boolean {
+  if (!referer) return false;
+  try {
+    return new URL(referer).hostname === new URL(hoatdongBase).hostname;
+  } catch {
+    return false;
+  }
+}
+
+/** ĐĂNG NHẬP cá nhân: LUÔN mở trang của Hoạt động (kể cả khi đã có cookie SSO), trừ 2 trường hợp: `?local=1` (cửa thoát khi Hoạt động gián đoạn) và người dùng
+ *  vừa TỪ Hoạt động quay về mà Cổng vẫn đòi đăng nhập — chuyển tiếp sẽ tạo vòng lặp qua lại. */
+export function shouldRedirectToHoatdong(input: { local?: boolean; cameFromHoatdong?: boolean }): boolean {
+  return !input.local && !input.cameFromHoatdong;
 }
