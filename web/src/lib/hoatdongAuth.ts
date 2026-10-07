@@ -19,7 +19,9 @@ export function safeSitePath(value: unknown, fallback = "/"): string {
   return v;
 }
 
-export function hoatdongBaseUrl(env: string | undefined = process.env.HOATDONG_URL): string {
+/** Địa chỉ gốc Hoạt động DÙNG CHO TRÌNH DUYỆT. Ưu tiên HOATDONG_PUBLIC_URL: HOATDONG_URL trên prod là địa chỉ NỘI BỘ (http://hoatdong-hsv-app:3000) —
+ * chuyển hướng người dùng tới đó sẽ không vào được. */
+export function hoatdongBaseUrl(env: string | undefined = process.env.HOATDONG_PUBLIC_URL || process.env.HOATDONG_URL): string {
   const value = env?.trim();
   return (value && /^https?:\/\//.test(value) ? value : HOAT_DONG_URL).replace(/\/+$/, "");
 }

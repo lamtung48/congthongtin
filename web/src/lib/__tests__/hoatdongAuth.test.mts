@@ -21,6 +21,16 @@ describe("buildHoatdongAuthUrl", () => {
     assert.equal(hoatdongBaseUrl("https://hoatdong.staging.example.vn/"), "https://hoatdong.staging.example.vn");
     assert.equal(hoatdongBaseUrl("khong-phai-url"), BASE);
     assert.equal(hoatdongBaseUrl(undefined), BASE);
+    // Mặc định: địa chỉ CÔNG KHAI thắng địa chỉ nội bộ (prod đặt HOATDONG_URL=http://hoatdong-hsv-app:3000).
+    const saved = { pub: process.env.HOATDONG_PUBLIC_URL, internal: process.env.HOATDONG_URL };
+    try {
+      process.env.HOATDONG_URL = "http://hoatdong-hsv-app:3000";
+      process.env.HOATDONG_PUBLIC_URL = "https://hoatdong.hoisinhvien.com.vn";
+      assert.equal(hoatdongBaseUrl(), "https://hoatdong.hoisinhvien.com.vn");
+    } finally {
+      if (saved.pub === undefined) delete process.env.HOATDONG_PUBLIC_URL; else process.env.HOATDONG_PUBLIC_URL = saved.pub;
+      if (saved.internal === undefined) delete process.env.HOATDONG_URL; else process.env.HOATDONG_URL = saved.internal;
+    }
   });
 
   test("next xấu (open redirect) không bao giờ lọt vào URL trả về", () => {
