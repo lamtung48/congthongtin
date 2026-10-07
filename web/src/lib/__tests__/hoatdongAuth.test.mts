@@ -45,3 +45,11 @@ describe("shouldRedirectToHoatdong", () => {
     assert.equal(shouldRedirectToHoatdong({ hasSsoCookie: false, local: true }), false);
   });
 });
+
+describe("quên mật khẩu liên thông", () => {
+  test("buildHoatdongAuthUrl('forgot'): /quen-mat-khau của Hoạt động + next tuyệt đối; next xấu bị chặn", () => {
+    assert.equal(buildHoatdongAuthUrl("forgot", { siteUrl: `${SITE}/` }), `${BASE}/quen-mat-khau?next=${enc(`${SITE}/`)}`);
+    assert.equal(buildHoatdongAuthUrl("forgot", { siteUrl: SITE, nextPath: "/tai-khoan" }), `${BASE}/quen-mat-khau?next=${enc(`${SITE}/tai-khoan`)}`);
+    assert.equal(buildHoatdongAuthUrl("forgot", { siteUrl: SITE, nextPath: "//evil.com" }), `${BASE}/quen-mat-khau?next=${enc(`${SITE}/`)}`);
+  });
+});

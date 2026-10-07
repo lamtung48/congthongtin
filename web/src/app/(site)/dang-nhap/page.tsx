@@ -147,6 +147,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                 <a href={buildHoatdongAuthUrl("register", { siteUrl: SITE_URL, nextPath: next === "/" ? "/tai-khoan" : next })}>
                   Đăng ký tại nền tảng Hoạt động <IconExternal size={12} />
                 </a>
+                {" · "}
+                <a href={buildHoatdongAuthUrl("forgot", { siteUrl: SITE_URL, nextPath: next === "/" ? "/tai-khoan" : next })}>Quên mật khẩu?</a>
               </p>
             )}
           </div>

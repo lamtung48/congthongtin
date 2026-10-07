@@ -5,7 +5,7 @@
  */
 import { HOAT_DONG_URL } from "@/lib/siteChrome";
 
-export type HoatdongAuthKind = "login" | "register";
+export type HoatdongAuthKind = "login" | "register" | "forgot";
 
 /** Chỉ đường dẫn TRONG Cổng ("/..." — không "//", không "\\", không ký tự điều khiển); còn lại về `fallback`. */
 export function safeSitePath(value: unknown, fallback = "/"): string {
@@ -28,7 +28,10 @@ export function hoatdongBaseUrl(env: string | undefined = process.env.HOATDONG_U
 export function buildHoatdongAuthUrl(kind: HoatdongAuthKind, opts: { siteUrl: string; nextPath?: unknown; hoatdongUrl?: string }): string {
   const base = opts.hoatdongUrl ?? hoatdongBaseUrl();
   const next = `${opts.siteUrl.replace(/\/+$/, "")}${safeSitePath(opts.nextPath)}`;
-  return kind === "login" ? `${base}/login-ca-nhan?type=person&next=${encodeURIComponent(next)}` : `${base}/dang-ky?next=${encodeURIComponent(next)}`;
+  const q = `next=${encodeURIComponent(next)}`;
+  if (kind === "login") return `${base}/login-ca-nhan?type=person&${q}`;
+  if (kind === "forgot") return `${base}/quen-mat-khau?${q}`; // Hoạt động gửi link đặt lại -> đổi xong đăng nhập -> /tiep-tuc trả về `next`
+  return `${base}/dang-ky?${q}`;
 }
 
 /** Chỉ chuyển khi CHƯA có cookie SSO (chưa đăng nhập ở đâu cả). Đã có cookie mà vẫn vào trang này -> giữ form cũ, tránh vòng chuyển hướng qua lại.
