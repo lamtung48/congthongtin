@@ -5,11 +5,11 @@ import { MembershipCard } from "@hsv/membership-card";
 import styles from "./MemberCardBlock.module.css";
 import type { MembershipCardPayload } from "@/domain/account";
 import { HOAT_DONG_URL } from "@/lib/siteChrome";
-import { IconArrowRight, IconCheck, IconIdCard, IconLink } from "@/components/icons";
+import { IconArrowRight, IconArrowUp, IconCheck, IconIdCard, IconLink } from "@/components/icons";
 
 /**
  * The Thẻ Hội viên exactly as Hoạt động and Đào tạo render it (shared package
- * `@hsv/membership-card`), plus "Tải ảnh thẻ" / "Chia sẻ" — or a clear empty
+ * `@hsv/membership-card`), plus "Tải ảnh thẻ" / "Chia sẻ" / "Nâng hạng" — or a clear empty
  * state when the card isn't issued yet or Hoạt động can't be reached.
  */
 export function MemberCardBlock({ data, compact = false }: { data: MembershipCardPayload; compact?: boolean }) {
@@ -102,8 +102,12 @@ function CardActions({ fileName, shareUrl }: { fileName: string; shareUrl: strin
         </button>
         <button type="button" onClick={share} className={styles.action}>
           {copied ? <IconCheck size={14} /> : <IconLink size={14} />}
-          {copied ? "Đã sao chép liên kết" : "Chia sẻ"}
+          {copied ? "Đã sao chép" : "Chia sẻ"}
         </button>
+        <a href={`${HOAT_DONG_URL}/nang-hang-the`} target="_blank" rel="noopener noreferrer" className={`${styles.action} ${styles.actionPrimary}`}>
+          <IconArrowUp size={14} />
+          Nâng hạng
+        </a>
       </div>
       {error && (
         <p className={styles.error} role="alert">

@@ -68,7 +68,7 @@ export const SITE_NAV: NavItem[] = [
   { label: "Tài liệu", href: "/tai-lieu" },
   // Hoạt động / Đào tạo / Hội nghị are not text links here any more: the
   // header renders them as small platform buttons (ECOSYSTEM_LINKS above).
-  { label: "Giới thiệu", href: "#", soon: true },
+  { label: "Giới thiệu", href: "/gioi-thieu" },
 ];
 
 export const SITE_FOOTER_COLUMNS: FooterColumn[] = [
@@ -77,7 +77,7 @@ export const SITE_FOOTER_COLUMNS: FooterColumn[] = [
     items: [
       { label: "Trang chủ hoisinhvien.com.vn", href: HSV_PORTAL_URL, external: true },
       { label: "Trang chủ hoisinhvien.vn", href: HSV_PORTAL_ALT_URL, external: true },
-      { label: "Giới thiệu Hội" },
+      { label: "Giới thiệu Hội", href: "/gioi-thieu" },
       { label: "Điều lệ Hội" },
       { label: "Ban Thư ký Trung ương" },
       { label: "Liên hệ" },
